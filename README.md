@@ -1,2 +1,2 @@
 # bucketdb
-Small and fast KV store
+SMALL and FAST KV store.
