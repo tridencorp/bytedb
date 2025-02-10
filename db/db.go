@@ -21,10 +21,7 @@ type Collection struct {
 
 // Open database.
 func Open(path string) (*DB, error) {
-	db := new(DB)
-	db.root = path
-
-	return db, nil
+	return &DB{root: path}, nil
 }
 
 // Open the collection. If it doesn't exist, 
