@@ -1,6 +1,8 @@
 package db
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"os"
@@ -15,6 +17,37 @@ type Collection struct {
 	// In combination with WriteAt, it should give
 	// us the ultimate concurrent writes.
 	offset atomic.Int64
+}
+
+// Key structure that represents each key stored in collection.
+// TODO: Maybe better naming will be Record?
+type Key struct {
+	data []byte
+	// Key size
+	size uint32
+}
+
+func NewKey(val []byte) *Key {
+	return &Key{val, uint32(len(val))}
+}
+
+// Encode key to bytes.
+func (key *Key) Bytes() ([]byte, error) {
+	buf := new(bytes.Buffer)
+
+	// Encode size.
+	err := binary.Write(buf, binary.LittleEndian, key.size)
+	if err != nil {
+		return nil, err
+	}
+
+	// Add key data.
+	_, err = buf.Write(key.data)
+	if err != nil {
+		return nil, err		
+	}
+
+	return buf.Bytes(), nil
 }
 
 // Open the collection. If it doesn't exist,
@@ -48,9 +81,12 @@ func (db *DB) Collection(name string) (*Collection, error) {
 
 // Store key in collection.
 func (coll *Collection) Set(key string, val []byte) (int, error) {
-	off := coll.offset.Swap(int64(len(val)))
+	data, err := NewKey(val).Bytes()
+	if err != nil {
+		return 0, err
+	}
 
 	// We are using WriteAt because, when carefully 
 	// handled, it's concurrent-friendly.
-	return coll.file.WriteAt(val, coll.offset.Add(off))
+	return coll.file.WriteAt(data, coll.offset.Add(int64(len(data))))
 }
