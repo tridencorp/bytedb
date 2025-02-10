@@ -66,7 +66,6 @@ func TestSet(t *testing.T) {
 	coll.Set("key3", []byte("value 3"))
 }
 
-
 func TestIterate(t *testing.T) {
 	db, _ := Open("./db")
 	defer db.Delete()
@@ -83,6 +82,4 @@ func TestIterate(t *testing.T) {
 	if len(keys) != 3 {
 		t.Errorf("Expected to get %d keys, got %d", 3, len(keys))
 	}
-
-
 }
