@@ -3,7 +3,6 @@ package db
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -73,7 +72,6 @@ func (db *DB) Collection(name string) (*Collection, error) {
 
 	// We must set offset to current file size.
 	offset, err := file.Seek(0, io.SeekEnd)
-	fmt.Printf("Size: %d\n", offset)
 	coll.offset.Store(offset)
 
 	return coll, nil
