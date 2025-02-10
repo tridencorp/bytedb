@@ -24,6 +24,11 @@ func Open(path string) (*DB, error) {
 	return &DB{root: path}, nil
 }
 
+// Delete the entire database.
+func (db *DB) Delete() (error) {
+	return os.RemoveAll(db.root)
+}
+
 // Open the collection. If it doesn't exist, 
 // create it with default values.
 func (db *DB) Collection(name string) (*Collection, error) {

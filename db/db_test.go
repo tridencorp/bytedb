@@ -24,3 +24,16 @@ func TestCollection(t *testing.T) {
 		t.Errorf("Collection path doesn't exist")
 	}
 }
+
+func TestDelete(t *testing.T) {
+	db, _ := Open("./db")
+	db.Collection("test")
+
+	db.Delete()
+
+	// Whole database should be removed.
+	_, err := os.Stat("./db/")
+	if err == nil {
+		t.Errorf("Database still exists but should be removed")
+	}
+}
