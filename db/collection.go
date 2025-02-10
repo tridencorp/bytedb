@@ -81,10 +81,10 @@ func (db *DB) Collection(name string) (*Collection, error) {
 }
 
 // Store key in collection.
-func (coll *Collection) Set(key string, val []byte) (int, error) {
+func (coll *Collection) Set(key string, val []byte) (int64, int, error) {
 	data, err := NewKey(val).Bytes()
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 
 	// We are adding len to atomic value and then deducting it
@@ -97,5 +97,6 @@ func (coll *Collection) Set(key string, val []byte) (int, error) {
 
 	// We are using WriteAt because, when carefully 
 	// handled, it's concurrent-friendly.
-	return coll.file.WriteAt(data, off)
+	size, err := coll.file.WriteAt(data, off)
+	return off, size, err
 }

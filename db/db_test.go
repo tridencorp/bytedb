@@ -1,6 +1,7 @@
 package db
 
 import (
+	"fmt"
 	"os"
 	"testing"
 )
@@ -86,8 +87,19 @@ func TestIterate(t *testing.T) {
 
 func TestLoadIndexFile(t *testing.T) {
 	db, _ := Open("./db")
-	defer db.Delete()
+	// defer db.Delete()
 
 	coll, _ := db.Collection("test")
-	LoadIndexFile(coll)
+
+	indexes, err := LoadIndexFile(coll)
+	if err != nil {
+		fmt.Printf("%v\n", err)
+	}
+
+	offset, _, _ := coll.Set("key1", []byte("value 1"))
+
+	err = indexes.Add("key1", []byte("value 1"), uint64(offset))
+	if err != nil {
+		fmt.Printf("%v\n", err)
+	}
 }
