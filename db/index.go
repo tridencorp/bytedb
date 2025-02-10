@@ -14,9 +14,9 @@ const(
 
 // Index will represent key in our database.
 type Index struct {
-	bucketId uint32  // 4 bytes
-	size     uint32  // 4 bytes
-	offset   uint64  // 8 bytes
+	BucketId uint32  // 4 bytes
+	Size     uint32  // 4 bytes
+	Offset   uint64  // 8 bytes
 }
 
 type IndexFile struct {
@@ -42,7 +42,7 @@ func LoadIndexFile(coll *Collection) (*IndexFile, error) {
 // This will allow us for faster lookups.
 func (indexes *IndexFile) Add(key string, val []byte, offset uint64) error {	
 	hash := HashKey(key)
-	idx  := Index{bucketId: 1, size: uint32(len(val)), offset: offset}
+	idx  := Index{BucketId: 1, Size: uint32(len(val)), Offset: offset}
 
 	buf := new(bytes.Buffer)
 	err := binary.Write(buf, binary.LittleEndian, idx)
@@ -53,6 +53,26 @@ func (indexes *IndexFile) Add(key string, val []byte, offset uint64) error {
 	pos := (hash % indexes.maxNumber) * IndexSize
 	indexes.file.WriteAt(buf.Bytes(), int64(pos))
 	return nil
+}
+
+// Read index for given key.
+func (indexes *IndexFile) Get(key string) (*Index, error) {
+	hash := HashKey(key)
+
+	// Find index position
+	pos := (hash % indexes.maxNumber) * IndexSize
+	data := make([]byte, IndexSize)
+
+	indexes.file.ReadAt(data, int64(pos))
+	idx := Index{}
+
+	buf := bytes.NewBuffer(data)
+	err := binary.Read(buf, binary.LittleEndian, &idx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &idx, nil
 }
 
 // Hash key.

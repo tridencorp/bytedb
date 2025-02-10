@@ -87,7 +87,7 @@ func TestIterate(t *testing.T) {
 
 func TestLoadIndexFile(t *testing.T) {
 	db, _ := Open("./db")
-	// defer db.Delete()
+	defer db.Delete()
 
 	coll, _ := db.Collection("test")
 
@@ -102,4 +102,11 @@ func TestLoadIndexFile(t *testing.T) {
 	if err != nil {
 		fmt.Printf("%v\n", err)
 	}
+
+	idx, _ := indexes.Get("key1")
+
+	if idx == nil        { t.Errorf("Index for the given key wasn't find.") }
+	if idx.BucketId != 1 { t.Errorf("Expected bucketId to be %d, was %d", 1, idx.BucketId) }
+	if idx.Size != 7     { t.Errorf("Expected Size to be %d, was %d", 7, idx.Size) }
+	if idx.Offset != 0   { t.Errorf("Expected Size to be %d, was %d", 0, idx.Offset) }
 }
