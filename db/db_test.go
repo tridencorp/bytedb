@@ -7,7 +7,7 @@ import (
 
 func TestOpen(t *testing.T) {
 	db, _ := Open("./db")
-	db.Delete()
+	defer db.Delete()
 
 	if db.root != "./db" {
 		t.Errorf("Database root directory was not set.")
@@ -16,7 +16,7 @@ func TestOpen(t *testing.T) {
 
 func TestCollection(t *testing.T) {
 	db, _ := Open("./db")
-	db.Delete()
+	defer db.Delete()
 
 	db.Collection("test")
 
@@ -43,7 +43,7 @@ func TestDelete(t *testing.T) {
 
 func TestSet(t *testing.T) {
 	db, _ := Open("./db")
-	db.Delete()
+	defer db.Delete()
 
 	value	:= []byte("value 1")
 
@@ -51,6 +51,17 @@ func TestSet(t *testing.T) {
 	size, _ := coll.Set("key1", value)
 
 	if size != len(value) {
-		t.Errorf("Error while reading to collection. Expected %d bytes, got %d.", len(value), size)
+		t.Errorf("Error while writing to collection. Expected %d bytes to be written, got %d.", len(value), size)
  }
+}
+
+func TestSetOffset(t *testing.T) {
+	db, _ := Open("./db")
+	defer db.Delete()
+
+	coll, _ := db.Collection("test")
+
+	coll.Set("key1", []byte("value 1"))
+	coll.Set("key2", []byte("value 2"))
+	coll.Set("key3", []byte("value 3"))
 }

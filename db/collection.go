@@ -1,6 +1,8 @@
 package db
 
 import (
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sync/atomic"
@@ -35,7 +37,11 @@ func (db *DB) Collection(name string) (*Collection, error) {
 	}
 
 	coll := &Collection{file: file}
-	coll.offset.Store(0)
+
+	// We must set offset to current file size.
+	offset, err := file.Seek(0, io.SeekEnd)
+	fmt.Printf("Size: %d\n", offset)
+	coll.offset.Store(offset)
 
 	return coll, nil
 }
@@ -46,5 +52,5 @@ func (coll *Collection) Set(key string, val []byte) (int, error) {
 
 	// We are using WriteAt because, when carefully 
 	// handled, it's concurrent-friendly.
-	return coll.file.WriteAt(val, coll.offset.Swap(off))
+	return coll.file.WriteAt(val, coll.offset.Add(off))
 }
