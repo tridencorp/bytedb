@@ -83,3 +83,11 @@ func TestIterate(t *testing.T) {
 		t.Errorf("Expected to get %d keys, got %d", 3, len(keys))
 	}
 }
+
+func TestLoadIndexFile(t *testing.T) {
+	db, _ := Open("./db")
+	defer db.Delete()
+
+	coll, _ := db.Collection("test")
+	LoadIndexFile(coll)
+}

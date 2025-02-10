@@ -10,7 +10,10 @@ import (
 )
 
 type Collection struct {
-	file   *os.File
+	file *os.File
+
+	// Collection root directory.
+	root string
 
 	// We will be using atomic.Swap() for each key.
 	// In combination with WriteAt, it should give
@@ -68,7 +71,7 @@ func (db *DB) Collection(name string) (*Collection, error) {
 		return nil, err
 	}
 
-	coll := &Collection{file: file}
+	coll := &Collection{file: file, root: dir}
 
 	// We must set offset to current file size - end of file offset.
 	offset, err := file.Seek(0, io.SeekEnd)
