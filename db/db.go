@@ -20,6 +20,6 @@ func Open(path string) (*DB, error) {
 }
 
 // Delete the entire database.
-func (db *DB) Delete() (error) {
+func (db *DB) Delete() error {
 	return os.RemoveAll(db.root)
 }

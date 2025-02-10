@@ -3,13 +3,19 @@ package db
 import (
 	"os"
 	"path/filepath"
+	"sync/atomic"
 )
 
 type Collection struct {
-	file *os.File
+	file   *os.File
+
+	// We will be using atomic.Swap() for each key.
+	// In combination with WriteAt, it should give
+	// us the ultimate concurrent writes.
+	offset atomic.Int64
 }
 
-// Open the collection. If it doesn't exist, 
+// Open the collection. If it doesn't exist,
 // create it with default values.
 func (db *DB) Collection(name string) (*Collection, error) {
 	// Build collection path.
@@ -29,5 +35,16 @@ func (db *DB) Collection(name string) (*Collection, error) {
 	}
 
 	coll := &Collection{file: file}
+	coll.offset.Store(0)
+
 	return coll, nil
+}
+
+// Store key in collection.
+func (coll *Collection) Set(key string, val []byte) (int, error) {
+	off := coll.offset.Swap(int64(len(val)))
+
+	// We are using WriteAt because, when carefully 
+	// handled, it's concurrent-friendly.
+	return coll.file.WriteAt(val, coll.offset.Swap(off))
 }

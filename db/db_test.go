@@ -7,21 +7,24 @@ import (
 
 func TestOpen(t *testing.T) {
 	db, _ := Open("./db")
+	db.Delete()
 
 	if db.root != "./db" {
-		t.Errorf("Database root directory was not set")
+		t.Errorf("Database root directory was not set.")
 	}
 }
 
 func TestCollection(t *testing.T) {
 	db, _ := Open("./db")
+	db.Delete()
+
 	db.Collection("test")
 
 	// At this point, we only want to check if the proper
 	// directories have been created.
 	_, err := os.Stat("./db/collections/test/1.bucket")
 	if err != nil {
-		t.Errorf("Collection path doesn't exist")
+		t.Errorf("Collection path doesn't exist.")
 	}
 }
 
@@ -32,8 +35,22 @@ func TestDelete(t *testing.T) {
 	db.Delete()
 
 	// Whole database should be removed.
-	_, err := os.Stat("./db/")
+	_, err := os.Stat("./db")
 	if err == nil {
-		t.Errorf("Database still exists but should be removed")
+		t.Errorf("Database still exists but should be removed.")
 	}
+}
+
+func TestSet(t *testing.T) {
+	db, _ := Open("./db")
+	db.Delete()
+
+	value	:= []byte("value 1")
+
+	coll, _ := db.Collection("test")
+	size, _ := coll.Set("key1", value)
+
+	if size != len(value) {
+		t.Errorf("Error while reading to collection. Expected %d bytes, got %d.", len(value), size)
+ }
 }
