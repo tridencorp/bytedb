@@ -65,3 +65,24 @@ func TestSet(t *testing.T) {
 	coll.Set("key2", []byte("value 2"))
 	coll.Set("key3", []byte("value 3"))
 }
+
+
+func TestIterate(t *testing.T) {
+	db, _ := Open("./db")
+	defer db.Delete()
+
+	coll, _ := db.Collection("test")
+
+	coll.Set("key1", []byte("value 1"))
+	coll.Set("key2", []byte("value 2"))
+	coll.Set("key3", []byte("value 3"))
+
+	it := Iterator{coll: coll}
+	keys, _ := it.Iterate()
+
+	if len(keys) != 3 {
+		t.Errorf("Expected to get %d keys, got %d", 3, len(keys))
+	}
+
+
+}

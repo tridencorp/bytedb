@@ -70,7 +70,7 @@ func (db *DB) Collection(name string) (*Collection, error) {
 
 	coll := &Collection{file: file}
 
-	// We must set offset to current file size.
+	// We must set offset to current file size - end of file offset.
 	offset, err := file.Seek(0, io.SeekEnd)
 	coll.offset.Store(offset)
 
@@ -84,7 +84,15 @@ func (coll *Collection) Set(key string, val []byte) (int, error) {
 		return 0, err
 	}
 
+	// We are adding len to atomic value and then deducting it
+	// from the result, this should give us space for our data.
+	//
+	// We could also use CompareAndSwap combination but it's 
+	// more complex. 
+	off := coll.offset.Add(int64(len(data)))
+	off  = off-int64(len(data))
+
 	// We are using WriteAt because, when carefully 
 	// handled, it's concurrent-friendly.
-	return coll.file.WriteAt(data, coll.offset.Add(int64(len(data))))
+	return coll.file.WriteAt(data, off)
 }
