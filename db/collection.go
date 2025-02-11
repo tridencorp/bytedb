@@ -73,14 +73,15 @@ func (db *DB) Collection(name string) (*Collection, error) {
 
 	coll := &Collection{file: file, root: dir}
 
-	// We must set offset to current file size - end of file offset.
+	// TODO: because of file truncation we should track current 
+	// data size and set our initial offset based on it.
 	offset, err := file.Seek(0, io.SeekEnd)
 	coll.offset.Store(offset)
 
 	return coll, nil
 }
 
-// Store key in collection.
+// Store keys in collection.
 func (coll *Collection) Set(key string, val []byte) (int64, int, error) {
 	data, err := NewKey(val).Bytes()
 	if err != nil {
@@ -90,10 +91,12 @@ func (coll *Collection) Set(key string, val []byte) (int64, int, error) {
 	// We are adding len to atomic value and then deducting it
 	// from the result, this should give us space for our data.
 	//
-	// We could also use CompareAndSwap combination but it's 
-	// more complex. 
+	// TODO: file must be truncated first !!! Make sure that we have
+	// enough space for data. For truncating we can use write mutex 
+	// and try to allocate enough space.
+
 	off := coll.offset.Add(int64(len(data)))
-	off  = off-int64(len(data))
+	off  = off - int64(len(data))
 
 	// We are using WriteAt because, when carefully 
 	// handled, it's concurrent-friendly.
