@@ -29,8 +29,8 @@ type IndexFile struct {
 }
 
 // Load index file.
-func LoadIndexFile(coll *Collection) (*IndexFile, error) {
-	path := coll.root + "/index.idx"
+func LoadIndexFile(path string) (*IndexFile, error) {
+	path += "/index.idx"
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		return nil, nil
@@ -53,7 +53,11 @@ func (indexes *IndexFile) Add(key string, val []byte, offset uint64) error {
 	}
 
 	pos := (hash % indexes.maxNumber) * IndexSize
-	indexes.file.WriteAt(buf.Bytes(), int64(pos))
+	_, err = indexes.file.WriteAt(buf.Bytes(), int64(pos))
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

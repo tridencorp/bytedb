@@ -8,13 +8,16 @@ import (
 type Bucket struct {
 	ID 		uint32
 	Dir   string
-
 	file *os.File
 
 	// We will be using atomic.Add() for each key.
 	// In combination with WriteAt, it should give
 	// us the ultimate concurrent writes.
 	offset atomic.Int64
+
+	// Keep track of the current number of keys in the bucket.
+	KeyCount    uint32
+	MaxKeyCount uint32
 }
 
 func OpenBucket(file string) (*Bucket, error) {

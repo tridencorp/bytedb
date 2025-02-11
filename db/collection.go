@@ -9,8 +9,9 @@ import (
 )
 
 type Collection struct {
-	file   *os.File
-	bucket *Bucket
+	file    *os.File
+	bucket  *Bucket
+	indexes *IndexFile
 
 	// Collection root directory.
 	root string
@@ -76,7 +77,17 @@ func (db *DB) Collection(name string) (*Collection, error) {
 		return nil, err
 	}
 
-	coll := &Collection{file: file, bucket: bucket, root: dir}
+	indexes, err  := LoadIndexFile(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	coll := &Collection{
+		file:    file, 
+		bucket:  bucket, 
+		root:    dir,
+		indexes: indexes,
+	}
 
 	// TODO: because of file truncation we should track current 
 	// data size and set our initial offset based on it.
@@ -86,7 +97,7 @@ func (db *DB) Collection(name string) (*Collection, error) {
 	return coll, nil
 }
 
-// Store keys in collection.
+// Store key in collection.
 func (coll *Collection) Set(key string, val []byte) (int64, int64, error) {
 	data, err := NewKey(val).Bytes()
 	if err != nil {
@@ -94,5 +105,27 @@ func (coll *Collection) Set(key string, val []byte) (int64, int64, error) {
 	}
 
 	off, size, err := coll.bucket.Write(data)
+
+	// Index new key.
+	err = coll.indexes.Add(key, data, uint64(off))
+	if err != nil {
+		return 0, 0, err
+	}
+
 	return off, size, err
+}
+
+// Get key from collection.
+func (coll *Collection) Get(key string) ([]byte, error) {
+	idx, err := coll.indexes.Get(key)
+	if err != nil {
+		return nil, err
+	}
+
+	val, err := coll.bucket.Read(int64(idx.Offset), int64(idx.Size))
+	if err != nil {
+		return nil, err
+	}
+
+	return val, err
 }

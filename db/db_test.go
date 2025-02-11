@@ -1,6 +1,7 @@
 package db
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"testing"
@@ -58,13 +59,37 @@ func TestDelete(t *testing.T) {
 
 func TestSet(t *testing.T) {
 	db, _ := Open("./db")
-	defer db.Delete()
+	// defer db.Delete()
 
 	coll, _ := db.Collection("test")
 
 	coll.Set("key1", []byte("value 1"))
 	coll.Set("key2", []byte("value 2"))
 	coll.Set("key3", []byte("value 3"))
+}
+
+
+func TestGet(t *testing.T) {
+	db, _ := Open("./db")
+	// defer db.Delete()
+
+	coll, _ := db.Collection("test")
+
+	val1 := []byte("value 1")
+	val2 := []byte("value 2")
+	val3 := []byte("value 3")
+
+	coll.Set("key1", val1)
+	coll.Set("key2", val2)
+	coll.Set("key3", val3)
+
+	got1, _ := coll.Get("key1")
+	got2, _ := coll.Get("key2")
+	got3, _ := coll.Get("key3")
+
+	if bytes.Equal(got1, val1) { t.Errorf("Expected %s, got %s", val1, got1) }
+	if bytes.Equal(got2, val2) { t.Errorf("Expected %s, got %s", val2, got2) }
+	if bytes.Equal(got3, val3) { t.Errorf("Expected %s, got %s", val3, got3) }
 }
 
 func TestIterate(t *testing.T) {
@@ -85,13 +110,14 @@ func TestIterate(t *testing.T) {
 	}
 }
 
+
 func TestLoadIndexFile(t *testing.T) {
 	db, _ := Open("./db")
 	defer db.Delete()
 
 	coll, _ := db.Collection("test")
 
-	indexes, err := LoadIndexFile(coll)
+	indexes, err := LoadIndexFile(coll.root)
 	if err != nil {
 		fmt.Printf("%v\n", err)
 	}
