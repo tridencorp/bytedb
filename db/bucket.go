@@ -55,3 +55,15 @@ func (bucket *Bucket) Write(data []byte) (int64, int64, error) {
 
 	return off, int64(size), nil
 }
+
+// Read data from bucket.
+func (bucket *Bucket) Read(offset int64, size int64) ([]byte, error) {
+	data := make([]byte, size)
+
+	_, err := bucket.file.ReadAt(data, offset)
+	if err != nil {
+		return nil, err
+	}	
+
+	return data, nil
+}
