@@ -110,3 +110,29 @@ func TestLoadIndexFile(t *testing.T) {
 	if idx.Size != 7     { t.Errorf("Expected Size to be %d, was %d", 7, idx.Size) }
 	if idx.Offset != 0   { t.Errorf("Expected Size to be %d, was %d", 0, idx.Offset) }
 }
+
+// func TestSetConcurrent(t *testing.T) {
+// 	defer func() {
+// 		if r := recover(); r != nil {
+// 				fmt.Println("Recovered from panic:", r)
+// 		}
+// 	}()
+
+// 	db, _ := Open("./db")
+// 	defer db.Delete()
+
+// 	coll, _ := db.Collection("test")
+
+// 	// We must truncate file !!!
+// 	coll.file.Truncate(17_000_000)
+
+// 	for i := 0; i < 500_000; i++ {
+// 		go func() {
+// 			coll.Set("key1", []byte("value 1"))
+// 			coll.Set("key2", []byte("value 2"))
+// 			coll.Set("key3", []byte("value 3"))
+// 		}()
+// 	}
+
+// 	fmt.Printf("OFFSET: %d\n", coll.offset.Load())
+// }

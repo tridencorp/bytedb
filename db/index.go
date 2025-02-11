@@ -9,7 +9,9 @@ import (
 
 const(
 	MaxIndexesPerFile = 10_000
-	IndexSize         = 16
+
+	// Index size in bytes.
+	IndexSize = 16
 )
 
 // Index will represent key in our database.
@@ -60,7 +62,7 @@ func (indexes *IndexFile) Get(key string) (*Index, error) {
 	hash := HashKey(key)
 
 	// Find index position
-	pos := (hash % indexes.maxNumber) * IndexSize
+	pos  := (hash % indexes.maxNumber) * IndexSize
 	data := make([]byte, IndexSize)
 
 	indexes.file.ReadAt(data, int64(pos))
@@ -75,9 +77,10 @@ func (indexes *IndexFile) Get(key string) (*Index, error) {
 	return &idx, nil
 }
 
-// Hash key.
+// Hash the key.
 func HashKey(key string) uint32 {
-  h := fnv.New32a()
-	h.Write([]byte(key))
-	return h.Sum32()
+  hash := fnv.New32a()
+	hash.Write([]byte(key))
+
+	return hash.Sum32()
 }

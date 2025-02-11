@@ -3,7 +3,6 @@ package db
 import (
 	"bytes"
 	"encoding/binary"
-	"io"
 	"os"
 	"path/filepath"
 	"sync/atomic"
@@ -75,8 +74,8 @@ func (db *DB) Collection(name string) (*Collection, error) {
 
 	// TODO: because of file truncation we should track current 
 	// data size and set our initial offset based on it.
-	offset, err := file.Seek(0, io.SeekEnd)
-	coll.offset.Store(offset)
+	// offset, err := file.Seek(0, io.SeekEnd)
+	coll.offset.Store(0)
 
 	return coll, nil
 }
@@ -94,7 +93,6 @@ func (coll *Collection) Set(key string, val []byte) (int64, int, error) {
 	// TODO: file must be truncated first !!! Make sure that we have
 	// enough space for data. For truncating we can use write mutex 
 	// and try to allocate enough space.
-
 	off := coll.offset.Add(int64(len(data)))
 	off  = off - int64(len(data))
 
