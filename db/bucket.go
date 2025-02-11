@@ -63,7 +63,7 @@ func (bucket *Bucket) Read(offset int64, size int64) ([]byte, error) {
 	_, err := bucket.file.ReadAt(data, offset)
 	if err != nil {
 		return nil, err
-	}	
+	}
 
 	return data, nil
 }

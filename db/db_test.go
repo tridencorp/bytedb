@@ -77,7 +77,7 @@ func TestIterate(t *testing.T) {
 	coll.Set("key2", []byte("value 2"))
 	coll.Set("key3", []byte("value 3"))
 
-	it := Iterator{coll: coll}
+	it := Iterator{bucket: coll.bucket}
 	keys, _ := it.Iterate()
 
 	if len(keys) != 3 {

@@ -9,7 +9,8 @@ import (
 )
 
 type Collection struct {
-	file *os.File
+	file   *os.File
+	bucket *Bucket
 
 	// Collection root directory.
 	root string
@@ -70,7 +71,12 @@ func (db *DB) Collection(name string) (*Collection, error) {
 		return nil, err
 	}
 
-	coll := &Collection{file: file, root: dir}
+	bucket, err := OpenBucket(dir + "/1.bucket")
+	if err != nil {
+		return nil, err
+	}
+
+	coll := &Collection{file: file, bucket: bucket, root: dir}
 
 	// TODO: because of file truncation we should track current 
 	// data size and set our initial offset based on it.
@@ -81,23 +87,12 @@ func (db *DB) Collection(name string) (*Collection, error) {
 }
 
 // Store keys in collection.
-func (coll *Collection) Set(key string, val []byte) (int64, int, error) {
+func (coll *Collection) Set(key string, val []byte) (int64, int64, error) {
 	data, err := NewKey(val).Bytes()
 	if err != nil {
 		return 0, 0, err
 	}
 
-	// We are adding len to atomic value and then deducting it
-	// from the result, this should give us space for our data.
-	//
-	// TODO: file must be truncated first !!! Make sure that we have
-	// enough space for data. For truncating we can use write mutex 
-	// and try to allocate enough space.
-	off := coll.offset.Add(int64(len(data)))
-	off  = off - int64(len(data))
-
-	// We are using WriteAt because, when carefully 
-	// handled, it's concurrent-friendly.
-	size, err := coll.file.WriteAt(data, off)
+	off, size, err := coll.bucket.Write(data)
 	return off, size, err
 }
