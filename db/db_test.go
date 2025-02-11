@@ -43,20 +43,6 @@ func TestDelete(t *testing.T) {
 	}
 }
 
-// func TestSet(t *testing.T) {
-// 	db, _ := Open("./db")
-// 	defer db.Delete()
-
-// 	value	:= []byte("value 1")
-
-// 	coll, _ := db.Collection("test")
-// 	size, _ := coll.Set("key1", value)
-
-// 	if size != len(value) {
-// 		t.Errorf("Error while writing to collection. Expected %d bytes to be written, got %d.", len(value), size)
-//  }
-// }
-
 func TestSet(t *testing.T) {
 	db, _ := Open("./db")
 	// defer db.Delete()
@@ -68,10 +54,9 @@ func TestSet(t *testing.T) {
 	coll.Set("key3", []byte("value 3"))
 }
 
-
-func TestGet(t *testing.T) {
+func TestSetGet(t *testing.T) {
 	db, _ := Open("./db")
-	// defer db.Delete()
+	defer db.Delete()
 
 	coll, _ := db.Collection("test")
 
