@@ -134,3 +134,13 @@ func (coll *Collection) Get(key string) ([]byte, error) {
 	kv := KeyFromBytes(val)
 	return kv.data, err
 }
+
+// Delete key from collection.
+func (coll *Collection) Del(key string) error {
+	_, err := coll.indexes.Del(key)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

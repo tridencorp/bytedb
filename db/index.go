@@ -3,6 +3,7 @@ package db
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"hash/fnv"
 	"os"
 )
@@ -11,7 +12,7 @@ const(
 	MaxIndexesPerFile = 10_000
 
 	// Index size in bytes.
-	IndexSize = 17
+	IndexSize = 18
 )
 
 const (
@@ -22,9 +23,12 @@ const (
 
 // Index will represent key in our database.
 type Index struct {
-	// Tells us which data type we are dealing
-	// with, ex: kv, hash.
-	DataType int8    // 1 byte
+	// Tells us which data type we are dealing with, 
+	// ex: kv, hash.
+	DataType int8 // 1 byte
+
+	// Indicates if key is deleted or not.
+	Deleted bool // 1 byte
 
 	BucketId uint32  // 4 bytes
 	Size     uint32  // 4 bytes
@@ -88,7 +92,45 @@ func (indexes *IndexFile) Get(key string) (*Index, error) {
 		return nil, err
 	}
 
+	if idx.Deleted {
+		return nil, fmt.Errorf("Key was %s deleted", key)
+	}
+
 	return &idx, nil
+}
+
+// Delete index for given key.
+// TODO: can be simplified.
+func (indexes *IndexFile) Del(key string) (*Index, error) {
+	hash := HashKey(key)
+
+	// Find index position
+	pos  := (hash % indexes.maxIndexes) * IndexSize
+	data := make([]byte, IndexSize)
+	
+	indexes.file.ReadAt(data, int64(pos))
+	idx := &Index{}
+	
+	buf := bytes.NewBuffer(data)
+	err := binary.Read(buf, binary.BigEndian, idx)
+	if err != nil {
+		return nil, err
+	}
+
+	idx.Deleted = true
+
+	buf = new(bytes.Buffer)
+	err = binary.Write(buf, binary.BigEndian, idx)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = indexes.file.WriteAt(buf.Bytes(), int64(pos))
+	if err != nil {
+		return nil, err
+	}
+
+	return idx, nil
 }
 
 // Hash the key.

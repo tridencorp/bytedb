@@ -95,7 +95,6 @@ func TestIterate(t *testing.T) {
 	}
 }
 
-
 func TestLoadIndexFile(t *testing.T) {
 	db, _ := Open("./db")
 	defer db.Delete()
@@ -121,6 +120,21 @@ func TestLoadIndexFile(t *testing.T) {
 	if idx.Size != 7     { t.Errorf("Expected Size to be %d, was %d", 7, idx.Size) }
 	if idx.Offset != 0   { t.Errorf("Expected Size to be %d, was %d", 0, idx.Offset) }
 }
+
+func TestDel(t *testing.T) {
+	db, _ := Open("./db")
+	defer db.Delete()
+
+	coll, _ := db.Collection("test")
+	coll.Set("key1", []byte("value1"))
+
+	coll.Del("key1")
+	res, _ := coll.Get("key1")
+
+	if !bytes.Equal(res, []byte{}) { 
+		t.Errorf("Key should be nil, instead we got %v", res) 
+	}
+}	
 
 // func TestSetConcurrent(t *testing.T) {
 // 	defer func() {
