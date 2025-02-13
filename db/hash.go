@@ -64,7 +64,6 @@ func (hash *Hash) Get(key string) ([]byte, error) {
 		return nil, err
 	}
 
-	// TODO: quick hack, we are reading the whole kv bute we should 
-	// remove the size which is 4 bytes.
-	return val[4:], err
+	kv := KeyFromBytes(val)
+	return kv.data, err
 }

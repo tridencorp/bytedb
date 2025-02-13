@@ -33,6 +33,17 @@ func NewKey(val []byte) *Key {
 	return &Key{val, uint32(len(val))}
 }
 
+func KeyFromBytes(data []byte) *Key {
+	key := &Key{}
+	buf := bytes.NewBuffer(data)
+
+	// Decode size and data.
+	binary.Read(buf, binary.BigEndian, &key.size)
+	key.data = buf.Bytes()
+
+	return key
+}
+
 // Encode key to bytes.
 func (key *Key) Bytes() ([]byte, error) {
 	buf := new(bytes.Buffer)
@@ -120,7 +131,6 @@ func (coll *Collection) Get(key string) ([]byte, error) {
 		return nil, err
 	}
 
-	// TODO: quick hack, we are reading the whole kv but we should 
-	// remove the size which is 4 bytes.
-	return val[4:], err
+	kv := KeyFromBytes(val)
+	return kv.data, err
 }
