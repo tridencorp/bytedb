@@ -136,11 +136,7 @@ func (coll *Collection) Get(key string) ([]byte, error) {
 }
 
 // Delete key from collection.
-func (coll *Collection) Del(key string) error {
-	_, err := coll.indexes.Del(key)
-	if err != nil {
-		return err
-	}
-
-	return nil
+// TODO: set Deleted flag for Key.
+func (coll *Collection) Del(key string) (*Index, error) {
+	return coll.indexes.Del(key)
 }
