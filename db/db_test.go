@@ -136,6 +136,21 @@ func TestDel(t *testing.T) {
 	}
 }	
 
+func TestUpdate(t *testing.T) {
+	db, _ := Open("./db")
+	defer db.Delete()
+
+	coll, _ := db.Collection("test")
+	coll.Set("key1", []byte("value1"))
+
+	coll.Update("key1", []byte("value2"))
+	res, _ := coll.Get("key1")
+
+	if !bytes.Equal(res, []byte("value2")) {
+		t.Errorf("Expected to get %s, got %s", []byte("value2"), res)
+	}
+}
+
 // func TestSetConcurrent(t *testing.T) {
 // 	defer func() {
 // 		if r := recover(); r != nil {

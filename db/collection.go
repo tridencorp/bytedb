@@ -136,7 +136,18 @@ func (coll *Collection) Get(key string) ([]byte, error) {
 }
 
 // Delete key from collection.
-// TODO: set Deleted flag for Key.
+// TODO: Set Deleted flag for Key.
 func (coll *Collection) Del(key string) error {
 	return coll.indexes.Del(key)
+}
+
+// Update key from collection.
+func (coll *Collection) Update(key string, val []byte) error {
+	// Updating is just adding the same key with different value.
+	_, _, err := coll.Set(key, val)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

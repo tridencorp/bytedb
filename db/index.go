@@ -100,7 +100,6 @@ func (indexes *IndexFile) Get(key string) (*Index, error) {
 }
 
 // Delete index for given key.
-// TODO: can be simplified.
 func (indexes *IndexFile) Del(key string) error {
 	hash := HashKey(key)
 
