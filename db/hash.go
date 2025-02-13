@@ -33,3 +33,21 @@ func OpenHash(col *Collection) (*Hash, error) {
 
 	return &Hash{bucket: bucket, index: col.indexes}, nil
 }
+
+// Set key in hash.
+func (hash *Hash) Set(key string, val []byte) (int64, int64, error) {
+	data, err := NewKey(val).Bytes()
+	if err != nil {
+		return 0, 0, err
+	}
+
+	off, size, err := hash.bucket.Write(data)
+
+	// Index new key.
+	err = hash.index.Add(key, data, uint64(off))
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return off, size, err
+}
