@@ -11,11 +11,21 @@ const(
 	MaxIndexesPerFile = 10_000
 
 	// Index size in bytes.
-	IndexSize = 16
+	IndexSize = 17
 )
+
+const (
+	TypeKv   = 0
+	TypeHash = 1 
+)
+
 
 // Index will represent key in our database.
 type Index struct {
+	// Tells us which data type we are dealing
+	// with, ex: kv, hash.
+	DataType int8    // 1 byte
+
 	BucketId uint32  // 4 bytes
 	Size     uint32  // 4 bytes
 	Offset   uint64  // 8 bytes
