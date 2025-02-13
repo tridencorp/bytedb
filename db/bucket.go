@@ -2,6 +2,7 @@ package db
 
 import (
 	"os"
+	"path/filepath"
 	"sync/atomic"
 )
 
@@ -20,15 +21,21 @@ type Bucket struct {
 	MaxKeyCount uint32
 }
 
-func OpenBucket(file string) (*Bucket, error) {
+func OpenBucket(filepath string) (*Bucket, error) {
+	// Make sure that the filepath exists.
+	path, err := createPath(filepath)
+	if err != nil {
+		return nil, err
+	}
+
 	// Open bucket file.
-	f, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE, 0644)
+	f, err := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		return nil, err
 	}
 
 	// TODO: Temporary values untill we have proper bucket management.
-	bck := &Bucket{ID:1, Dir: "", file: f}
+	bck := &Bucket{ID:1, Dir: path, file: f}
 	return bck, nil;
 }
 
@@ -69,4 +76,17 @@ func (bucket *Bucket) Read(offset int64, size int64) ([]byte, error) {
 	}
 
 	return data, nil
+}
+
+// Creating path.
+func createPath(path string) (string, error) {
+	dir := filepath.Dir(path)
+
+	// Create directory structure. Do nothing if it already exist.
+	if err := os.MkdirAll(dir, 0755)
+	err != nil {
+		return "", err
+	}
+
+	return dir, nil
 }
