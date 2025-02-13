@@ -101,36 +101,16 @@ func (indexes *IndexFile) Get(key string) (*Index, error) {
 
 // Delete index for given key.
 // TODO: can be simplified.
-func (indexes *IndexFile) Del(key string) (*Index, error) {
+func (indexes *IndexFile) Del(key string) error {
 	hash := HashKey(key)
 
-	// Find index position
-	pos  := (hash % indexes.maxIndexes) * IndexSize
-	data := make([]byte, IndexSize)
-	
-	indexes.file.ReadAt(data, int64(pos))
-	idx := &Index{}
-	
-	buf := bytes.NewBuffer(data)
-	err := binary.Read(buf, binary.BigEndian, idx)
-	if err != nil {
-		return nil, err
-	}
+	// Find index position.
+	pos := (hash % indexes.maxIndexes) * IndexSize
 
-	idx.Deleted = true
-
-	buf = new(bytes.Buffer)
-	err = binary.Write(buf, binary.BigEndian, idx)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = indexes.file.WriteAt(buf.Bytes(), int64(pos))
-	if err != nil {
-		return nil, err
-	}
-
-	return idx, nil
+	// If we know the position of index, we can just
+	// set it's second byte to 1.
+	_, err := indexes.file.WriteAt([]byte{1}, int64(pos + 1))
+	return err
 }
 
 // Hash the key.
