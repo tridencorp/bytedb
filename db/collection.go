@@ -38,7 +38,7 @@ func (key *Key) Bytes() ([]byte, error) {
 	buf := new(bytes.Buffer)
 
 	// Encode size.
-	err := binary.Write(buf, binary.LittleEndian, key.size)
+	err := binary.Write(buf, binary.BigEndian, key.size)
 	if err != nil {
 		return nil, err
 	}

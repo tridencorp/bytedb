@@ -45,7 +45,7 @@ func TestDelete(t *testing.T) {
 
 func TestSet(t *testing.T) {
 	db, _ := Open("./db")
-	// defer db.Delete()
+	defer db.Delete()
 
 	coll, _ := db.Collection("test")
 

@@ -47,7 +47,7 @@ func (indexes *IndexFile) Add(key string, val []byte, offset uint64) error {
 	idx  := Index{BucketId: 1, Size: uint32(len(val)), Offset: offset}
 
 	buf := new(bytes.Buffer)
-	err := binary.Write(buf, binary.LittleEndian, idx)
+	err := binary.Write(buf, binary.BigEndian, idx)
 	if err != nil {
 		return err
 	}
@@ -73,7 +73,7 @@ func (indexes *IndexFile) Get(key string) (*Index, error) {
 	idx := Index{}
 
 	buf := bytes.NewBuffer(data)
-	err := binary.Read(buf, binary.LittleEndian, &idx)
+	err := binary.Read(buf, binary.BigEndian, &idx)
 	if err != nil {
 		return nil, err
 	}

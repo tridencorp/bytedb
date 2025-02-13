@@ -26,7 +26,7 @@ func (it *Iterator) Iterate() ([]*Key, error) {
 
 		// Read key size.
 		size := uint32(0)
-		err = binary.Read(buf, binary.LittleEndian, &size)
+		err = binary.Read(buf, binary.BigEndian, &size)
 		if err != nil {
 			return nil, err
 		}
@@ -35,7 +35,7 @@ func (it *Iterator) Iterate() ([]*Key, error) {
 		key.data = make([]byte, size)
 		key.size = size
 
-		err = binary.Read(buf, binary.LittleEndian, &key.data)
+		err = binary.Read(buf, binary.BigEndian, &key.data)
 		if err != nil {
 			return nil, err
 		}
