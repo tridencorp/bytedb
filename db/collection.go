@@ -9,7 +9,6 @@ import (
 )
 
 type Collection struct {
-	file    *os.File
 	bucket  *Bucket
 	indexes *IndexFile
 
@@ -65,13 +64,8 @@ func (db *DB) Collection(name string) (*Collection, error) {
 	err != nil {
 		return nil, err
 	}
-
-	// Open collection bucket file.
-	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
-	if err != nil {
-		return nil, err
-	}
-
+	
+	// Open most recent bucket.
 	bucket, err := OpenBucket(dir + "/1.bucket")
 	if err != nil {
 		return nil, err
@@ -83,7 +77,6 @@ func (db *DB) Collection(name string) (*Collection, error) {
 	}
 
 	coll := &Collection{
-		file:    file, 
 		bucket:  bucket, 
 		root:    dir,
 		indexes: indexes,
