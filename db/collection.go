@@ -120,5 +120,7 @@ func (coll *Collection) Get(key string) ([]byte, error) {
 		return nil, err
 	}
 
-	return val, err
+	// TODO: quick hack, we are reading the whole kv but we should 
+	// remove the size which is 4 bytes.
+	return val[4:], err
 }

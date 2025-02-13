@@ -72,9 +72,9 @@ func TestSetGet(t *testing.T) {
 	got2, _ := coll.Get("key2")
 	got3, _ := coll.Get("key3")
 
-	if bytes.Equal(got1, val1) { t.Errorf("Expected %s, got %s", val1, got1) }
-	if bytes.Equal(got2, val2) { t.Errorf("Expected %s, got %s", val2, got2) }
-	if bytes.Equal(got3, val3) { t.Errorf("Expected %s, got %s", val3, got3) }
+	if !bytes.Equal(got1, val1) { t.Errorf("Expected %s, got %s", val1, got1) }
+	if !bytes.Equal(got2, val2) { t.Errorf("Expected %s, got %s", val2, got2) }
+	if !bytes.Equal(got3, val3) { t.Errorf("Expected %s, got %s", val3, got3) }
 }
 
 func TestIterate(t *testing.T) {

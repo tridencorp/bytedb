@@ -42,7 +42,7 @@ func (hash *Hash) Set(key string, val []byte) (int64, int64, error) {
 	}
 
 	off, size, err := hash.bucket.Write(data)
-
+	
 	// Index new key.
 	err = hash.index.Add(key, data, uint64(off))
 	if err != nil {
@@ -50,4 +50,21 @@ func (hash *Hash) Set(key string, val []byte) (int64, int64, error) {
 	}
 
 	return off, size, err
+}
+
+// Get key from hash.
+func (hash *Hash) Get(key string) ([]byte, error) {
+	idx, err := hash.index.Get(key)
+	if err != nil {
+		return nil, err
+	}
+
+	val, err := hash.bucket.Read(int64(idx.Offset), int64(idx.Size))
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: quick hack, we are reading the whole kv bute we should 
+	// remove the size which is 4 bytes.
+	return val[4:], err
 }

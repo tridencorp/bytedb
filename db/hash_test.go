@@ -1,26 +1,28 @@
 package db
 
 import (
-	"fmt"
+	"bytes"
 	"testing"
 )
 
-func TestHashSet(t *testing.T) {
+func TestHashSetGet(t *testing.T) {
 	db, _ := Open("./db")
 	defer db.Delete()
 
-	col, _ := db.Collection("test")
-	hash, err := OpenHash(col)
-	if err != nil {
-		fmt.Printf("err: %s\n", err)
-	}
+	col, _  := db.Collection("test")
+	hash, _ := OpenHash(col)
 
-	off, size, err := hash.Set("hash:key1", []byte("hash: value1"))
-	if err != nil {
-		fmt.Printf("err: %s\n", err)
-	}
+	// Test Set
+	val := []byte("hash: value1")
+	off, size, _ := hash.Set("hash:key1", val)
 
 	if (off != 0) && (size != 16) {
 		t.Errorf("Offset should be %d, got %d. Size should be %d, got %d", 0, off, 16, size)
+	}
+
+	// Test Get
+	res, _ := hash.Get("hash:key1")
+	if !bytes.Equal(res, val) { 
+		t.Errorf("Expected %v, got %v", val, res) 
 	}
 }
