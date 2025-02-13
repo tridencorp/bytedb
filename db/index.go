@@ -25,7 +25,7 @@ type IndexFile struct {
 	file *os.File
 
 	// Maximum number of indexes per index file.
-	maxNumber uint32
+	maxIndexes uint32
 }
 
 // Load index file.
@@ -36,7 +36,7 @@ func LoadIndexFile(path string) (*IndexFile, error) {
 		return nil, nil
 	}
 
-	indexFile := &IndexFile{file: file, maxNumber: MaxIndexesPerFile}
+	indexFile := &IndexFile{file: file, maxIndexes: MaxIndexesPerFile}
 	return indexFile, nil
 }
 
@@ -52,7 +52,7 @@ func (indexes *IndexFile) Add(key string, val []byte, offset uint64) error {
 		return err
 	}
 
-	pos := (hash % indexes.maxNumber) * IndexSize
+	pos := (hash % indexes.maxIndexes) * IndexSize
 	_, err = indexes.file.WriteAt(buf.Bytes(), int64(pos))
 	if err != nil {
 		return err
@@ -66,7 +66,7 @@ func (indexes *IndexFile) Get(key string) (*Index, error) {
 	hash := HashKey(key)
 
 	// Find index position
-	pos  := (hash % indexes.maxNumber) * IndexSize
+	pos  := (hash % indexes.maxIndexes) * IndexSize
 	data := make([]byte, IndexSize)
 
 	indexes.file.ReadAt(data, int64(pos))
