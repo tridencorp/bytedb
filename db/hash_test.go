@@ -10,9 +10,9 @@ func TestHashSetGet(t *testing.T) {
 	defer db.Delete()
 
 	col, _  := db.Collection("test")
-	hash, _ := OpenHash(col)
+	hash, _ := OpenHash("test", col)
 
-	// Test Set
+	// Test Sete
 	val := []byte("hash: value1")
 	off, size, _ := hash.Set("hash:key1", val)
 

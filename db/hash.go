@@ -11,59 +11,30 @@ package db
 // It's basically designed for storing data
 // close together.
 type Hash struct {
-	// Data will be stored in one bucket.
-	bucket *Bucket
-
-	// As default keys will be indexed to main 
-	// collection index, shared with other keys.
-	// 
-	// In the next stage, we will introduce custom 
-	// index files, allowing us to group hashes 
-	// together into a single index file.
-	index *IndexFile
+	// Hash could be used as collection with some 
+	// minor changes, ex: all data will be in one file,
+	// separate indexes, ...
+	keys *Collection
 }
 
 // Open the hash file, or create it if it doesn't exist.
-func OpenHash(col *Collection) (*Hash, error) {
-	// Open most recent bucket. Hardcoded for now.
-	bucket, err := OpenBucket(col.root + "/hash/" + "1.bucket")
+func OpenHash(name string, col *Collection) (*Hash, error) {
+	db, _ := Open("./db")
+	keys, err := db.NewCollection(col.root + "/hashes" )
 	if err != nil {
 		return nil, err
 	}
 
-	return &Hash{bucket: bucket, index: col.indexes}, nil
+	return &Hash{keys: keys}, nil
 }
 
 // Set key in hash.
 func (hash *Hash) Set(key string, val []byte) (int64, int64, error) {
-	data, err := NewKey(val).Bytes()
-	if err != nil {
-		return 0, 0, err
-	}
-
-	off, size, err := hash.bucket.Write(data)
-	
-	// Index new key.
-	err = hash.index.Add(key, data, uint64(off))
-	if err != nil {
-		return 0, 0, err
-	}
-
-	return off, size, err
+	hash.keys.Set(key, val)
+	return hash.keys.Set(key, val)
 }
 
 // Get key from hash.
 func (hash *Hash) Get(key string) ([]byte, error) {
-	idx, err := hash.index.Get(key)
-	if err != nil {
-		return nil, err
-	}
-
-	val, err := hash.bucket.Read(int64(idx.Offset), int64(idx.Size))
-	if err != nil {
-		return nil, err
-	}
-
-	kv := KeyFromBytes(val)
-	return kv.data, err
+	return hash.keys.Get(key)
 }
