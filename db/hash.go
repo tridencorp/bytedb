@@ -11,6 +11,8 @@ package db
 // It's basically designed for storing data
 // close together.
 type Hash struct {
+	root string
+	
 	// Hash could be used as collection with some 
 	// minor changes, ex: all data will be in one file,
 	// separate indexes, ...

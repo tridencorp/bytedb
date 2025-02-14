@@ -87,7 +87,7 @@ func newCollection(path string) (*Collection, error) {
 		return nil, err
 	}
 
-	indexes, err  := LoadIndexFile(dir)
+	indexes, err := LoadIndexFile(dir)
 	if err != nil {
 		return nil, err
 	}
@@ -108,12 +108,13 @@ func newCollection(path string) (*Collection, error) {
 
 // Open or create new hash.
 func (coll *Collection) Hash(name string) (*Hash, error) {
-	keys, err := newCollection(coll.root + "/hashes/" + name)
+	root := coll.root + "/hashes/"
+	keys, err := newCollection(root)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Hash{keys: keys}, nil
+	return &Hash{root: root, keys: keys}, nil
 }
 
 // Store key in collection.
