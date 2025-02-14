@@ -34,3 +34,8 @@ func (hash *Hash) Get(key string) ([]byte, error) {
 func (hash *Hash) Del(key string) error {
 	return hash.keys.Del(key)
 }
+
+// Upddate key in hash.
+func (hash *Hash) Update(key string, val []byte) error {
+	return hash.keys.Update(key, val)
+}

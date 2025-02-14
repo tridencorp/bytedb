@@ -12,7 +12,7 @@ func TestHash(t *testing.T) {
 	col, _  := db.Collection("test")
 	hash, _ := col.Hash("test_hash")
 
-	// Test Sete
+	// Test Sete.
 	val := []byte("hash: value1")
 	off, size, _ := hash.Set("hash:key1", val)
 
@@ -20,20 +20,29 @@ func TestHash(t *testing.T) {
 		t.Errorf("Offset should be %d, got %d. Size should be %d, got %d", 0, off, 16, size)
 	}
 
-	// Test Get
+	// Test Get.
 	res, _ := hash.Get("hash:key1")
 	if !bytes.Equal(res, val) { 
 		t.Errorf("Expected %v, got %v", val, res) 
 	}
 
-	// Test Get
+	// Test Update.
+	val = []byte("hash: value updated")
+	hash.Update("hash:key1", val)
+
+	res, _ = hash.Get("hash:key1")
+	if !bytes.Equal(res, val) { 
+		t.Errorf("Expected '%s', got '%s'", val, res) 
+	}
+	
+	// Test Get.
 	hash.Del("hash:key1")
 	if !bytes.Equal(res, val) { 
-		t.Errorf("Expected %v, got %v", val, res) 
+		t.Errorf("Expected '%s', got '%s'", val, res) 
 	}
 
 	res, _ = hash.Get("hash:key1")
 	if !bytes.Equal(res, []byte{}) { 
-		t.Errorf("Key should be deleted, instead we got %v", res) 
+		t.Errorf("Key should be deleted, instead we got '%s'", res) 
 	}
 }
