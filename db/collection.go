@@ -68,6 +68,11 @@ func (key *Key) Bytes() ([]byte, error) {
 func (db *DB) Collection(name string) (*Collection, error) {
 	// Build collection path.
 	path := db.root + CollectionsPath + name + "/1.bucket"
+	return newCollection(path)
+}
+
+func newCollection(path string) (*Collection, error) {
+	// Build collection path.
 	dir  := filepath.Dir(path)
 
 	// Create directory structure. Do nothing if it already exist.
@@ -101,42 +106,15 @@ func (db *DB) Collection(name string) (*Collection, error) {
 	return coll, nil
 }
 
-func (db *DB) NewCollection(path string) (*Collection, error) {
-	// Build collection path.
-	path += "/1.bucket"
-	dir  := filepath.Dir(path)
-
-	// Create directory structure. Do nothing if it already exist.
-	if err := os.MkdirAll(dir, 0755)
-	err != nil {
-		return nil, err
-	}
-
-	// Open most recent bucket.
-	bucket, err := OpenBucket(dir + "/1.bucket")
+// Open or create new hash.
+func (coll *Collection) Hash(name string) (*Hash, error) {
+	keys, err := newCollection(coll.root + "/hashes/" + name)
 	if err != nil {
 		return nil, err
 	}
 
-	indexes, err  := LoadIndexFile(dir)
-	if err != nil {
-		return nil, err
-	}
-
-	coll := &Collection{
-		bucket:  bucket, 
-		root:    dir,
-		indexes: indexes,
-	}
-
-	// TODO: because of file truncation we should track current 
-	// data size and set our initial offset based on it.
-	// offset, err := file.Seek(0, io.SeekEnd)
-	coll.offset.Store(0)
-
-	return coll, nil
+	return &Hash{keys: keys}, nil
 }
-
 
 // Store key in collection.
 func (coll *Collection) Set(key string, val []byte) (int64, int64, error) {

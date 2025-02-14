@@ -17,17 +17,6 @@ type Hash struct {
 	keys *Collection
 }
 
-// Open the hash file, or create it if it doesn't exist.
-func OpenHash(name string, col *Collection) (*Hash, error) {
-	db, _ := Open("./db")
-	keys, err := db.NewCollection(col.root + "/hashes" )
-	if err != nil {
-		return nil, err
-	}
-
-	return &Hash{keys: keys}, nil
-}
-
 // Set key in hash.
 func (hash *Hash) Set(key string, val []byte) (int64, int64, error) {
 	hash.keys.Set(key, val)
