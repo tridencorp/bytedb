@@ -12,7 +12,7 @@ package db
 // close together.
 type Hash struct {
 	root string
-	
+
 	// Hash could be used as collection with some 
 	// minor changes, ex: all data will be in one file,
 	// separate indexes, ...
@@ -28,4 +28,9 @@ func (hash *Hash) Set(key string, val []byte) (int64, int64, error) {
 // Get key from hash.
 func (hash *Hash) Get(key string) ([]byte, error) {
 	return hash.keys.Get(key)
+}
+
+// Delete key from hash.
+func (hash *Hash) Del(key string) error {
+	return hash.keys.Del(key)
 }

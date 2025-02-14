@@ -159,7 +159,6 @@ func (coll *Collection) Del(key string) error {
 
 // Update key from collection.
 func (coll *Collection) Update(key string, val []byte) error {
-	// Updating is just adding the same key with different value.
 	_, _, err := coll.Set(key, val)
 	if err != nil {
 		return err

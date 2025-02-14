@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestHashSetGet(t *testing.T) {
+func TestHash(t *testing.T) {
 	db, _ := Open("./db")
 	defer db.Delete()
 
@@ -24,5 +24,16 @@ func TestHashSetGet(t *testing.T) {
 	res, _ := hash.Get("hash:key1")
 	if !bytes.Equal(res, val) { 
 		t.Errorf("Expected %v, got %v", val, res) 
+	}
+
+	// Test Get
+	hash.Del("hash:key1")
+	if !bytes.Equal(res, val) { 
+		t.Errorf("Expected %v, got %v", val, res) 
+	}
+
+	res, _ = hash.Get("hash:key1")
+	if !bytes.Equal(res, []byte{}) { 
+		t.Errorf("Key should be deleted, instead we got %v", res) 
 	}
 }
