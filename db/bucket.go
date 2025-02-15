@@ -54,12 +54,8 @@ func OpenBucket(filepath string, keysLimit uint32, sizeLimit int64) (*Bucket, er
 func (bucket *Bucket) Write(data []byte) (int64, int64, error) {
 	// We are adding len to atomic value and then deducting it
 	// from the result, this should give us space for our data.
-	//
-	// TODO: file must be truncated first !!! Make sure that we have
-	// enough space for data. For truncating we can use write mutex 
-	// and try to allocate enough space.
 	off := bucket.offset.Add(int64(len(data)))
-	off -= int64(len(data))
+	writeOff := off - int64(len(data))
 
 	// Resize the file when we reach size limit.
 	if off >= int64(bucket.sizeLimit) {
@@ -77,16 +73,13 @@ func (bucket *Bucket) Write(data []byte) (int64, int64, error) {
 
 	// We are using WriteAt because, when carefully
 	// handled, it's concurrent-friendly.
-	//
-	// TODO: handle file truncation here. Make sure that we have 
-	// enough space for offset and data.
-	size, err := bucket.file.WriteAt(data, off)
+	size, err := bucket.file.WriteAt(data, writeOff)
 	if err != nil {
-		return off, int64(size), err
+		return writeOff, int64(size), err
 	}
 
 	bucket.numOfKeys.Add(1)
-	return off, int64(size), nil
+	return writeOff, int64(size), nil
 }
 
 // Read data from bucket.
