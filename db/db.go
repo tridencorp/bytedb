@@ -21,6 +21,12 @@ func Open(path string) (*DB, error) {
 		return nil, err	
 	}
 
+	// Create internal database.
+	err = os.MkdirAll(path + "/internal", 0755)
+	if err != nil {
+		return nil, err
+	}
+
 	return &DB{root: path}, nil
 }
 
