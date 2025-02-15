@@ -2,6 +2,7 @@ package db
 
 import (
 	"bytes"
+	"os"
 	"testing"
 )
 
@@ -66,5 +67,27 @@ func TestBucketResize(t *testing.T) {
 
 	if bck.sizeLimit != 80 {
 		t.Errorf("Expected size limit to be %d, got %d.", 80, bck.sizeLimit)
+	}
+}
+
+func TestFindLastBucket(t *testing.T) {
+	path1 := "./db/collections/test/1/1.bucket"
+	path2 := "./db/collections/test/2/20.bucket"
+	path3 := "./db/collections/test/11/200.bucket"
+
+	os.MkdirAll(path1, 0755)
+	os.MkdirAll(path2, 0755)
+	os.MkdirAll(path3, 0755)
+	defer os.RemoveAll("./db")
+
+	expected := "./db/collections/test/11/200.bucket"
+	id, path := findLastBucket("./db/collections/test")
+
+	if id != 200 {
+		t.Errorf("Expected ID to be %d, got %d.", 200, id)
+	}
+
+	if path != "./db/collections/test/11/200.bucket" {
+		t.Errorf("Expected path to be %s, got %s.", expected, path)
 	}
 }

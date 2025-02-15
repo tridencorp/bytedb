@@ -1,8 +1,11 @@
 package db
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 )
@@ -45,6 +48,48 @@ func OpenBucket(filepath string, keysLimit uint32, sizeLimit int64) (*Bucket, er
 	// TODO: Temporary values untill we have proper bucket management.
 	bck := &Bucket{ID:1, Dir: path, file: f, sizeLimit: uint64(sizeLimit)}
 	return bck, nil;
+}
+
+// Find the last bucket ID for given root.
+// We return 0 if no buckets were found.
+func findLastBucket(root string) (int, string) {
+	// List bucket directories first.
+	dirs, err := os.ReadDir(root)
+	if err != nil {
+		return 0, ""
+	}
+
+	if len(dirs) == 0 {
+		return 0, ""
+	}
+
+	// Sort directories.
+	max  := 1
+	path := root
+	for _, dir := range dirs {
+		num, _ := strconv.Atoi(dir.Name())
+		if num > max {
+			max = num;
+			path += "/" + dir.Name()
+		}
+	}
+
+	// Get the last bucket id from directory.
+	files, err := os.ReadDir(fmt.Sprintf("%s/%d/", root, max))
+	if err != nil {
+		return 0, ""
+	}
+
+	for _, file := range files {
+		id := strings.Split(file.Name(), ".")[0]
+		num, _ := strconv.Atoi(id)
+		if num > max {
+			max = num
+			path += "/" + file.Name()
+		}
+	}
+
+	return max, path
 }
 
 // Write data to bucket.
