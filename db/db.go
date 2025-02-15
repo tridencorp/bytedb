@@ -19,14 +19,13 @@ type DB struct {
 // Open database.
 func Open(path string) (*DB, error) {
 	// Create main database and internal one.
-	path += "/internal"
-
-	err := os.MkdirAll(path, 0755)
+	internal := path + "/internal"
+	err := os.MkdirAll(internal, 0755)
 	if err != nil {
 		return nil, err	
 	}
 
-	internals := &DB{root: path}
+	internals := &DB{root: internal}
 	return &DB{root: path, internals: internals}, nil
 }
 
