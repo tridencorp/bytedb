@@ -54,16 +54,16 @@ func OpenBucket(filepath string, keysLimit uint32, sizeLimit int64) (*Bucket, er
 func (bucket *Bucket) Write(data []byte) (int64, int64, error) {
 	// We are adding len to atomic value and then deducting it
 	// from the result, this should give us space for our data.
-	off := bucket.offset.Add(int64(len(data)))
-	writeOff := off - int64(len(data))
+	totalOff := bucket.offset.Add(int64(len(data)))
+	writeOff := totalOff - int64(len(data))
 
 	// Resize the file when we reach size limit.
-	if off >= int64(bucket.sizeLimit) {
+	if totalOff >= int64(bucket.sizeLimit) {
 		bucket.mux.Lock()
 
 		// Check if our condition is still valid - some other goroutine 
 		// could changed the size limit in the time we was waiting for lock.
-		if off >= int64(bucket.sizeLimit) {
+		if totalOff >= int64(bucket.sizeLimit) {
 			bucket.sizeLimit *= 2
 			bucket.file.Truncate(int64(bucket.sizeLimit))
 		}
