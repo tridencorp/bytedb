@@ -12,22 +12,22 @@ const (
 type DB struct {
 	// Database root directory.
 	root string
+
+	internals *DB
 }
 
 // Open database.
 func Open(path string) (*DB, error) {
+	// Create main database and internal one.
+	path += "/internal"
+
 	err := os.MkdirAll(path, 0755)
 	if err != nil {
 		return nil, err	
 	}
 
-	// Create internal database.
-	err = os.MkdirAll(path + "/internal", 0755)
-	if err != nil {
-		return nil, err
-	}
-
-	return &DB{root: path}, nil
+	internals := &DB{root: path}
+	return &DB{root: path, internals: internals}, nil
 }
 
 // Delete the entire database.
