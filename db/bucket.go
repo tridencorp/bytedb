@@ -62,13 +62,15 @@ func (bucket *Bucket) Write(data []byte) (int64, int64, error) {
 	off -= int64(len(data))
 
 	// Resize the file when we reach size limit.
-	//
-	// TODO: check if file wasn't resized by other goroutine in the meantime.
 	if off >= int64(bucket.sizeLimit) {
-		bucket.mux.Lock ()
+		bucket.mux.Lock()
 
-		bucket.sizeLimit *= 2
-		bucket.file.Truncate(int64(bucket.sizeLimit))
+		// Check if our condition is still valid - some other goroutine 
+		// could changed the size limit in the time we was waiting for lock.
+		if off >= int64(bucket.sizeLimit) {
+			bucket.sizeLimit *= 2
+			bucket.file.Truncate(int64(bucket.sizeLimit))
+		}
 
 		bucket.mux.Unlock()
 	}
