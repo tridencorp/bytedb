@@ -80,7 +80,7 @@ func newCollection(path string) (*Collection, error) {
 	err != nil {
 		return nil, err
 	}
-	
+
 	// Open most recent bucket.
 	bucket, err := OpenBucket(dir + "/1.bucket")
 	if err != nil {
@@ -100,7 +100,6 @@ func newCollection(path string) (*Collection, error) {
 
 	// TODO: because of file truncation we should track current 
 	// data size and set our initial offset based on it.
-	// offset, err := file.Seek(0, io.SeekEnd)
 	coll.offset.Store(0)
 
 	return coll, nil

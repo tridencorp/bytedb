@@ -16,6 +16,11 @@ type DB struct {
 
 // Open database.
 func Open(path string) (*DB, error) {
+	err := os.MkdirAll(path, 0755)
+	if err != nil {
+		return nil, err	
+	}
+
 	return &DB{root: path}, nil
 }
 

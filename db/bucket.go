@@ -16,9 +16,9 @@ type Bucket struct {
 	// us the ultimate concurrent writes.
 	offset atomic.Int64
 
-	// Keep track of the current number of keys in the bucket.
-	KeyCount    uint32
-	MaxKeyCount uint32
+	// Keep track of the number of keys in the bucket.
+	NumOfKeys			uint32
+	MaxNumOfKeys  uint32
 }
 
 func OpenBucket(filepath string) (*Bucket, error) {
@@ -44,7 +44,7 @@ func OpenBucket(filepath string) (*Bucket, error) {
 // TODO: Should buckets know about keys and other
 // types ? Should they operate only on raw bytes ?
 func (bucket *Bucket) Write(data []byte) (int64, int64, error) {
-	// We are adding len to atomic value and then deducting it
+	// We are adding len to atomic /value and then deducting it
 	// from the result, this should give us space for our data.
 	//
 	// TODO: file must be truncated first !!! Make sure that we have
@@ -55,7 +55,7 @@ func (bucket *Bucket) Write(data []byte) (int64, int64, error) {
 
 	// We are using WriteAt because, when carefully
 	// handled, it's concurrent-friendly.
-
+	// 
 	// TODO: handle file truncation here. Make sure that we have 
 	// enough space for offset and data.
 	size, err := bucket.file.WriteAt(data, off)
