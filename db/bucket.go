@@ -3,6 +3,7 @@ package db
 import (
 	"os"
 	"path/filepath"
+	"sync"
 	"sync/atomic"
 )
 
@@ -17,11 +18,18 @@ type Bucket struct {
 	offset atomic.Int64
 
 	// Keep track of the number of keys in the bucket.
-	NumOfKeys			uint32
-	MaxNumOfKeys  uint32
+	numOfKeys atomic.Int64
+	keysLimit uint64
+
+	// If offset reach size limit, we resize the file.
+	// We double it's size.
+	sizeLimit uint64
+
+	// Mutex
+	mux sync.RWMutex
 }
 
-func OpenBucket(filepath string) (*Bucket, error) {
+func OpenBucket(filepath string, keysLimit uint32, sizeLimit int64) (*Bucket, error) {
 	// Make sure that the filepath exists.
 	path, err := createPath(filepath)
 	if err != nil {
@@ -35,7 +43,7 @@ func OpenBucket(filepath string) (*Bucket, error) {
 	}
 
 	// TODO: Temporary values untill we have proper bucket management.
-	bck := &Bucket{ID:1, Dir: path, file: f}
+	bck := &Bucket{ID:1, Dir: path, file: f, sizeLimit: uint64(sizeLimit)}
 	return bck, nil;
 }
 
@@ -44,7 +52,7 @@ func OpenBucket(filepath string) (*Bucket, error) {
 // TODO: Should buckets know about keys and other
 // types ? Should they operate only on raw bytes ?
 func (bucket *Bucket) Write(data []byte) (int64, int64, error) {
-	// We are adding len to atomic /value and then deducting it
+	// We are adding len to atomic value and then deducting it
 	// from the result, this should give us space for our data.
 	//
 	// TODO: file must be truncated first !!! Make sure that we have
@@ -53,9 +61,21 @@ func (bucket *Bucket) Write(data []byte) (int64, int64, error) {
 	off := bucket.offset.Add(int64(len(data)))
 	off -= int64(len(data))
 
+	// Resize the file when we reach size limit.
+	//
+	// TODO: check if file wasn't resized by other goroutine in the meantime.
+	if off >= int64(bucket.sizeLimit) {
+		bucket.mux.Lock ()
+
+		bucket.sizeLimit *= 2
+		bucket.file.Truncate(int64(bucket.sizeLimit))
+
+		bucket.mux.Unlock()
+	}
+
 	// We are using WriteAt because, when carefully
 	// handled, it's concurrent-friendly.
-	// 
+	//
 	// TODO: handle file truncation here. Make sure that we have 
 	// enough space for offset and data.
 	size, err := bucket.file.WriteAt(data, off)
@@ -63,6 +83,7 @@ func (bucket *Bucket) Write(data []byte) (int64, int64, error) {
 		return off, int64(size), err
 	}
 
+	bucket.numOfKeys.Add(1)
 	return off, int64(size), nil
 }
 

@@ -31,6 +31,16 @@ func (it *Iterator) Iterate() ([]*Key, error) {
 			return nil, err
 		}
 
+		// Size 0 means that there is no more data to read.
+		// 
+		// TODO: This is wrong because we could have
+		// situation where we have blank spots between
+		// records, so we will have to change this condition
+		// in near future. It's temporary.
+		if size == 0 {
+			break
+		}
+
 		// Read key data based on size that we got.
 		key.data = make([]byte, size)
 		key.size = size
@@ -39,7 +49,7 @@ func (it *Iterator) Iterate() ([]*Key, error) {
 		if err != nil {
 			return nil, err
 		}
-
+		
 		keys = append(keys, key)
 
 		if buf.Len() == 0 {

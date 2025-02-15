@@ -57,7 +57,7 @@ func (key *Key) Bytes() ([]byte, error) {
 	// Add key data.
 	_, err = buf.Write(key.data)
 	if err != nil {
-		return nil, err		
+		return nil, err
 	}
 
 	return buf.Bytes(), nil
@@ -82,7 +82,7 @@ func newCollection(path string) (*Collection, error) {
 	}
 
 	// Open most recent bucket.
-	bucket, err := OpenBucket(dir + "/1.bucket")
+	bucket, err := OpenBucket(dir + "/1.bucket", 100, 10)
 	if err != nil {
 		return nil, err
 	}

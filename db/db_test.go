@@ -79,7 +79,7 @@ func TestSetGet(t *testing.T) {
 
 func TestIterate(t *testing.T) {
 	db, _ := Open("./db")
-	defer db.Delete()
+	// defer db.Delete()
 
 	coll, _ := db.Collection("test")
 
