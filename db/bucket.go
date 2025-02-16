@@ -138,14 +138,18 @@ func (bucket *Bucket) Write(data []byte) (int64, int64, error) {
 		bucket.mux.Unlock()
 	}
 
+	return write(bucket.file, writeOff, data)
+}
+
+func write(file *os.File, off int64, data []byte) (int64, int64, error) {
 	// We are using WriteAt because, when carefully
 	// handled, it's concurrent-friendly.
-	size, err := bucket.file.WriteAt(data, writeOff)
+	size, err := file.WriteAt(data, off)
 	if err != nil {
-		return writeOff, int64(size), err
+		return off, int64(size), err
 	}
 
-	return writeOff, int64(size), nil
+	return off, int64(size), nil
 }
 
 // Read data from bucket.
