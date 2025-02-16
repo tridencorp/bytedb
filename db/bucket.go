@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -36,27 +35,20 @@ type Bucket struct {
 	mux sync.RWMutex
 }
 
-func OpenBucket(filepath string, keysLimit uint32, sizeLimit int64, bucketsPerDir int32) (*Bucket, error) {
-	// Make sure that the filepath exists.
-	path, err := createPath(filepath)
-	if err != nil {
-		return nil, err
-	}
-
-	// Open bucket file.
-	f, err := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE, 0644)
+func OpenBucket(root string, keysLimit uint32, sizeLimit int64, bucketsPerDir int32) (*Bucket, error) {
+	f, err := getLastBucket(root)
 	if err != nil {
 		return nil, err
 	}
 
 	// TODO: Temporary values untill we have proper bucket management.
-	bck := &Bucket{ID:1, Dir: path, file: f, sizeLimit: uint64(sizeLimit)}
+	bck := &Bucket{ID:1, Dir: root, file: f, sizeLimit: uint64(sizeLimit)}
 	return bck, nil;
 }
 
 // Find the last bucket ID for given root.
 // Empty string in response means that there is no bucket yet.
-func getLastBucket(root string) string {
+func getLastBucket(root string) (*os.File, error) {
 	// Sort directories.
 	dirs, _ := os.ReadDir(root)
 	max := 0
@@ -64,6 +56,16 @@ func getLastBucket(root string) string {
 	for _, dir := range dirs {
 		id, _ := strconv.Atoi(dir.Name())
 		if id > max { max = id }
+	}
+
+	// Directory is empty, no buckets yet, so we have to create first one.
+	if max == 0 {
+		root += "/1/"
+		os.MkdirAll(root, 0755)
+
+		root += "1.bucket"
+		file, err := os.OpenFile(root, os.O_RDWR|os.O_CREATE, 0644)
+		return file, err
 	}
 
 	// Sort files.
@@ -78,12 +80,13 @@ func getLastBucket(root string) string {
 		if id > max { max = id }
 	}
 
-	if max == 0 {
-		return ""
+	root += fmt.Sprintf("/%d.bucket", max)
+	file, err := os.OpenFile(root, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		return nil, err
 	}
 
-	root += fmt.Sprintf("/%d.bucket", max)
-	return root
+	return file, nil
 }
 
 // Create next bucket.
@@ -155,17 +158,4 @@ func (bucket *Bucket) Read(offset int64, size int64) ([]byte, error) {
 	}
 
 	return data, nil
-}
-
-// Creating path.
-func createPath(path string) (string, error) {
-	dir := filepath.Dir(path)
-
-	// Create directory structure. Do nothing if it already exist.
-	if err := os.MkdirAll(dir, 0755)
-	err != nil {
-		return "", err
-	}
-
-	return dir, nil
 }

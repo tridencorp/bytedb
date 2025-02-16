@@ -24,7 +24,7 @@ func TestCollection(t *testing.T) {
 
 	// At this point, we only want to check if the proper
 	// directories have been created.
-	_, err := os.Stat("./db/collections/test/1.bucket")
+	_, err := os.Stat("./db/collections/test/1/1.bucket")
 	if err != nil {
 		t.Errorf("Collection path doesn't exist.")
 	}

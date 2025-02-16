@@ -3,6 +3,7 @@ package db
 import (
 	"bytes"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -12,7 +13,7 @@ func TestOpenBucket(t *testing.T) {
 
 	coll, _:= db1.Collection("test")
 
-	bck, _ := OpenBucket(coll.root + "/1.bucket", 10, 5, 2)
+	bck, _ := OpenBucket(coll.root, 10, 5, 2)
 	if bck == nil {
 		t.Errorf("Expected Bucket object, got nil")
 	}
@@ -23,7 +24,7 @@ func TestBucketWrite(t *testing.T) {
 	db1.Delete()
 
 	coll, _ := db1.Collection("test")
-	bck,  _ := OpenBucket(coll.root + "/1.bucket", 10, 5, 2)
+	bck, _ := OpenBucket(coll.root, 10, 5, 2)
 
 	data := []byte("value1")
 	_, size, _ := bck.Write(data)
@@ -37,7 +38,7 @@ func TestBucketRead(t *testing.T) {
 	db1.Delete()
 
 	coll, _ := db1.Collection("test")
-	bck,  _ := OpenBucket(coll.root + "/1.bucket", 10, 5, 2)
+	bck,  _ := OpenBucket(coll.root, 10, 5, 2)
 
 	data1 := []byte("value1")
 	bck.Write(data1)
@@ -54,7 +55,7 @@ func TestBucketResize(t *testing.T) {
 	db1.Delete()
 
 	coll, _ := db1.Collection("test")
-	bck,  _ := OpenBucket(coll.root + "/1.bucket", 10, 5, 2)
+	bck,  _ := OpenBucket(coll.root, 10, 5, 2)
 
 	data := []byte("value")
 	for i := 0; i < 10; i++ {
@@ -76,29 +77,48 @@ func TestGetLastBucket(t *testing.T) {
 	path3 := "./db/collections/test/11/300.bucket"
 	path4 := "./db/collections/test/12/100.bucket"
 
-	os.MkdirAll(path1, 0755)
-	os.MkdirAll(path2, 0755)
-	os.MkdirAll(path3, 0755)
-	os.MkdirAll(path4, 0755)
+	dir1 := filepath.Dir(path1)
+	os.MkdirAll(dir1, 0755)
+	os.Create(path1)
+
+	dir2 := filepath.Dir(path2)
+	os.MkdirAll(dir2, 0755)
+	os.Create(path2)
+
+	dir3 := filepath.Dir(path3)
+	os.MkdirAll(dir3, 0755)
+	os.Create(path3)
+
+	dir4 := filepath.Dir(path4)
+	os.MkdirAll(dir4, 0755)
+	os.Create(path4)
+
 	defer os.RemoveAll("./db")
 
 	expected := "./db/collections/test/12/100.bucket"
-	path := getLastBucket("./db/collections/test")
+	file, _ := getLastBucket("./db/collections/test")
 
-	if path != expected {
-		t.Errorf("Expected path to be %s, got %s.", expected, path)
+	if file.Name() != expected {
+		t.Errorf("Expected path to be %s, got %s.", expected, file.Name())
 	}
 }
 
 func TestNextBucket(t *testing.T) {
 	bucketsPerDir := 2
-	
+
 	// 1. Dir is full.
 	path1 := "./db/collections/test/1/1.bucket"
 	path2 := "./db/collections/test/1/2.bucket"
 
-	os.MkdirAll(path1, 0755)
-	os.MkdirAll(path2, 0755)
+
+	dir1 := filepath.Dir(path1)
+	os.MkdirAll(dir1, 0755)
+	os.Create(path1)
+
+	dir2 := filepath.Dir(path2)
+	os.MkdirAll(dir2, 0755)
+	os.Create(path2)
+
 	defer os.RemoveAll("./db")
 
 	bucket := Bucket{
@@ -108,11 +128,11 @@ func TestNextBucket(t *testing.T) {
 	}
 
 	bucket.nextBucket()
-	
+
 	if bucket.ID != 3 {
 		t.Errorf("Expected bucket ID to be %d, got %d.", 3, bucket.ID)
 	}
-	
+
 	expected := "./db/collections/test/2/3.bucket"
 	if bucket.file.Name() != expected {
 		t.Errorf("Expected file to be %s, got %s.", expected, bucket.file.Name())

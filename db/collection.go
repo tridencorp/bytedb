@@ -67,7 +67,7 @@ func (key *Key) Bytes() ([]byte, error) {
 // create it with default values.
 func (db *DB) Collection(name string) (*Collection, error) {
 	// Build collection path.
-	path := db.root + CollectionsPath + name + "/1.bucket"
+	path := db.root + CollectionsPath + name
 	return newCollection(path)
 }
 
@@ -82,7 +82,7 @@ func newCollection(path string) (*Collection, error) {
 	}
 
 	// Open most recent bucket.
-	bucket, err := OpenBucket(dir + "/1.bucket", 100, 10, 10)
+	bucket, err := OpenBucket(path, 100, 10, 10)
 	if err != nil {
 		return nil, err
 	}
