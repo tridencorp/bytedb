@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -68,10 +69,10 @@ func getLastBucket(root string) (*os.File, error) {
 
 	// Directory is empty, no buckets yet, so we have to create first one.
 	if max == 0 {
-		root += "/1/"
+		root = filepath.Join(root, "1")
 		os.MkdirAll(root, 0755)
 
-		root += "1.bucket"
+		root = filepath.Join(root, "1.bucket")
 		file, err := os.OpenFile(root, os.O_RDWR|os.O_CREATE, 0644)
 		return file, err
 	}
@@ -88,7 +89,7 @@ func getLastBucket(root string) (*os.File, error) {
 		if id > max { max = id }
 	}
 
-	root += fmt.Sprintf("/%d.bucket", max)
+	root = filepath.Join(root, fmt.Sprintf("%d.bucket", max))
 	file, err := os.OpenFile(root, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		return nil, err
@@ -105,14 +106,14 @@ func (bucket *Bucket) nextBucket() (*os.File, error) {
 	// bucket should be.
 	folderId := int(math.Ceil(float64(id) / float64(bucket.bucketsPerDir)))
 
-	path := fmt.Sprintf("/%d/", folderId)
-	err  := os.MkdirAll(bucket.Dir + path, 0755)
+	path := filepath.Join(bucket.Dir, fmt.Sprintf("%d", folderId))
+	err  := os.MkdirAll(path, 0755)
 	if err != nil {
 		return nil, err
 	}
 
-	path = fmt.Sprintf("/%d/%d.bucket", folderId, id)
-	file, err := os.OpenFile(bucket.Dir + path, os.O_RDWR|os.O_CREATE, 0644)
+	path = filepath.Join(bucket.Dir, fmt.Sprintf("%d", folderId), fmt.Sprintf("%d.bucket", id))
+	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
 	
 	bucket.ID   = id
 	bucket.file = file
@@ -170,7 +171,7 @@ func (bucket *Bucket) Write(data []byte) (int64, int64, error) {
 			fmt.Println(err)
 			return 0, 0, err
 		}
-	
+
 		bucket.mux.Unlock()
 	}
 

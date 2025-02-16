@@ -101,7 +101,7 @@ func TestGetLastBucket(t *testing.T) {
 
 	defer os.RemoveAll("./db")
 
-	expected := "./db/collections/test/12/100.bucket"
+	expected := "db/collections/test/12/100.bucket"
 	file, _ := getLastBucket("./db/collections/test")
 
 	if file.Name() != expected {
@@ -115,7 +115,6 @@ func TestNextBucket(t *testing.T) {
 	// 1. Dir is full.
 	path1 := "./db/collections/test/1/1.bucket"
 	path2 := "./db/collections/test/1/2.bucket"
-
 
 	dir1 := filepath.Dir(path1)
 	os.MkdirAll(dir1, 0755)
@@ -139,7 +138,7 @@ func TestNextBucket(t *testing.T) {
 		t.Errorf("Expected bucket ID to be %d, got %d.", 3, bucket.ID)
 	}
 
-	expected := "./db/collections/test/2/3.bucket"
+	expected := "db/collections/test/2/3.bucket"
 	if bucket.file.Name() != expected {
 		t.Errorf("Expected file to be %s, got %s.", expected, bucket.file.Name())
 	}
@@ -151,7 +150,7 @@ func TestNextBucket(t *testing.T) {
 		t.Errorf("Expected bucket ID to be %d, got %d.", 4, bucket.ID)
 	}
 
-	expected = "./db/collections/test/2/4.bucket"
+	expected = "db/collections/test/2/4.bucket"
 	if bucket.file.Name() != expected {
 		t.Errorf("Expected file to be %s, got %s.", expected, bucket.file.Name())
 	}
