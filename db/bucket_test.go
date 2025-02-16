@@ -21,13 +21,19 @@ func TestOpenBucket(t *testing.T) {
 
 func TestBucketWrite(t *testing.T) {
 	db1, _ := Open("./db")
-	db1.Delete()
+	defer db1.Delete()
 
 	coll, _ := db1.Collection("test")
-	bck, _ := OpenBucket(coll.root, 10, 5, 2)
+	bck, _ := OpenBucket(coll.root, 10, 5, 5)
 
 	data := []byte("value1")
-	_, size, _ := bck.Write(data)
+	size := int64(0)
+
+	for i := 0; i < 100; i++ {
+		_, len, _ := bck.Write(data)
+		size += len
+	}
+
 	if size != int64(len(data)) {
 		t.Errorf("Expected %d bytes to be written, got %d.", int64(len(data)), size)
 	}
