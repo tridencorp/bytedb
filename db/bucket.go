@@ -141,46 +141,45 @@ func (bucket *Bucket) Write(data []byte) (int64, int64, error) {
 	off  := int64(0)
 	size := int64(0)
 
-	if count <= limit {
-		bucket.mux.RLock()
-		off, size,  _ = write(bucket.file, writeOff, data)
-		bucket.mux.RUnlock()
+	// Resize the file when we reach size limit.
+	if totalOff >= int64(bucket.sizeLimit) {
+		bucket.mux.Lock()
 
-		return off, size, nil
+		// Check if our condition is still valid - some other goroutine 
+		// could changed the size limit in the time we was waiting for lock.
+		if totalOff >= int64(bucket.sizeLimit) {
+			bucket.sizeLimit = bucket.sizeLimit * 2
+
+			err := bucket.file.Truncate(int64(bucket.sizeLimit))
+			if err != nil {
+				fmt.Println(err)
+				return 0, 0, err
+			}
+		}
+
+		bucket.mux.Unlock()
 	}
 
 	// We reached keys limit, we must create next bucket.
 	// TODO: check if some other goroutine didn't created new bucket in meantime.
-	if count > limit {
+	if count >= limit {
 		bucket.mux.Lock()
 
 		_, err := bucket.nextBucket()
 		if err != nil {
+			fmt.Println(err)
 			return 0, 0, err
 		}
 	
 		bucket.mux.Unlock()
-		bucket.Write(data)
 	}
 
-	// Resize the file when we reach size limit.
-	if totalOff >= int64(bucket.sizeLimit) {
-		bucket.mux.Lock()
-		
-		// Check if our condition is still valid - some other goroutine 
-		// could changed the size limit in the time we was waiting for lock.
-		if totalOff >= int64(bucket.sizeLimit) {
-			bucket.sizeLimit *= 2
-			err := bucket.file.Truncate(int64(bucket.sizeLimit))
-			if err != nil {
-				return 0, 0, err
-			}
-		}
-	
-		bucket.mux.Unlock()
-		bucket.Write(data)
+	if count <= limit {
+		bucket.mux.RLock()
+		off, size,  _ = write(bucket.file, writeOff, data)
+		bucket.mux.RUnlock()
 	}
-	
+
 	return off, size, nil
 }
 

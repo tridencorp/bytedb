@@ -26,7 +26,7 @@ func TestBucketWrite(t *testing.T) {
 	coll, _ := db1.Collection("test")
 	bck, _ := OpenBucket(coll.root, 10, 5, 5)
 
-	data := []byte("value1")
+	data := []byte("value_1 ")
 	size := int64(0)
 
 	for i := 0; i < 100; i++ {
@@ -34,8 +34,8 @@ func TestBucketWrite(t *testing.T) {
 		size += len
 	}
 
-	if size != int64(len(data)) {
-		t.Errorf("Expected %d bytes to be written, got %d.", int64(len(data)), size)
+	if size != int64(800) {
+		t.Errorf("Expected %d bytes to be written, got %d.", 800, size)
 	}
 }
 
