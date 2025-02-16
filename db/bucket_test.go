@@ -12,7 +12,7 @@ func TestOpenBucket(t *testing.T) {
 
 	coll, _:= db1.Collection("test")
 
-	bck, _ := OpenBucket(coll.root + "/1.bucket", 10, 5)
+	bck, _ := OpenBucket(coll.root + "/1.bucket", 10, 5, 2)
 	if bck == nil {
 		t.Errorf("Expected Bucket object, got nil")
 	}
@@ -23,7 +23,7 @@ func TestBucketWrite(t *testing.T) {
 	db1.Delete()
 
 	coll, _ := db1.Collection("test")
-	bck,  _ := OpenBucket(coll.root + "/1.bucket", 10, 5)
+	bck,  _ := OpenBucket(coll.root + "/1.bucket", 10, 5, 2)
 
 	data := []byte("value1")
 	_, size, _ := bck.Write(data)
@@ -37,7 +37,7 @@ func TestBucketRead(t *testing.T) {
 	db1.Delete()
 
 	coll, _ := db1.Collection("test")
-	bck,  _ := OpenBucket(coll.root + "/1.bucket", 10, 5)
+	bck,  _ := OpenBucket(coll.root + "/1.bucket", 10, 5, 2)
 
 	data1 := []byte("value1")
 	bck.Write(data1)
@@ -54,7 +54,7 @@ func TestBucketResize(t *testing.T) {
 	db1.Delete()
 
 	coll, _ := db1.Collection("test")
-	bck,  _ := OpenBucket(coll.root + "/1.bucket", 10, 5)
+	bck,  _ := OpenBucket(coll.root + "/1.bucket", 10, 5, 2)
 
 	data := []byte("value")
 	for i := 0; i < 10; i++ {
@@ -87,5 +87,46 @@ func TestGetLastBucket(t *testing.T) {
 
 	if path != expected {
 		t.Errorf("Expected path to be %s, got %s.", expected, path)
+	}
+}
+
+func TestNextBucket(t *testing.T) {
+	bucketsPerDir := 2
+	
+	// 1. Dir is full.
+	path1 := "./db/collections/test/1/1.bucket"
+	path2 := "./db/collections/test/1/2.bucket"
+
+	os.MkdirAll(path1, 0755)
+	os.MkdirAll(path2, 0755)
+	defer os.RemoveAll("./db")
+
+	bucket := Bucket{
+		ID: 2,
+		Dir: "./db/collections/test/",
+		bucketsPerDir: int16(bucketsPerDir),
+	}
+
+	bucket.nextBucket()
+	
+	if bucket.ID != 3 {
+		t.Errorf("Expected bucket ID to be %d, got %d.", 3, bucket.ID)
+	}
+	
+	expected := "./db/collections/test/2/3.bucket"
+	if bucket.file.Name() != expected {
+		t.Errorf("Expected file to be %s, got %s.", expected, bucket.file.Name())
+	}
+
+	// 2. Dir have space.
+	bucket.nextBucket()
+
+	if bucket.ID != 4 {
+		t.Errorf("Expected bucket ID to be %d, got %d.", 4, bucket.ID)
+	}
+
+	expected = "./db/collections/test/2/4.bucket"
+	if bucket.file.Name() != expected {
+		t.Errorf("Expected file to be %s, got %s.", expected, bucket.file.Name())
 	}
 }

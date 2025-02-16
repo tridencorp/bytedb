@@ -76,13 +76,13 @@ func newCollection(path string) (*Collection, error) {
 	dir  := filepath.Dir(path)
 
 	// Create directory structure. Do nothing if it already exist.
-	if err := os.MkdirAll(dir, 0755)
-	err != nil {
+	err := os.MkdirAll(dir, 0755)
+	if err != nil {
 		return nil, err
 	}
 
 	// Open most recent bucket.
-	bucket, err := OpenBucket(dir + "/1.bucket", 100, 10)
+	bucket, err := OpenBucket(dir + "/1.bucket", 100, 10, 10)
 	if err != nil {
 		return nil, err
 	}

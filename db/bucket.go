@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -20,8 +21,11 @@ type Bucket struct {
 	// us the ultimate concurrent writes.
 	offset atomic.Int64
 
+	// Number of bucket files per directory.
+	bucketsPerDir int16
+
 	// Keep track of the number of keys in the bucket.
-	numOfKeys atomic.Int64
+	keysCount atomic.Int64
 	keysLimit uint64
 
 	// If offset reach size limit, we resize the file.
@@ -32,7 +36,7 @@ type Bucket struct {
 	mux sync.RWMutex
 }
 
-func OpenBucket(filepath string, keysLimit uint32, sizeLimit int64) (*Bucket, error) {
+func OpenBucket(filepath string, keysLimit uint32, sizeLimit int64, bucketsPerDir int32) (*Bucket, error) {
 	// Make sure that the filepath exists.
 	path, err := createPath(filepath)
 	if err != nil {
@@ -55,31 +59,54 @@ func OpenBucket(filepath string, keysLimit uint32, sizeLimit int64) (*Bucket, er
 func getLastBucket(root string) string {
 	// Sort directories.
 	dirs, _ := os.ReadDir(root)
-	id := 0
+	max := 0
 
 	for _, dir := range dirs {
-		tmpId, _ := strconv.Atoi(dir.Name())
-		if tmpId > id { id = tmpId }
+		id, _ := strconv.Atoi(dir.Name())
+		if id > max { max = id }
 	}
 
 	// Sort files.
-	root += fmt.Sprintf("/%d", id)
+	root += fmt.Sprintf("/%d", max)
 	files, _ := os.ReadDir(root)
 
 	for _, file := range files {
 		// Split .bucket file.
 		fileId := strings.Split(file.Name(), ".")[0]
 
-		tmpId, _ := strconv.Atoi(fileId) 
-		if tmpId > id { id = tmpId }
+		id, _ := strconv.Atoi(fileId) 
+		if id > max { max = id }
 	}
 
-	if id == 0 {
+	if max == 0 {
 		return ""
 	}
 
-	root += fmt.Sprintf("/%d.bucket", id)
+	root += fmt.Sprintf("/%d.bucket", max)
 	return root
+}
+
+// Create next bucket.
+func (bucket *Bucket) nextBucket() (*os.File, error) {
+	id := bucket.ID + 1
+
+	// Based on buckets per dir we can calculate folder ID in which
+	// bucket should be.
+	folderId := int(math.Ceil(float64(id) / float64(bucket.bucketsPerDir)))
+
+	path := fmt.Sprintf("%d/", folderId)
+	err  := os.MkdirAll(bucket.Dir + path, 0755)
+	if err != nil {
+		return nil, err
+	}
+
+	path = fmt.Sprintf("%d/%d.bucket", folderId, id)
+	file, err := os.OpenFile(bucket.Dir + path, os.O_RDWR|os.O_CREATE, 0644)
+
+	bucket.ID   = id
+	bucket.file = file
+
+	return file, err
 }
 
 // Write data to bucket.
@@ -87,6 +114,8 @@ func getLastBucket(root string) string {
 // TODO: Should buckets know about keys and other
 // types ? Should they operate only on raw bytes ?
 func (bucket *Bucket) Write(data []byte) (int64, int64, error) {
+	bucket.keysCount.Add(1)
+
 	// We are adding len to atomic value and then deducting it
 	// from the result, this should give us space for our data.
 	totalOff := bucket.offset.Add(int64(len(data)))
@@ -113,7 +142,6 @@ func (bucket *Bucket) Write(data []byte) (int64, int64, error) {
 		return writeOff, int64(size), err
 	}
 
-	bucket.numOfKeys.Add(1)
 	return writeOff, int64(size), nil
 }
 
