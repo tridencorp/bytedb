@@ -51,45 +51,35 @@ func OpenBucket(filepath string, keysLimit uint32, sizeLimit int64) (*Bucket, er
 }
 
 // Find the last bucket ID for given root.
-// We return 0 if no buckets were found.
-func findLastBucket(root string) (int, string) {
-	// List bucket directories first.
-	dirs, err := os.ReadDir(root)
-	if err != nil {
-		return 0, ""
-	}
-
-	if len(dirs) == 0 {
-		return 0, ""
-	}
-
+// Empty string in response means that there is no bucket yet.
+func getLastBucket(root string) string {
 	// Sort directories.
-	max  := 1
-	path := root
+	dirs, _ := os.ReadDir(root)
+	id := 0
+
 	for _, dir := range dirs {
-		num, _ := strconv.Atoi(dir.Name())
-		if num > max {
-			max = num;
-			path += "/" + dir.Name()
-		}
+		tmpId, _ := strconv.Atoi(dir.Name())
+		if tmpId > id { id = tmpId }
 	}
 
-	// Get the last bucket id from directory.
-	files, err := os.ReadDir(fmt.Sprintf("%s/%d/", root, max))
-	if err != nil {
-		return 0, ""
-	}
+	// Sort files.
+	root += fmt.Sprintf("/%d", id)
+	files, _ := os.ReadDir(root)
 
 	for _, file := range files {
-		id := strings.Split(file.Name(), ".")[0]
-		num, _ := strconv.Atoi(id)
-		if num > max {
-			max = num
-			path += "/" + file.Name()
-		}
+		// Split .bucket file.
+		fileId := strings.Split(file.Name(), ".")[0]
+
+		tmpId, _ := strconv.Atoi(fileId) 
+		if tmpId > id { id = tmpId }
 	}
 
-	return max, path
+	if id == 0 {
+		return ""
+	}
+
+	root += fmt.Sprintf("/%d.bucket", id)
+	return root
 }
 
 // Write data to bucket.
