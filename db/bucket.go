@@ -14,6 +14,8 @@ import (
 type Bucket struct {
 	ID 		uint32
 	Dir   string
+
+	// TODO: This probably should be atomic pointer.
 	file *os.File
 
 	// We will be using atomic.Add() for each key.
@@ -114,15 +116,15 @@ func (bucket *Bucket) nextBucket() (*os.File, error) {
 
 	path = filepath.Join(bucket.Dir, fmt.Sprintf("%d", folderId), fmt.Sprintf("%d.bucket", id))
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
-	
+
 	bucket.ID   = id
 	bucket.file = file
-	
+
 	// We created new bucket, there are no keys yet so we must restart counters, 
 	// offsets, ...
 	bucket.keysCount.Store(0)
 	bucket.offset.Store(0)
-	
+
 	return file, err
 }
 
@@ -133,6 +135,9 @@ func (bucket *Bucket) nextBucket() (*os.File, error) {
 func (bucket *Bucket) Write(data []byte) (int64, int64, error) {
 	count := bucket.keysCount.Add(1)
 	limit := int64(bucket.keysLimit)
+
+	// TODO: File, offset and keysCount must be in the same struct
+	// and we will use atomics to load them.
 
 	// We are adding len to atomic value and then deducting it
 	// from the result, this should give us space for our data.
@@ -145,19 +150,14 @@ func (bucket *Bucket) Write(data []byte) (int64, int64, error) {
 	// Resize the file when we reach size limit.
 	if totalOff >= int64(bucket.sizeLimit) {
 		bucket.mux.Lock()
-
 		// Check if our condition is still valid - some other goroutine 
 		// could changed the size limit in the time we was waiting for lock.
 		if totalOff >= int64(bucket.sizeLimit) {
-			bucket.sizeLimit = bucket.sizeLimit * 2
-
-			err := bucket.file.Truncate(int64(bucket.sizeLimit))
+			err := bucket.resize()
 			if err != nil {
-				fmt.Println(err)
 				return 0, 0, err
 			}
 		}
-
 		bucket.mux.Unlock()
 	}
 
@@ -165,23 +165,25 @@ func (bucket *Bucket) Write(data []byte) (int64, int64, error) {
 	// TODO: check if some other goroutine didn't created new bucket in meantime.
 	if count >= limit {
 		bucket.mux.Lock()
-
 		_, err := bucket.nextBucket()
 		if err != nil {
-			fmt.Println(err)
 			return 0, 0, err
 		}
-
 		bucket.mux.Unlock()
 	}
 
 	if count <= limit {
 		bucket.mux.RLock()
-		off, size,  _ = write(bucket.file, writeOff, data)
+		off, size, _ = write(bucket.file, writeOff, data)
 		bucket.mux.RUnlock()
 	}
 
 	return off, size, nil
+}
+
+func (bucket *Bucket) resize() error {
+	bucket.sizeLimit = bucket.sizeLimit * 2
+	return bucket.file.Truncate(int64(bucket.sizeLimit))
 }
 
 func write(file *os.File, off int64, data []byte) (int64, int64, error) {
