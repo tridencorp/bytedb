@@ -42,12 +42,12 @@ func OpenBucket(root string, keysLimit uint32, sizeLimit int64, bucketsPerDir in
 	}
 
 	// TODO: Temporary values untill we have proper bucket management.
-	bck := &Bucket{ID:1, Dir: root, file: f, sizeLimit: uint64(sizeLimit)}
+	bck := &Bucket{ID:1, Dir: root, file: f, keysLimit: uint64(keysLimit), sizeLimit: uint64(sizeLimit)}
 	return bck, nil;
 }
 
 // Find the last bucket ID for given root.
-// Empty string in response means that there is no bucket yet.
+// Empty string in response mesteans that there is no bucket yet.
 func getLastBucket(root string) (*os.File, error) {
 	// Sort directories.
 	dirs, _ := os.ReadDir(root)
@@ -109,6 +109,11 @@ func (bucket *Bucket) nextBucket() (*os.File, error) {
 	bucket.ID   = id
 	bucket.file = file
 
+	// We created new bucket, there are no keys yet so we must restart counters, 
+	// offsets, ...
+	bucket.keysCount.Store(0)
+	bucket.offset.Store(0)
+
 	return file, err
 }
 
@@ -117,7 +122,14 @@ func (bucket *Bucket) nextBucket() (*os.File, error) {
 // TODO: Should buckets know about keys and other
 // types ? Should they operate only on raw bytes ?
 func (bucket *Bucket) Write(data []byte) (int64, int64, error) {
-	bucket.keysCount.Add(1)
+	count := bucket.keysCount.Add(1)
+
+	// We reached keys limit, we must create next bucket.
+	if count > int64(bucket.keysLimit) {
+		bucket.mux.Lock()
+		bucket.nextBucket()
+		bucket.mux.Unlock()
+	}
 
 	// We are adding len to atomic value and then deducting it
 	// from the result, this should give us space for our data.

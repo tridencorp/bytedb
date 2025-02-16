@@ -94,7 +94,7 @@ func newCollection(path string) (*Collection, error) {
 
 	coll := &Collection{
 		bucket:  bucket, 
-		root:    dir,
+		root:    path,
 		indexes: indexes,
 	}
 

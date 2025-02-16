@@ -51,11 +51,11 @@ func TestBucketRead(t *testing.T) {
 }
 
 func TestBucketResize(t *testing.T) {
-	db1, _ := Open("./db")
-	db1.Delete()
+	db, _ := Open("./db")
+	defer db.Delete()
 
-	coll, _ := db1.Collection("test")
-	bck,  _ := OpenBucket(coll.root, 10, 5, 2)
+	coll, _ := db.Collection("test")
+	bck,  _ := OpenBucket(coll.root, 100, 5, 2)
 
 	data := []byte("value")
 	for i := 0; i < 10; i++ {
