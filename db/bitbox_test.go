@@ -7,13 +7,52 @@ import (
 
 type UserType []byte
 
-func TestEncode(t *testing.T) {
-	a := UserType("test")
-	data, _ := Encode(a)
+func TestEncodeDecode(t *testing.T) {
+	// int8
+	val := int8(10)
+	raw, _ := Encode(val)
 
-	expected := []byte{0,0,0,0,0,0,0,4,116,101,115,116}
+	val = 0
+	Decode(raw, &val)
 
-	if bytes.Equal(data, expected) {
-		t.Errorf("Expected encoded bytes to\nbe  %v\ngot %v", expected, data)
+	if val != 10 { t.Errorf("Expected %d, got %d", 10, val) }
+
+	// int32
+	val1  := int32(100)
+	raw, _ = Encode(val1)
+
+	val1 = 0
+	Decode(raw, &val1)
+
+	if val1 != 100 { t.Errorf("Expected %d, got %d", 100, val1) }
+
+	// int64
+	val2  := int64(1000)
+	raw, _ = Encode(val2)
+
+	val2 = 0
+	Decode(raw, &val2)
+
+	if val2 != 1000 { t.Errorf("Expected %d, got %d", 1000, val2) }
+
+	// Custom types
+	val3  := UserType("value")
+	raw, _ = Encode(val3)
+
+	val3 = UserType{}
+	Decode(raw, &val3)
+
+	if !bytes.Equal(val3, []byte("value")) { 
+		t.Errorf("Expected \n to get %d,\nbut got %d", []byte("value"), val3) 
+	}
+
+	val4  := []byte{1, 2, 3}
+	raw, _ = Encode(val4)
+
+	val4 = []byte{}
+	Decode(raw, &val4)
+
+	if !bytes.Equal(val4, []byte{1, 2, 3}) { 
+		t.Errorf("Expected \n to get %d,\nbut got %d", []byte{1, 2, 3}, val4) 
 	}
 }
