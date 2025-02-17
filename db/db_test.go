@@ -88,10 +88,15 @@ func TestIterate(t *testing.T) {
 	coll.Set("key3", []byte("value 3"))
 
 	it := Iterator{bucket: coll.bucket}
-	keys, _ := it.Iterate()
+	keys, size, _ := it.Iterate()
+
 
 	if len(keys) != 3 {
 		t.Errorf("Expected to get %d keys, got %d", 3, len(keys))
+	}
+
+	if size != 33 {
+		t.Errorf("Expected size to be %d keys, got %d", 33, size)
 	}
 }
 

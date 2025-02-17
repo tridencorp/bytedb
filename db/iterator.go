@@ -11,15 +11,18 @@ type Iterator struct {
 	bucket *Bucket
 }
 
-func (it *Iterator) Iterate() ([]*Key, error) {
-	// Read whole file.
+func (it *Iterator) Iterate() ([]*Key, int64, error) {
+	// Read the whole file.
+	// TODO: Read it in chunks.
 	data, err := io.ReadAll(it.bucket.file)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	keys := []*Key{}
 	buf  := bytes.NewReader(data)
+
+	totalSize := int64(0)
 
 	for {
 		key := new(Key)
@@ -28,7 +31,7 @@ func (it *Iterator) Iterate() ([]*Key, error) {
 		size := uint32(0)
 		err = binary.Read(buf, binary.BigEndian, &size)
 		if err != nil {
-			return nil, err
+			return nil, totalSize, err
 		}
 
 		// Size 0 means that there is no more data to read.
@@ -41,13 +44,16 @@ func (it *Iterator) Iterate() ([]*Key, error) {
 			break
 		}
 
+		// We are adding 4 for size itself (uint32 - 4 bytes).
+		totalSize += int64(size + 4)
+
 		// Read key data based on size that we got.
 		key.data = make([]byte, size)
 		key.size = size
 
 		err = binary.Read(buf, binary.BigEndian, &key.data)
 		if err != nil {
-			return nil, err
+			return nil, totalSize, err
 		}
 		
 		keys = append(keys, key)
@@ -57,5 +63,5 @@ func (it *Iterator) Iterate() ([]*Key, error) {
 		}
 	}
 
-	return keys, nil
+	return keys, totalSize, nil
 }
