@@ -55,7 +55,6 @@ func OpenBucket(root string, keysLimit uint32, sizeLimit int64, bucketsPerDir in
 	}
 
 	bck.offset.Store(getOffset(bck))
-
 	return bck, nil;
 }
 
