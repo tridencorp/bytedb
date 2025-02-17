@@ -55,7 +55,7 @@ func (it *Iterator) Iterate() ([]*Key, int64, error) {
 		if err != nil {
 			return nil, totalSize, err
 		}
-		
+
 		keys = append(keys, key)
 
 		if buf.Len() == 0 {

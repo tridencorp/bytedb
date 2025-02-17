@@ -20,10 +20,10 @@ func TestOpenBucket(t *testing.T) {
 }
 
 func TestBucketWrite(t *testing.T) {
-	db1, _ := Open("./db")
-	defer db1.Delete()
+	db, _ := Open("./db")
+	defer db.Delete()
 
-	coll, _ := db1.Collection("test")
+	coll, _ := db.Collection("test")
 	bck, _ := OpenBucket(coll.root, 10, 5, 5)
 
 	data := []byte("value_1 ")
@@ -40,10 +40,10 @@ func TestBucketWrite(t *testing.T) {
 }
 
 func TestBucketRead(t *testing.T) {
-	db1, _ := Open("./db")
-	db1.Delete()
+	db, _ := Open("./db")
+	defer db.Delete()
 
-	coll, _ := db1.Collection("test")
+	coll, _ := db.Collection("test")
 	bck,  _ := OpenBucket(coll.root, 10, 5, 2)
 
 	data1 := []byte("value1")
@@ -153,5 +153,22 @@ func TestNextBucket(t *testing.T) {
 	expected = "db/collections/test/2/4.bucket"
 	if bucket.file.Name() != expected {
 		t.Errorf("Expected file to be %s, got %s.", expected, bucket.file.Name())
+	}
+}
+
+func TestGetOffset(t *testing.T) {
+	db, _ := Open("./db")
+	defer db.Delete()
+
+	coll, _ := db.Collection("test")
+	bck,  _ := OpenBucket(coll.root, 10, 5, 2)
+
+	coll.Set("key1",[]byte("value_1 "))
+	coll.Set("key2",[]byte("value_1 "))
+
+	off := getOffset(bck)
+
+	if off != 24 {
+		t.Errorf("Expected offset to be %d, got %d.", 24, off)
 	}
 }

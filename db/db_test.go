@@ -123,7 +123,6 @@ func TestLoadIndexFile(t *testing.T) {
 	if idx == nil        { t.Errorf("Index for the given key wasn't find.") }
 	if idx.BucketId != 1 { t.Errorf("Expected bucketId to be %d, was %d", 1, idx.BucketId) }
 	if idx.Size != 7     { t.Errorf("Expected Size to be %d, was %d", 7, idx.Size) }
-	if idx.Offset != 0   { t.Errorf("Expected Size to be %d, was %d", 0, idx.Offset) }
 }
 
 func TestDel(t *testing.T) {

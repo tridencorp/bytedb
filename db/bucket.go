@@ -48,11 +48,13 @@ func OpenBucket(root string, keysLimit uint32, sizeLimit int64, bucketsPerDir in
 	bck := &Bucket{
 		ID:1, 
 		Dir: root, 
-		file: f, 
+		file: f,
 		keysLimit: uint64(keysLimit), 
 		sizeLimit: uint64(sizeLimit),
 		bucketsPerDir: int16(bucketsPerDir),
 	}
+
+	bck.offset.Store(getOffset(bck))
 
 	return bck, nil;
 }
@@ -96,6 +98,9 @@ func getLastBucket(root string) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// TODO: we must set offset.
+
 
 	return file, nil
 }
@@ -174,7 +179,7 @@ func (bucket *Bucket) Write(data []byte) (int64, int64, error) {
 
 	if count <= limit {
 		bucket.mux.RLock()
-		off, size, _ = write(bucket.file, writeOff, data)
+		off, size, _ = bucket.write(bucket.file, writeOff, data)
 		bucket.mux.RUnlock()
 	}
 
@@ -186,7 +191,18 @@ func (bucket *Bucket) resize() error {
 	return bucket.file.Truncate(int64(bucket.sizeLimit))
 }
 
-func write(file *os.File, off int64, data []byte) (int64, int64, error) {
+// Getting last offset from which we can start writing data.
+// For now we just do it dead simple, read file from beginning
+// record by record till end of data. 
+// It would basically be done only for last block - the one we are currently writing to. 
+// Other blocks will be immutable (so no offset needed).
+func getOffset(bucket *Bucket) int64 {
+	it := Iterator{bucket: bucket}
+	_, size, _ := it.Iterate()
+	return size
+}
+
+func (bucket *Bucket) write(file *os.File, off int64, data []byte) (int64, int64, error) {
 	// We are using WriteAt because, when carefully
 	// handled, it's concurrent-friendly.
 	size, err := file.WriteAt(data, off)
