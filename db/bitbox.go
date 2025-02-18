@@ -34,26 +34,50 @@ func Encode(elements ...any) (bytes.Buffer, error) {
 		case []float32: EncodeSlice(&buf, v)
 
 		default:
+			// Array support.
+			// if reflect.TypeOf(elem).Kind() == reflect.Array {
+			// 	val := reflect.ValueOf(elem)
+
+				// tt := reflect.TypeOf(uint8(0))
+				// arrType := reflect.ArrayOf(val.Len(), tt)
+				// arrPtr := reflect.New(arrType)
+
+				// array := arrPtr.Elem()
+				
+				// fmt.Println(val)
+				// fmt.Println(array)
+
+				// encode(&buf, int64(len(cv)))
+
+			// 	encode(&buf, int64(val.Len()))					
+			// 	encode(&buf, v)					
+			// 	continue
+			// }
+
 			// Fallback for custom types, ex: type Hash []byte
 			// Check if we are dealing with slices.
-			val  := reflect.ValueOf(elem)
-			item := reflect.TypeOf(elem).Elem()
 
-			switch item.Kind() {
-			case reflect.Uint8:
-				encode(&buf, val.Len())
-				encode(&buf, elem)
+			// fmt.Println(reflect.ValueOf(elem).Kind())
 
-			case reflect.Int64:
-				tt := reflect.TypeOf([]int64{})
-				cv := val.Convert(tt).Interface().([]int64)
+			// val  := reflect.ValueOf(elem)
+			// item := reflect.TypeOf(elem).Elem()
 
-				EncodeSlice(&buf, cv)
-				continue
+			// switch item.Kind() {
+			// case reflect.Uint8:
+			// 	encode(&buf, val.Len())
+			// 	encode(&buf, elem)
 
-			case reflect.Int:
-				return buf, fmt.Errorf("Unsupported type: Int")
-			}
+			// case reflect.Int64:
+			// 	// TODO: This is working but maybe there is better way?
+			// 	tt := reflect.TypeOf([]int64{})
+			// 	cv := val.Convert(tt).Interface().([]int64)
+
+			// 	EncodeSlice(&buf, cv)
+			// 	continue
+
+			// case reflect.Int:
+			// 	return buf, fmt.Errorf("Unsupported type: Int")
+			// }
 
 			encode(&buf, elem)
 		}
@@ -79,7 +103,7 @@ func DecodeSlice[T any](buf *bytes.Buffer, dst any) {
 	// Make temporary slice with proper size and write buffer data to it.
 	tmp := make([]T, size)
 	decode(buf, &tmp)
-
+	
 	val1 := reflect.ValueOf(dst)
 	val2 := reflect.ValueOf(tmp)
 	
@@ -97,7 +121,7 @@ func encode(buf *bytes.Buffer, elem any) {
 	}
 }
 
-func Decode(buf bytes.Buffer, items ...any) error {
+func Decode(buf *bytes.Buffer, items ...any) error {
 	for _, item := range items {
 		kind := reflect.TypeOf(item).Kind()
 
@@ -108,31 +132,36 @@ func Decode(buf bytes.Buffer, items ...any) error {
 				elem  = elem.Elem()
 
 				switch elem.Kind() {
-					case reflect.Uint8:  DecodeSlice[uint8](&buf, item)
-					case reflect.Uint16: DecodeSlice[uint16](&buf, item)
-					case reflect.Uint64: DecodeSlice[uint64](&buf, item)
-					case reflect.Uint32: DecodeSlice[uint32](&buf, item)
+					case reflect.Uint8:  DecodeSlice[uint8](buf, item)
+					case reflect.Uint16: DecodeSlice[uint16](buf, item)
+					case reflect.Uint64: DecodeSlice[uint64](buf, item)
+					case reflect.Uint32: DecodeSlice[uint32](buf, item)
 
-					case reflect.Int64: DecodeSlice[int64](&buf, item)
-					case reflect.Int32: DecodeSlice[int32](&buf, item)
-					case reflect.Int16: DecodeSlice[int16](&buf, item)
-					case reflect.Int8:  DecodeSlice[int8](&buf, item)
+					case reflect.Int64: DecodeSlice[int64](buf, item)
+					case reflect.Int32: DecodeSlice[int32](buf, item)
+					case reflect.Int16: DecodeSlice[int16](buf, item)
+					case reflect.Int8:  DecodeSlice[int8](buf, item)
 
-					case reflect.Float64: DecodeSlice[float64](&buf, item)
-					case reflect.Float32: DecodeSlice[float32](&buf, item)
+					case reflect.Float64: DecodeSlice[float64](buf, item)
+					case reflect.Float32: DecodeSlice[float32](buf, item)
 
 				default:
 					fmt.Printf("unsupported type: %v", elem.Kind())
 				}
+
+				continue
 			}
 		}
 
-		decode(&buf, item)
+		decode(buf, item)
 	}
 
 	return nil
 }
 
 func decode(buf *bytes.Buffer, dst any) {
-	binary.Read(buf, binary.BigEndian, dst)	
+	err := binary.Read(buf, binary.BigEndian, dst)	
+	if err != nil {
+		fmt.Println(err)
+	}
 }

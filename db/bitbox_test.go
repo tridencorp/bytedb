@@ -1,8 +1,6 @@
 package db
 
 import (
-	"bytes"
-	"fmt"
 	"slices"
 	"testing"
 )
@@ -10,53 +8,42 @@ import (
 type CustomByte []byte
 type CustomInt  []int64
 
+type CustomArrByte [32]byte
+type CustomArrInt  [32]int32
+
 // Helper for encoding/decoding slices.
 func EncodeDecodeSlice[T comparable](elem, result []T, t *testing.T) {
 	raw, _ := Encode(elem)
-	Decode(raw, &result)
+	Decode(&raw, &result)
 
 	if !slices.Equal(elem, result) { 
 		t.Errorf("Expected \n to get %v,\nbut got %v", elem, result) 
 	}
 }
 
-func TestEncodeDecode(t *testing.T) {
-	// int8
-	val := int8(10)
-	raw, _ := Encode(val)
+func EncodeDecode[T comparable](elem, result T, t *testing.T) {
+	raw, _ := Encode(elem)
+	Decode(&raw, &result)
 
-	val = 0
-	Decode(raw, &val)
-
-	if val != 10 { t.Errorf("Expected %d, got %d", 10, val) }
-
-	// int32
-	val1  := int32(100)
-	raw, _ = Encode(val1)
-
-	val1 = 0
-	Decode(raw, &val1)
-
-	if val1 != 100 { t.Errorf("Expected %d, got %d", 100, val1) }
-
-	// int64
-	val2  := int64(1000)
-	raw, _ = Encode(val2)
-
-	val2 = 0
-	Decode(raw, &val2)
-
-	if val2 != 1000 { t.Errorf("Expected %d, got %d", 1000, val2) }
-
-	val4  := []byte{1, 2, 3}
-	raw, _ = Encode(val4)
-
-	val4 = []byte{}
-	Decode(raw, &val4)
-
-	if !bytes.Equal(val4, []byte{1, 2, 3}) { 
-		t.Errorf("Expected \n to get %d,\nbut got %d", []byte{1, 2, 3}, val4) 
+	if elem != result { 
+		t.Errorf("Expected \n to get %v,\nbut got %v", elem, result) 
 	}
+}
+
+func TestEncodeDecode(t *testing.T) {
+	// Basic types.
+	EncodeDecode(int8(10),     int8(0),  t)
+	EncodeDecode(int16(100),   int16(0), t)
+	EncodeDecode(int32(1000),  int32(0), t)
+	EncodeDecode(int64(10000), int64(0), t)
+
+	EncodeDecode(uint8(10),     uint8(0),  t)
+	EncodeDecode(uint16(100),   uint16(0), t)
+	EncodeDecode(uint32(1000),  uint32(0), t)
+	EncodeDecode(uint64(10000), uint64(0), t)
+
+	// Slices.
+	EncodeDecodeSlice([]byte{1, 2, 3}, []byte{}, t)
 
 	EncodeDecodeSlice([]float64{11.11, 22.22, 33.33}, []float64{}, t)
 	EncodeDecodeSlice([]float32{11.11, 22.22, 33.33}, []float32{}, t)
@@ -73,13 +60,10 @@ func TestEncodeDecode(t *testing.T) {
 }
 
 func TestDecodeEncodeCustom(t *testing.T) {
-	val := CustomInt{1, 2, 3}
-	raw, _ := Encode(val)
+	EncodeDecodeSlice(CustomInt{1, 2, 3, 4}, CustomInt{}, t)
+	EncodeDecodeSlice(CustomByte("byte slice"), CustomByte{}, t)
 
-	fmt.Println(raw)
-
-	// val = CustomInt{}
-	// Decode(raw, &val)
-
-	// fmt.Println(val)
+	// Arrays.
+	EncodeDecode(CustomArrByte{1,2,3}, CustomArrByte{}, t)
+	EncodeDecode(CustomArrInt{1,2,3},  CustomArrInt{},  t)
 }
