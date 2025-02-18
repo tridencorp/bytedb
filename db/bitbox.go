@@ -36,24 +36,23 @@ func Encode(elements ...any) (bytes.Buffer, error) {
 		default:
 			// Fallback for custom types, ex: type Hash []byte
 			// Check if we are dealing with slices.
-			kind := reflect.TypeOf(elem).Kind()
+			val  := reflect.ValueOf(elem)
+			item := reflect.TypeOf(elem).Elem()
 
-			if kind == reflect.Slice || kind == reflect.Array {
-				val := reflect.ValueOf(elem)
+			switch item.Kind() {
+			case reflect.Uint8:
+				encode(&buf, val.Len())
+				encode(&buf, elem)
 
-				// Special case for encoding []byte.
-				if reflect.TypeOf(elem).Elem() == reflect.TypeOf(uint8(0)) {
-					encode(&buf, val.Len())
-					encode(&buf, elem)
-					continue
-				}
+			case reflect.Int64:
+				tt := reflect.TypeOf([]int64{})
+				cv := val.Convert(tt).Interface().([]int64)
 
-				for i:=0; i < val.Len(); i++ {
-					item := val.Index(i).Interface()
-					encode(&buf, item)
-				}
-
+				EncodeSlice(&buf, cv)
 				continue
+
+			case reflect.Int:
+				return buf, fmt.Errorf("Unsupported type: Int")
 			}
 
 			encode(&buf, elem)
@@ -64,7 +63,7 @@ func Encode(elements ...any) (bytes.Buffer, error) {
 }
 
 func EncodeSlice[T any](buf *bytes.Buffer, elem []T) {
-	encode(buf, len(elem))
+	encode(buf, int64(len(elem)))
 	tmp := make([]T, len(elem))
 
 	// More efficient than copying?

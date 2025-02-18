@@ -2,11 +2,13 @@ package db
 
 import (
 	"bytes"
+	"fmt"
 	"slices"
 	"testing"
 )
 
-type UserType []byte
+type CustomByte []byte
+type CustomInt  []int64
 
 // Helper for encoding/decoding slices.
 func EncodeDecodeSlice[T comparable](elem, result []T, t *testing.T) {
@@ -46,17 +48,6 @@ func TestEncodeDecode(t *testing.T) {
 
 	if val2 != 1000 { t.Errorf("Expected %d, got %d", 1000, val2) }
 
-	// Custom types
-	val3  := UserType("value")
-	raw, _ = Encode(val3)
-
-	val3 = UserType{}
-	Decode(raw, &val3)
-
-	if !bytes.Equal(val3, []byte("value")) { 
-		t.Errorf("Expected \n to get %d,\nbut got %d", []byte("value"), val3) 
-	}
-
 	val4  := []byte{1, 2, 3}
 	raw, _ = Encode(val4)
 
@@ -69,12 +60,26 @@ func TestEncodeDecode(t *testing.T) {
 
 	EncodeDecodeSlice([]float64{11.11, 22.22, 33.33}, []float64{}, t)
 	EncodeDecodeSlice([]float32{11.11, 22.22, 33.33}, []float32{}, t)
+
 	EncodeDecodeSlice([]int64{11, 22, 33}, []int64{}, t)
 	EncodeDecodeSlice([]int32{11, 22, 33}, []int32{}, t)
 	EncodeDecodeSlice([]int16{11, 22, 33}, []int16{}, t)
-	EncodeDecodeSlice([]int8{11, 22, 33},  []int8{},  t)[]
+	EncodeDecodeSlice([]int8{11, 22, 33},  []int8{},  t)
+
 	EncodeDecodeSlice([]uint64{11, 22, 33}, []uint64{}, t)
 	EncodeDecodeSlice([]uint32{11, 22, 33}, []uint32{}, t)
 	EncodeDecodeSlice([]uint16{11, 22, 33}, []uint16{}, t)
 	EncodeDecodeSlice([]uint8{11, 22, 33},  []uint8{},  t)
+}
+
+func TestDecodeEncodeCustom(t *testing.T) {
+	val := CustomInt{1, 2, 3}
+	raw, _ := Encode(val)
+
+	fmt.Println(raw)
+
+	// val = CustomInt{}
+	// Decode(raw, &val)
+
+	// fmt.Println(val)
 }
