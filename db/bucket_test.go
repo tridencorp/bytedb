@@ -68,12 +68,13 @@ func TestBucketResize(t *testing.T) {
 		bck.Write(data)
 	}
 
-	if bck.file.offset.Load() != 50 {
-		t.Errorf("Expected offset to be %d, got %d.", 50, bck.file.offset.Load())
+	file := bck.file.Load()
+	if file.offset.Load() != 50 {
+		t.Errorf("Expected offset to be %d, got %d.", 50, file.offset.Load())
 	}
 
-	if bck.file.sizeLimit != 80 {
-		t.Errorf("Expected size limit to be %d, got %d.", 80, bck.file.sizeLimit)
+	if file.sizeLimit != 80 {
+		t.Errorf("Expected size limit to be %d, got %d.", 80, file.sizeLimit)
 	}
 }
 
@@ -124,36 +125,38 @@ func TestNextBucket(t *testing.T) {
 	os.MkdirAll(dir2, 0755)
 	os.Create(path2)
 
-	defer os.RemoveAll("./db")
+	// defer os.RemoveAll("./db")
 
 	bucket := Bucket{
 		ID: 2,
-		file: &File{},
 		Dir: "./db/collections/test/",
 		bucketsPerDir: int16(bucketsPerDir),
 	}
 
+	bucket.file.Store(&File{})
 	bucket.nextBucket()
+	file := bucket.file.Load()
 
 	if bucket.ID != 3 {
 		t.Errorf("Expected bucket ID to be %d, got %d.", 3, bucket.ID)
 	}
 
 	expected := "db/collections/test/2/3.bucket"
-	if bucket.file.fd.Name() != expected {
-		t.Errorf("Expected file to be %s, got %s.", expected, bucket.file.fd.Name())
+	if file.fd.Name() != expected {
+		t.Errorf("Expected file to be %s, got %s.", expected, file.fd.Name())
 	}
 
 	// 2. Dir have space.
 	bucket.nextBucket()
+	file = bucket.file.Load()
 
 	if bucket.ID != 4 {
 		t.Errorf("Expected bucket ID to be %d, got %d.", 4, bucket.ID)
 	}
 
 	expected = "db/collections/test/2/4.bucket"
-	if bucket.file.fd.Name() != expected {
-		t.Errorf("Expected file to be %s, got %s.", expected, bucket.file.fd.Name())
+	if file.fd.Name() != expected {
+		t.Errorf("Expected file to be %s, got %s.", expected, file.fd.Name())
 	}
 }
 

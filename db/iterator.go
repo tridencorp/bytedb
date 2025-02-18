@@ -14,7 +14,9 @@ type Iterator struct {
 func (it *Iterator) Iterate() ([]*Key, int64, error) {
 	// Read the whole file.
 	// TODO: Read it in chunks.
-	data, err := io.ReadAll(it.bucket.file.fd)
+	file := it.bucket.file.Load()
+
+	data, err := io.ReadAll(file.fd)
 	if err != nil {
 		return nil, 0, err
 	}
