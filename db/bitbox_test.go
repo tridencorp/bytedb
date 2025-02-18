@@ -66,5 +66,16 @@ func TestEncodeDecode(t *testing.T) {
 		t.Errorf("Expected \n to get %d,\nbut got %d", []byte{1, 2, 3}, val4) 
 	}
 
+	sliceEncodeDecode([]float64{11.11, 22.22, 33.33}, []float64{}, t)
+	sliceEncodeDecode([]float32{11.11, 22.22, 33.33}, []float32{}, t)
+
 	sliceEncodeDecode([]int64{11, 22, 33}, []int64{}, t)
+	sliceEncodeDecode([]int32{11, 22, 33}, []int32{}, t)
+	sliceEncodeDecode([]int16{11, 22, 33}, []int16{}, t)
+	sliceEncodeDecode([]int8{11, 22, 33},  []int8{},  t)
+
+	sliceEncodeDecode([]uint64{11, 22, 33}, []uint64{}, t)
+	sliceEncodeDecode([]uint32{11, 22, 33}, []uint32{}, t)
+	sliceEncodeDecode([]uint16{11, 22, 33}, []uint16{}, t)
+	sliceEncodeDecode([]uint8{11, 22, 33},  []uint8{},  t)
 }
