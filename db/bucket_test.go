@@ -68,12 +68,12 @@ func TestBucketResize(t *testing.T) {
 		bck.Write(data)
 	}
 
-	if bck.offset.Load() != 50 {
-		t.Errorf("Expected offset to be %d, got %d.", 50, bck.offset.Load())
+	if bck.file.offset.Load() != 50 {
+		t.Errorf("Expected offset to be %d, got %d.", 50, bck.file.offset.Load())
 	}
 
-	if bck.sizeLimit != 80 {
-		t.Errorf("Expected size limit to be %d, got %d.", 80, bck.sizeLimit)
+	if bck.file.sizeLimit != 80 {
+		t.Errorf("Expected size limit to be %d, got %d.", 80, bck.file.sizeLimit)
 	}
 }
 
@@ -128,6 +128,7 @@ func TestNextBucket(t *testing.T) {
 
 	bucket := Bucket{
 		ID: 2,
+		file: &File{},
 		Dir: "./db/collections/test/",
 		bucketsPerDir: int16(bucketsPerDir),
 	}
@@ -139,8 +140,8 @@ func TestNextBucket(t *testing.T) {
 	}
 
 	expected := "db/collections/test/2/3.bucket"
-	if bucket.file.Name() != expected {
-		t.Errorf("Expected file to be %s, got %s.", expected, bucket.file.Name())
+	if bucket.file.fd.Name() != expected {
+		t.Errorf("Expected file to be %s, got %s.", expected, bucket.file.fd.Name())
 	}
 
 	// 2. Dir have space.
@@ -151,8 +152,8 @@ func TestNextBucket(t *testing.T) {
 	}
 
 	expected = "db/collections/test/2/4.bucket"
-	if bucket.file.Name() != expected {
-		t.Errorf("Expected file to be %s, got %s.", expected, bucket.file.Name())
+	if bucket.file.fd.Name() != expected {
+		t.Errorf("Expected file to be %s, got %s.", expected, bucket.file.fd.Name())
 	}
 }
 

@@ -11,30 +11,52 @@ import (
 	"sync/atomic"
 )
 
-type Bucket struct {
-	ID 		uint32
-	Dir   string
-
-	// TODO: This probably should be atomic pointer.
-	file *os.File
+// Keeping file related data in one place. It will be easier
+// to use this in concurrent world.
+type File struct {
+	fd *os.File
 
 	// We will be using atomic.Add() for each key.
 	// In combination with WriteAt, it should give
 	// us the ultimate concurrent writes.
 	offset atomic.Int64
 
-	// Number of bucket files per directory.
-	bucketsPerDir int16
-
-	// Keep track of the number of keys in the bucket.
-	keysCount atomic.Int64
-	keysLimit uint64
-
 	// If offset reach size limit, we resize the file.
 	// We double it's size.
 	sizeLimit uint64
 
-	// Mutex
+
+	// Keep track of the number of keys in the bucket.
+	keysCount atomic.Int64
+	keysLimit uint64
+}
+
+type Bucket struct {
+	ID 		uint32
+	Dir   string
+
+	// TODO: This probably should be atomic pointer.
+	file *File
+
+	// file *os.File
+
+	// We will be using atomic.Add() for each key.
+	// In combination with WriteAt, it should give
+	// us the ultimate concurrent writes.
+	// offset atomic.Int64
+
+	// Number of bucket files per directory.
+	bucketsPerDir int16
+
+	// Keep track of the number of keys in the bucket.
+	// keysCount atomic.Int64
+	// keysLimit uint64
+
+	// If offset reach size limit, we resize the file.
+	// We double it's size.
+	// sizeLimit uint64
+
+	// Mutex.
 	mux sync.RWMutex
 }
 
@@ -48,13 +70,15 @@ func OpenBucket(root string, keysLimit uint32, sizeLimit int64, bucketsPerDir in
 	bck := &Bucket{
 		ID:1, 
 		Dir: root, 
-		file: f,
-		keysLimit: uint64(keysLimit), 
-		sizeLimit: uint64(sizeLimit),
+		file: &File{
+			fd: f,
+			keysLimit: uint64(keysLimit),
+			sizeLimit: uint64(sizeLimit),
+		},
 		bucketsPerDir: int16(bucketsPerDir),
 	}
 
-	bck.offset.Store(getOffset(bck))
+	bck.file.offset.Store(getOffset(bck))
 	return bck, nil;
 }
 
@@ -98,9 +122,6 @@ func getLastBucket(root string) (*os.File, error) {
 		return nil, err
 	}
 
-	// TODO: we must set offset.
-
-
 	return file, nil
 }
 
@@ -121,13 +142,13 @@ func (bucket *Bucket) nextBucket() (*os.File, error) {
 	path = filepath.Join(bucket.Dir, fmt.Sprintf("%d", folderId), fmt.Sprintf("%d.bucket", id))
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
 
-	bucket.ID   = id
-	bucket.file = file
+	bucket.ID = id
+	bucket.file.fd = file
 
 	// We created new bucket, there are no keys yet so we must restart counters, 
 	// offsets, ...
-	bucket.keysCount.Store(0)
-	bucket.offset.Store(0)
+	bucket.file.keysCount.Store(0)
+	bucket.file.offset.Store(0)
 
 	return file, err
 }
@@ -137,26 +158,26 @@ func (bucket *Bucket) nextBucket() (*os.File, error) {
 // TODO: Should buckets know about keys and other
 // types ? Should they operate only on raw bytes ?
 func (bucket *Bucket) Write(data []byte) (int64, int64, error) {
-	count := bucket.keysCount.Add(1)
-	limit := int64(bucket.keysLimit)
+	count := bucket.file.keysCount.Add(1)
+	limit := int64(bucket.file.keysLimit)
 
 	// TODO: File, offset and keysCount must be in the same struct
 	// and we will use atomics to load them.
 
 	// We are adding len to atomic value and then deducting it
 	// from the result, this should give us space for our data.
-	totalOff := bucket.offset.Add(int64(len(data)))
+	totalOff := bucket.file.offset.Add(int64(len(data)))
 	writeOff := totalOff - int64(len(data))
 
 	off  := int64(0)
 	size := int64(0)
 
 	// Resize the file when we reach size limit.
-	if totalOff >= int64(bucket.sizeLimit) {
+	if totalOff >= int64(bucket.file.sizeLimit) {
 		bucket.mux.Lock()
 		// Check if our condition is still valid - some other goroutine 
 		// could changed the size limit in the time we was waiting for lock.
-		if totalOff >= int64(bucket.sizeLimit) {
+		if totalOff >= int64(bucket.file.sizeLimit) {
 			err := bucket.resize()
 			if err != nil {
 				return 0, 0, err
@@ -178,7 +199,7 @@ func (bucket *Bucket) Write(data []byte) (int64, int64, error) {
 
 	if count <= limit {
 		bucket.mux.RLock()
-		off, size, _ = bucket.write(bucket.file, writeOff, data)
+		off, size, _ = bucket.write(bucket.file.fd, writeOff, data)
 		bucket.mux.RUnlock()
 	}
 
@@ -186,8 +207,8 @@ func (bucket *Bucket) Write(data []byte) (int64, int64, error) {
 }
 
 func (bucket *Bucket) resize() error {
-	bucket.sizeLimit = bucket.sizeLimit * 2
-	return bucket.file.Truncate(int64(bucket.sizeLimit))
+	bucket.file.sizeLimit = bucket.file.sizeLimit * 2
+	return bucket.file.fd.Truncate(int64(bucket.file.sizeLimit))
 }
 
 // Getting last offset from which we can start writing data.
@@ -216,7 +237,7 @@ func (bucket *Bucket) write(file *os.File, off int64, data []byte) (int64, int64
 func (bucket *Bucket) Read(offset int64, size int64) ([]byte, error) {
 	data := make([]byte, size)
 
-	_, err := bucket.file.ReadAt(data, offset)
+	_, err := bucket.file.fd.ReadAt(data, offset)
 	if err != nil {
 		return nil, err
 	}
