@@ -34,51 +34,6 @@ func Encode(elements ...any) (bytes.Buffer, error) {
 		case []float32: EncodeSlice(&buf, v)
 
 		default:
-			// Array support.
-			// if reflect.TypeOf(elem).Kind() == reflect.Array {
-			// 	val := reflect.ValueOf(elem)
-
-				// tt := reflect.TypeOf(uint8(0))
-				// arrType := reflect.ArrayOf(val.Len(), tt)
-				// arrPtr := reflect.New(arrType)
-
-				// array := arrPtr.Elem()
-
-				// fmt.Println(val)
-				// fmt.Println(array)
-
-				// encode(&buf, int64(len(cv)))
-
-			// 	encode(&buf, int64(val.Len()))					
-			// 	encode(&buf, v)					
-			// 	continue
-			// }
-
-			// Fallback for custom types, ex: type Hash []byte
-			// Check if we are dealing with slices.
-
-			// fmt.Println(reflect.ValueOf(elem).Kind())
-
-			// val  := reflect.ValueOf(elem)
-			// item := reflect.TypeOf(elem).Elem()
-
-			// switch item.Kind() {
-			// case reflect.Uint8:
-			// 	encode(&buf, val.Len())
-			// 	encode(&buf, elem)
-
-			// case reflect.Int64:
-			// 	// TODO: This is working but maybe there is better way?
-			// 	tt := reflect.TypeOf([]int64{})
-			// 	cv := val.Convert(tt).Interface().([]int64)
-
-			// 	EncodeSlice(&buf, cv)
-			// 	continue
-
-			// case reflect.Int:
-			// 	return buf, fmt.Errorf("Unsupported type: Int")
-			// }
-
 			encode(&buf, elem)
 		}
 	}
@@ -103,11 +58,11 @@ func DecodeSlice[T any](buf *bytes.Buffer, dst any) {
 	// Make temporary slice with proper size and write buffer data to it.
 	tmp := make([]T, size)
 	decode(buf, &tmp)
-	
+
 	val1 := reflect.ValueOf(dst)
 	val2 := reflect.ValueOf(tmp)
-	
-	// Set destination slice with values from temporary slice.
+
+	// Set destination slice.
 	val1.Elem().Set(val2)
 }
 
