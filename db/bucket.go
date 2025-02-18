@@ -27,17 +27,11 @@ type File struct {
 }
 
 type Bucket struct {
-	ID 		uint32
-	Dir   string
+	ID  uint32
+	Dir string
 
+	// This is the main file to which we will read and write.
 	file atomic.Pointer[File]
-
-	// file *os.File
-
-	// We will be using atomic.Add() for each key.
-	// In combination with WriteAt, it should give
-	// us the ultimate concurrent writes.
-	// offset atomic.Int64
 
 	// Number of bucket files per directory.
 	bucketsPerDir int16
