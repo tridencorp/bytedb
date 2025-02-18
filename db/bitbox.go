@@ -72,16 +72,19 @@ func EncodeSlice[T any](buf *bytes.Buffer, elem []T) {
 	encode(buf, tmp)
 }
 
-func DecodeSlice[T any](buf *bytes.Buffer, elem any) {
+func DecodeSlice[T any](buf *bytes.Buffer, dst any) {
+	// Decode slice size.
 	size := int64(0)
 	decode(buf, &size)
 
+	// Make temporary slice with proper size and write buffer data to it.
 	tmp := make([]T, size)
 	decode(buf, &tmp)
 
-	val1 := reflect.ValueOf(elem)
+	val1 := reflect.ValueOf(dst)
 	val2 := reflect.ValueOf(tmp)
-
+	
+	// Set destination slice with values from temporary slice.
 	val1.Elem().Set(val2)
 }
 
