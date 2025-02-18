@@ -14,11 +14,24 @@ func Encode(elements ...any) (bytes.Buffer, error) {
 	for _, elem := range elements {
 		switch v := elem.(type) {
 		case *[]byte:
-			binary.Write(&buf, binary.BigEndian, *v)
+			encode(&buf, len(*v))
+			encode(&buf, *v)
 
 		case []byte:
 			encode(&buf, len(v))
 			encode(&buf, v)
+
+		case []int64: EncodeSlice(&buf, v)
+		case []int32: EncodeSlice(&buf, v)
+		case []int16: EncodeSlice(&buf, v)
+		case []int8:  EncodeSlice(&buf, v)
+
+		case []uint64: EncodeSlice(&buf, v)
+		case []uint32: EncodeSlice(&buf, v)
+		case []uint16: EncodeSlice(&buf, v)
+
+		case []float64: EncodeSlice(&buf, v)
+		case []float32: EncodeSlice(&buf, v)
 
 		default:
 			// Fallback for custom types, ex: type Hash []byte
@@ -43,12 +56,20 @@ func Encode(elements ...any) (bytes.Buffer, error) {
 				continue
 			}
 
-			// Try to do binary Write for basic types, int, float, ... 
 			encode(&buf, elem)
 		}
 	}
 
 	return buf, nil
+}
+
+func EncodeSlice[T any](buf *bytes.Buffer, elem []T) {
+	encode(buf, len(elem))
+	tmp := make([]T, len(elem))
+
+	// More efficient than copying?
+	elem, tmp = tmp, elem
+	encode(buf, tmp)
 }
 
 func encode(buf *bytes.Buffer, elem any) {
@@ -78,6 +99,18 @@ func Decode(buf bytes.Buffer, items ...any) error {
 					decode(&buf, &size)
 
 					tmp := make([]byte, size)
+					decode(&buf, &tmp)
+
+					val1 := reflect.ValueOf(item)
+					val2 := reflect.ValueOf(tmp)
+
+					val1.Elem().Set(val2)
+
+				// []int64
+				case reflect.Int64:
+					decode(&buf, &size)
+
+					tmp := make([]int64, size)
 					decode(&buf, &tmp)
 
 					val1 := reflect.ValueOf(item)

@@ -2,10 +2,16 @@ package db
 
 import (
 	"bytes"
+	"fmt"
+	"slices"
 	"testing"
 )
 
 type UserType []byte
+
+func testEncodeDecode[T any]() {
+
+}
 
 func TestEncodeDecode(t *testing.T) {
 	// int8
@@ -55,4 +61,18 @@ func TestEncodeDecode(t *testing.T) {
 	if !bytes.Equal(val4, []byte{1, 2, 3}) { 
 		t.Errorf("Expected \n to get %d,\nbut got %d", []byte{1, 2, 3}, val4) 
 	}
+
+	val5  := []int64{11, 22, 33}
+	raw, _ = Encode(val5)
+
+	val5 = []int64{}
+	Decode(raw, &val5)
+
+	if !slices.Equal(val5, []int64{11, 22, 33}) { 
+		t.Errorf("Expected \n to get %d,\nbut got %d", []int{11, 22, 33}, val5) 
+	}
+
+	val6  := []float32{11.11, 22.22, 33.33}
+	raw, _ = Encode(val6)
+	fmt.Println(raw)
 }
