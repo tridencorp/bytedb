@@ -43,7 +43,7 @@ func Encode(elements ...any) (bytes.Buffer, error) {
 				// arrPtr := reflect.New(arrType)
 
 				// array := arrPtr.Elem()
-				
+
 				// fmt.Println(val)
 				// fmt.Println(array)
 
@@ -123,34 +123,30 @@ func encode(buf *bytes.Buffer, elem any) {
 
 func Decode(buf *bytes.Buffer, items ...any) error {
 	for _, item := range items {
-		kind := reflect.TypeOf(item).Kind()
+		elem := reflect.TypeOf(item)
 
-		if kind == reflect.Ptr {
-			elem := reflect.TypeOf(item).Elem()
+		if elem.Kind() == reflect.Ptr && elem.Elem().Kind() == reflect.Slice {
+			elem = elem.Elem().Elem()
 
-			if elem.Kind() == reflect.Slice {
-				elem  = elem.Elem()
+			switch elem.Kind() {
+				case reflect.Uint8:  DecodeSlice[uint8](buf, item)
+				case reflect.Uint16: DecodeSlice[uint16](buf, item)
+				case reflect.Uint64: DecodeSlice[uint64](buf, item)
+				case reflect.Uint32: DecodeSlice[uint32](buf, item)
 
-				switch elem.Kind() {
-					case reflect.Uint8:  DecodeSlice[uint8](buf, item)
-					case reflect.Uint16: DecodeSlice[uint16](buf, item)
-					case reflect.Uint64: DecodeSlice[uint64](buf, item)
-					case reflect.Uint32: DecodeSlice[uint32](buf, item)
+				case reflect.Int64: DecodeSlice[int64](buf, item)
+				case reflect.Int32: DecodeSlice[int32](buf, item)
+				case reflect.Int16: DecodeSlice[int16](buf, item)
+				case reflect.Int8:  DecodeSlice[int8](buf, item)
 
-					case reflect.Int64: DecodeSlice[int64](buf, item)
-					case reflect.Int32: DecodeSlice[int32](buf, item)
-					case reflect.Int16: DecodeSlice[int16](buf, item)
-					case reflect.Int8:  DecodeSlice[int8](buf, item)
+				case reflect.Float64: DecodeSlice[float64](buf, item)
+				case reflect.Float32: DecodeSlice[float32](buf, item)
 
-					case reflect.Float64: DecodeSlice[float64](buf, item)
-					case reflect.Float32: DecodeSlice[float32](buf, item)
-
-				default:
-					fmt.Printf("unsupported type: %v", elem.Kind())
-				}
-
-				continue
+			default:
+				fmt.Printf("unsupported type: %v", elem.Kind())
 			}
+
+			continue
 		}
 
 		decode(buf, item)
