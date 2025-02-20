@@ -60,6 +60,19 @@ func Encode(elements ...any) (bytes.Buffer, error) {
 
 			// Case for custom slice like types.
 			if val.Kind() == reflect.Slice {
+				_, ok := val.Index(0).Interface().(Encoder)
+				if ok {
+					// Iterate all elements.
+					for i:=0; i < val.Len(); i++  {
+						encoder, _ := val.Index(i).Interface().(Encoder)
+						bytes := encoder.Encode()
+
+						encode(&buf, len(bytes))
+						encode(&buf, bytes)
+					}
+					continue
+				}
+
 				encode(&buf, val.Len())
 				encode(&buf, elem)
 				continue
