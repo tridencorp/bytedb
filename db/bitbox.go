@@ -53,7 +53,10 @@ func Encode(elements ...any) (bytes.Buffer, error) {
 			if isStruct(reflect.Indirect(val)) {
 				val, ok := val.Interface().(Encoder)
 				if ok {
-					buf.Write(val.Encode())
+					bytes := val.Encode()
+
+					encode(&buf, len(bytes))
+					encode(&buf, bytes)
 				}
 				continue
 			}
@@ -62,11 +65,14 @@ func Encode(elements ...any) (bytes.Buffer, error) {
 			if val.Kind() == reflect.Slice {
 				_, ok := val.Index(0).Interface().(Encoder)
 				if ok {
+					// Encode total number of elements in slice.
+					encode(&buf, val.Len())
 					// Iterate all elements.
 					for i:=0; i < val.Len(); i++  {
 						encoder, _ := val.Index(i).Interface().(Encoder)
 						bytes := encoder.Encode()
 
+						// Encode each element size and bytes.
 						encode(&buf, len(bytes))
 						encode(&buf, bytes)
 					}
@@ -143,6 +149,35 @@ func Decode(buf *bytes.Buffer, items ...any) error {
 				case reflect.Float32: DecodeSlice[float32](buf, item)
 
 			default:
+				// Case for custom slice like types.
+				if reflect.TypeOf(item).Kind() == reflect.Ptr && reflect.TypeOf(item).Elem().Kind() == reflect.Slice {
+					t1  := reflect.TypeOf(item)
+					t2  := t1.Elem().Elem().Elem()
+					tmp := val.Elem()
+
+					// // Get the number of elements in slice.
+					size := int64(0)
+					decode(buf, &size)
+
+					for i:=int64(0); i < size; i++ {
+						// // Get number of bytes per each element.
+						size = int64(0)
+						decode(buf, &size)
+	
+						// // Get bytes.
+						bytes := make([]byte, size)
+						decode(buf, bytes)
+
+						ins, _ := reflect.New(t2).Interface().(Decoder)
+						ins.Decode(bytes)
+
+						tmp = reflect.Append(tmp, reflect.ValueOf(ins))
+					}	
+
+					val.Elem().Set(tmp)
+					continue
+				}
+
 				fmt.Printf("unsupported type: %v\n", elem.Kind())
 			}
 			continue

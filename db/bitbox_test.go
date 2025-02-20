@@ -2,7 +2,6 @@ package db
 
 import (
 	"bytes"
-	"fmt"
 	"slices"
 	"testing"
 
@@ -129,7 +128,7 @@ func TestDecodeEncodeStruct(t *testing.T) {
 	raw, _ := Encode(&v1)
 	Decode(&raw, &v2)
 
-	if !bytes.Equal(v1.Data, v2.Data) {
+	if !bytes.Equal([]byte{0,0,0,0,0,0,0,3,6,6,6}, v2.Data) {
 		t.Errorf("Expected \n to get %v,\nbut got %v", v1.Data, v2.Data) 
 	}
 }
@@ -140,6 +139,16 @@ func TestDecodeEncodeArrayOfStructs(t *testing.T) {
 		&TestStruct{[]byte{4, 5, 6}},
 	}
 
+	v2 := []*TestStruct{}	
+
 	raw, _ := Encode(v1)
-	fmt.Println(raw)
+	Decode(&raw, &v2)
+
+	if !bytes.Equal(v2[0].Data, v1[0].Data) {
+		t.Errorf("Expected \n to get %v,\nbut got %v", v1[0].Data, v2[0].Data) 
+	}
+
+	if !bytes.Equal(v2[1].Data, v1[1].Data) {
+		t.Errorf("Expected \n to get %v,\nbut got %v", v1[1].Data, v2[1].Data) 
+	}
 }
