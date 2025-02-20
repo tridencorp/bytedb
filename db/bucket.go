@@ -37,6 +37,9 @@ type Bucket struct {
 	bucketsPerDir int16
 
 	// Keep track of the number of keys in the bucket.
+	// 
+	// TODO: This should also go to File. It's tracking
+	// number of keys per file so it would make sense to do it.
 	keysCount atomic.Int64
 	keysLimit uint64
 
@@ -112,26 +115,25 @@ func getLastBucket(root string) (*os.File, error) {
 // Create next bucket.
 func (bucket *Bucket) nextBucket() (*os.File, error) {
 	id := bucket.ID + 1
-	file := &File{}
-
+	
 	// Based on buckets per dir we can calculate folder ID in which
 	// bucket should be.
 	folderId := int(math.Ceil(float64(id) / float64(bucket.bucketsPerDir)))
-
+	
 	path := filepath.Join(bucket.Dir, fmt.Sprintf("%d", folderId))
 	err  := os.MkdirAll(path, 0755)
 	if err != nil {
 		return nil, err
 	}
-
+	
 	path = filepath.Join(bucket.Dir, fmt.Sprintf("%d", folderId), fmt.Sprintf("%d.bucket", id))
 	fd, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
-
+	
 	bucket.ID = id
-
-	// We created new bucket, there are no keys yet so we must restart counters, 
+	
+	// We created new bucket file, there are no keys yet so we must restart counters, 
 	// offsets, ...
-	file.fd = fd
+	file := &File{fd: fd}	
 	file.offset.Store(0)
 
 	bucket.keysCount.Store(0)

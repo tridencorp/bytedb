@@ -7,6 +7,14 @@ import (
 	"reflect"
 )
 
+type Encoder interface {
+	Encode() []byte
+}
+
+type Decoder interface {
+	Decode([]byte) error
+}
+
 // Encode elements to bytes.
 func Encode(elements ...any) (bytes.Buffer, error) {
 	buf := bytes.Buffer{}
@@ -33,7 +41,30 @@ func Encode(elements ...any) (bytes.Buffer, error) {
 		case []float64: EncodeSlice(&buf, v)
 		case []float32: EncodeSlice(&buf, v)
 
+		case []any: {
+			data, _ := Encode(elem.([]any)...)
+			encode(&buf, data.Bytes())
+		}
+
 		default:
+			val := reflect.ValueOf(elem)
+
+			// We have struct so we try to call Encode() method on it.
+			if isStruct(reflect.Indirect(val)) {
+				val, ok := val.Interface().(Encoder)
+				if ok {
+					buf.Write(val.Encode())
+				}
+				continue
+			}
+
+			// Case for custom slice like types.
+			if val.Kind() == reflect.Slice {
+				encode(&buf, val.Len())
+				encode(&buf, elem)
+				continue
+			}
+
 			encode(&buf, elem)
 		}
 	}
@@ -55,7 +86,7 @@ func DecodeSlice[T any](buf *bytes.Buffer, dst any) {
 	size := int64(0)
 	decode(buf, &size)
 
-	// Make temporary slice with proper size and write buffer data to it.
+	// Make temporary slice with proper size and write buffer data into it.
 	tmp := make([]T, size)
 	decode(buf, &tmp)
 
@@ -79,6 +110,7 @@ func encode(buf *bytes.Buffer, elem any) {
 func Decode(buf *bytes.Buffer, items ...any) error {
 	for _, item := range items {
 		elem := reflect.TypeOf(item)
+		val  := reflect.ValueOf(item)
 
 		if elem.Kind() == reflect.Ptr && elem.Elem().Kind() == reflect.Slice {
 			elem = elem.Elem().Elem()
@@ -98,10 +130,17 @@ func Decode(buf *bytes.Buffer, items ...any) error {
 				case reflect.Float32: DecodeSlice[float32](buf, item)
 
 			default:
-				fmt.Printf("unsupported type: %v", elem.Kind())
+				fmt.Printf("unsupported type: %v\n", elem.Kind())
 			}
-
 			continue
+		}
+
+		if isStruct(reflect.Indirect(val)) {
+			val, ok := val.Interface().(Decoder)
+			if ok {
+				val.Decode(buf.Bytes())
+				continue
+			}
 		}
 
 		decode(buf, item)
@@ -115,4 +154,8 @@ func decode(buf *bytes.Buffer, dst any) {
 	if err != nil {
 		fmt.Println(err)
 	}
+}
+
+func isStruct(v reflect.Value) bool {
+	return v.Kind() == reflect.Struct	
 }
