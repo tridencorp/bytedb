@@ -7,6 +7,10 @@ import (
 	"reflect"
 )
 
+// *********************************************************************
+// Common interfaces struct must implement to be compatible with bitbox
+// *********************************************************************
+
 type Encoder interface {
 	Encode() []byte
 }
@@ -15,31 +19,29 @@ type Decoder interface {
 	Decode([]byte) error
 }
 
-// Encode elements to bytes.
+// **************
+//     Encode
+// **************
+
 func Encode(elements ...any) (bytes.Buffer, error) {
 	buf := bytes.Buffer{}
 
 	for _, elem := range elements {
 		switch v := elem.(type) {
-		case *[]byte:
-			encode(&buf, len(*v))
-			encode(&buf, *v)
+		case *[]byte: encodeBytes(&buf, *v)
+		case  []byte: encodeBytes(&buf, v)
 
-		case []byte:
-			encode(&buf, len(v))
-			encode(&buf, v)
+		case []int64: encodeSlice(&buf, v)
+		case []int32: encodeSlice(&buf, v)
+		case []int16: encodeSlice(&buf, v)
+		case []int8:  encodeSlice(&buf, v)
 
-		case []int64: EncodeSlice(&buf, v)
-		case []int32: EncodeSlice(&buf, v)
-		case []int16: EncodeSlice(&buf, v)
-		case []int8:  EncodeSlice(&buf, v)
+		case []uint64: encodeSlice(&buf, v)
+		case []uint32: encodeSlice(&buf, v)
+		case []uint16: encodeSlice(&buf, v)
 
-		case []uint64: EncodeSlice(&buf, v)
-		case []uint32: EncodeSlice(&buf, v)
-		case []uint16: EncodeSlice(&buf, v)
-
-		case []float64: EncodeSlice(&buf, v)
-		case []float32: EncodeSlice(&buf, v)
+		case []float64: encodeSlice(&buf, v)
+		case []float32: encodeSlice(&buf, v)
 
 		case []any: {
 			data, _ := Encode(elem.([]any)...)
@@ -54,32 +56,26 @@ func Encode(elements ...any) (bytes.Buffer, error) {
 				val, ok := val.Interface().(Encoder)
 				if ok {
 					bytes := val.Encode()
-
-					encode(&buf, len(bytes))
-					encode(&buf, bytes)
+					encodeBytes(&buf, bytes)
 				}
 				continue
 			}
 
-			// Case for custom slice like types.
-			if val.Kind() == reflect.Slice {
+			if isSlice(val) { 
 				_, ok := val.Index(0).Interface().(Encoder)
 				if ok {
 					// Encode total number of elements in slice.
-					encode(&buf, val.Len())
+					encode(&buf, int64(val.Len()))
+
 					// Iterate all elements.
 					for i:=0; i < val.Len(); i++  {
 						encoder, _ := val.Index(i).Interface().(Encoder)
-						bytes := encoder.Encode()
-
-						// Encode each element size and bytes.
-						encode(&buf, len(bytes))
-						encode(&buf, bytes)
+						encodeBytes(&buf, encoder.Encode())
 					}
 					continue
 				}
 
-				encode(&buf, val.Len())
+				encode(&buf, int64(val.Len()))
 				encode(&buf, elem)
 				continue
 			}
@@ -91,7 +87,7 @@ func Encode(elements ...any) (bytes.Buffer, error) {
 	return buf, nil
 }
 
-func EncodeSlice[T any](buf *bytes.Buffer, elem []T) {
+func encodeSlice[T any](buf *bytes.Buffer, elem []T) {
 	encode(buf, int64(len(elem)))
 	tmp := make([]T, len(elem))
 
@@ -100,31 +96,18 @@ func EncodeSlice[T any](buf *bytes.Buffer, elem []T) {
 	encode(buf, tmp)
 }
 
-func DecodeSlice[T any](buf *bytes.Buffer, dst any) {
-	// Decode slice size.
-	size := int64(0)
-	decode(buf, &size)
-
-	// Make temporary slice with proper size and write buffer data into it.
-	tmp := make([]T, size)
-	decode(buf, &tmp)
-
-	val1 := reflect.ValueOf(dst)
-	val2 := reflect.ValueOf(tmp)
-
-	// Set destination slice.
-	val1.Elem().Set(val2)
-}
-
 func encode(buf *bytes.Buffer, elem any) {
-	switch v := elem.(type) {
-	case int:
-		binary.Write(buf, binary.BigEndian, int64(v))
-
-	default:
-		binary.Write(buf, binary.BigEndian, v)
-	}
+	binary.Write(buf, binary.BigEndian, elem)
 }
+
+func encodeBytes(buf *bytes.Buffer, bytes []byte) {
+	encode(buf, int64(len(bytes)))
+	encode(buf, bytes)
+}
+
+// **************
+//     Decode
+// **************
 
 func Decode(buf *bytes.Buffer, items ...any) error {
 	for _, item := range items {
@@ -135,35 +118,27 @@ func Decode(buf *bytes.Buffer, items ...any) error {
 			elem = elem.Elem().Elem()
 
 			switch elem.Kind() {
-				case reflect.Uint8:  DecodeSlice[uint8](buf, item)
-				case reflect.Uint16: DecodeSlice[uint16](buf, item)
-				case reflect.Uint64: DecodeSlice[uint64](buf, item)
-				case reflect.Uint32: DecodeSlice[uint32](buf, item)
+				case reflect.Uint8:  decodeSlice[uint8](buf, item)
+				case reflect.Uint16: decodeSlice[uint16](buf, item)
+				case reflect.Uint64: decodeSlice[uint64](buf, item)
+				case reflect.Uint32: decodeSlice[uint32](buf, item)
+				case reflect.Int64:  decodeSlice[int64](buf, item)
+				case reflect.Int32:  decodeSlice[int32](buf, item)
+				case reflect.Int16:  decodeSlice[int16](buf, item)
+				case reflect.Int8:   decodeSlice[int8](buf, item)
 
-				case reflect.Int64: DecodeSlice[int64](buf, item)
-				case reflect.Int32: DecodeSlice[int32](buf, item)
-				case reflect.Int16: DecodeSlice[int16](buf, item)
-				case reflect.Int8:  DecodeSlice[int8](buf, item)
-
-				case reflect.Float64: DecodeSlice[float64](buf, item)
-				case reflect.Float32: DecodeSlice[float32](buf, item)
+				case reflect.Float64: decodeSlice[float64](buf, item)
+				case reflect.Float32: decodeSlice[float32](buf, item)
 
 			default:
-				// Case for custom slice like types.
-				if isSlicePtr(item) {
-					tmp := val.Elem()
-
-					if reflect.ValueOf(tmp).Kind() == reflect.Struct {
-						decodeArrayStruct(val, item, buf)
-						continue
-					}
-
+				// Check if we have slice of structs.
+				if isStruct(reflect.ValueOf(val.Elem())) {
+					decodeArrayStruct(buf, val, item)
 					continue
 				}
 
 				fmt.Printf("unsupported type: %v\n", elem.Kind())
 			}
-			continue
 		}
 
 		if isStruct(reflect.Indirect(val)) {
@@ -180,6 +155,22 @@ func Decode(buf *bytes.Buffer, items ...any) error {
 	return nil
 }
 
+func decodeSlice[T any](buf *bytes.Buffer, dst any) {
+	// Decode slice size.
+	size := int64(0)
+	decode(buf, &size)
+
+	// Make temporary slice with proper size and write buffer data into it.
+	tmp := make([]T, size)
+	decode(buf, &tmp)
+
+	val1 := reflect.ValueOf(dst)
+	val2 := reflect.ValueOf(tmp)
+
+	// Set destination slice.
+	val1.Elem().Set(val2)
+}
+
 func decode(buf *bytes.Buffer, dst any) {
 	err := binary.Read(buf, binary.BigEndian, dst)	
 	if err != nil {
@@ -187,31 +178,36 @@ func decode(buf *bytes.Buffer, dst any) {
 	}
 }
 
-func decodeArrayStruct(val reflect.Value, item any, buf *bytes.Buffer) {
-	t1  := reflect.TypeOf(item)
-	t2  := t1.Elem().Elem().Elem()
-	tmp := val.Elem()
+func decodeArrayStruct(buf *bytes.Buffer, val reflect.Value, item any) {
+	elemType := reflect.TypeOf(item).Elem().Elem().Elem()
+	slice := val.Elem()
 
-	// Get the number of elements in slice.
+	// Get the number of elements in slice. Each element is also a slice.
+	// ex: []byte{[]byte, []byte, ...}
 	size := int64(0)
 	decode(buf, &size)
 
 	for i:=int64(0); i < size; i++ {
 		bytes := make([]byte, size)
-		DecodeSlice[uint8](buf, &bytes)
+		decodeSlice[uint8](buf, &bytes)
 
-		ins, _ := reflect.New(t2).Interface().(Decoder)
-		ins.Decode(bytes)
+		elem, _ := reflect.New(elemType).Interface().(Decoder)
+		elem.Decode(bytes)
 
-		tmp = reflect.Append(tmp, reflect.ValueOf(ins))
+		slice = reflect.Append(slice, reflect.ValueOf(elem))
 	}
 
-	val.Elem().Set(tmp)
+	val.Elem().Set(slice)
 }
 
 // Check if value is struct.
 func isStruct(v reflect.Value) bool {
 	return v.Kind() == reflect.Struct	
+}
+
+// Check if value is slice.
+func isSlice(v reflect.Value) bool {
+	return v.Kind() == reflect.Slice
 }
 
 // Check if element is pointer to slice.

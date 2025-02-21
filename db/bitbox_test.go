@@ -107,7 +107,7 @@ func TestDecodeEncodeCustom(t *testing.T) {
 	c5, c6 := &CustomArrByte{1,2,3}, &CustomArrByte{}
 	EncodeDecode(c5, c6, t)
 	
-	c7, c8 := &CustomArrInt{1,2,3}, &CustomArrInt{}
+	c7, c8 := &CustomArrInt{3, 2, 1}, &CustomArrInt{}
 	EncodeDecode(c7, c8, t)
 }
 
