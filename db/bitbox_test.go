@@ -19,7 +19,7 @@ type CustomArrInt  [32]int32
 // Helper for encoding/decoding slices.
 func EncodeDecodeSlice[T comparable](elem []T, result *[]T, t *testing.T) {
 	raw, _ := Encode(elem)
-	Decode(&raw, result)
+	Decode(raw, result)
 
 	if !slices.Equal(elem, *result) { 
 		t.Errorf("Expected \n to get %v,\nbut got %v", elem, *result) 
@@ -28,7 +28,7 @@ func EncodeDecodeSlice[T comparable](elem []T, result *[]T, t *testing.T) {
 
 func EncodeDecode[T comparable](elem, result *T, t *testing.T) {
 	raw, _ := Encode(elem)
-	Decode(&raw, result)
+	Decode(raw, result)
 
 	if *elem != *result {
 		t.Errorf("Expected \n to get %v,\nbut got %v", *elem, *result) 
@@ -99,11 +99,11 @@ func TestEncodeDecode(t *testing.T) {
 func TestDecodeEncodeCustom(t *testing.T) {
 	c1, c2 := CustomInt{1, 2, 3, 4}, CustomInt{}
 	raw, _ := Encode(c1)
-	Decode(&raw, &c2)
+	Decode(raw, &c2)
 
 	c3, c4 := CustomByte{1, 2, 3, 4}, CustomByte{}
 	raw, _  = Encode(c3)
-	Decode(&raw, &c4)
+	Decode(raw, &c4)
 
 	// Arrays.
 	c5, c6 := &CustomArrByte{1,2,3}, &CustomArrByte{}
@@ -128,7 +128,7 @@ func TestDecodeEncodeStruct(t *testing.T) {
 	v2 := TestStruct{[]byte{}}
 
 	raw, _ := Encode(&v1)
-	Decode(&raw, &v2)
+	Decode(raw, &v2)
 
 	if !bytes.Equal([]byte{0,0,0,0,0,0,0,3,6,6,6}, v2.Data) {
 		t.Errorf("Expected \n to get %v,\nbut got %v", v1.Data, v2.Data) 
@@ -144,7 +144,7 @@ func TestDecodeEncodeArrayOfStructs(t *testing.T) {
 	v2 := []*TestStruct{}	
 
 	raw, _ := Encode(v1)
-	Decode(&raw, &v2)
+	Decode(raw, &v2)
 
 	if !bytes.Equal(v2[0].Data, v1[0].Data) {
 		t.Errorf("Expected \n to get %v,\nbut got %v", v1[0].Data, v2[0].Data) 
@@ -157,7 +157,7 @@ func TestDecodeEncodeArrayOfStructs(t *testing.T) {
 
 // For testing purpose only. Will be removed.
 type Tx struct {
-	Type              uint8
+	// Type              uint8
 	From              *common.Address
 	// To                *common.Address
 	// Value             *big.Int
@@ -178,7 +178,7 @@ type Tx struct {
 }
 
 func TestEncodeStructFields(t *testing.T) {
-	tx := Tx{Type: 100}
+	tx := Tx{From: &common.Address{1, 2}}
 
 	buf, err := Encode(tx)
 	if err != nil {
