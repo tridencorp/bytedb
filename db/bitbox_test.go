@@ -3,6 +3,7 @@ package db
 import (
 	"bytes"
 	"fmt"
+	"math/big"
 	"slices"
 	"testing"
 
@@ -157,11 +158,11 @@ func TestDecodeEncodeArrayOfStructs(t *testing.T) {
 
 // For testing purpose only. Will be removed.
 type Tx struct {
-	// Type              uint8
+	Type              uint16
 	To                *common.Address
 	From              *common.Address
 	Ids               []int32
-	// Value             *big.Int
+	Value             *big.Int
 	// Nonce             uint64
 	// Hash              common.Hash
 	// ChainID           *big.Int
@@ -179,7 +180,8 @@ type Tx struct {
 }
 
 func TestEncodeStructFields(t *testing.T) {
-	tx := Tx{Ids: []int32{}, To: &common.Address{}, From: &common.Address{1, 2, 3}}
+	// tx := Tx{Value: big.NewInt(1000), Type: uint16(2), Ids: []int32{}, To: &common.Address{6, 6, 6}, From: &common.Address{1, 2, 3}}
+	tx := Tx{Value: big.NewInt(999999999999999999)}
 
 	buf, err := Encode(tx)
 	if err != nil {
@@ -187,4 +189,5 @@ func TestEncodeStructFields(t *testing.T) {
 	}
 
 	fmt.Println(buf.Bytes())
+	fmt.Println(buf)
 }
