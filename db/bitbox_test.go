@@ -158,8 +158,9 @@ func TestDecodeEncodeArrayOfStructs(t *testing.T) {
 // For testing purpose only. Will be removed.
 type Tx struct {
 	// Type              uint8
+	To                *common.Address
 	From              *common.Address
-	// To                *common.Address
+	Ids               []int32
 	// Value             *big.Int
 	// Nonce             uint64
 	// Hash              common.Hash
@@ -178,12 +179,12 @@ type Tx struct {
 }
 
 func TestEncodeStructFields(t *testing.T) {
-	tx := Tx{From: &common.Address{1, 2}}
+	tx := Tx{Ids: []int32{}, To: &common.Address{}, From: &common.Address{1, 2, 3}}
 
 	buf, err := Encode(tx)
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	fmt.Println(buf)
+	fmt.Println(buf.Bytes())
 }

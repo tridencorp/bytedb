@@ -97,16 +97,10 @@ func encodeStructFields(elem any) (*bytes.Buffer, error) {
 	}
 
 	v := reflect.ValueOf(elem)
-	t := reflect.TypeOf(elem)
-
 	buf := new(bytes.Buffer)
 
 	for i := 0; i < v.NumField(); i++ {
-		f  := t.Field(i)
 		fv := v.Field(i)
-		ft := f.Type
-		fmt.Println(ft)
-
 		// If we have pointer, get it's value.
 		fv = reflect.Indirect(fv)
 		encode(buf, fv)
@@ -118,22 +112,34 @@ func encode(buf *bytes.Buffer, val reflect.Value) {
 	// Encode arrays and structs.
 	if isArray(val) || isSlice(val) {
 		switch val.Type().Elem().Kind() {
-		case reflect.Uint8:
-			encodeSlice2[uint8](buf, val)
+			case reflect.Uint8:  encodeSlice2[uint8](buf, val)
+			case reflect.Uint16: encodeSlice2[uint16](buf, val)
+			case reflect.Uint32: encodeSlice2[uint32](buf, val)
+			case reflect.Uint64: encodeSlice2[uint64](buf, val)
 
-		case reflect.Int8:
-			encodeSlice2[int8](buf, val)
+			case reflect.Int8:  encodeSlice2[int8](buf, val)
+			case reflect.Int16: encodeSlice2[int16](buf, val)
+			case reflect.Int32: encodeSlice2[int32](buf, val)
+			case reflect.Int64: encodeSlice2[int64](buf, val)
+
+			case reflect.Float32: encodeSlice2[float32](buf, val)
+			case reflect.Float64: encodeSlice2[float64](buf, val)
 		}		
 	}
 }
 		
 func encodeSlice2[T any](buf *bytes.Buffer, val reflect.Value) {
+	// TODO: Handle nil and empty collections
+	if val.Len() == 0 {
+		return
+	}
+
 	// [OLD] Slower but safer.
 	// binary.Write(buf, binary.BigEndian, ar.Slice(0, ar.Len()).Interface().([]int8))
 	// 
 	// [NEW] Unsafe but faster.
 	ptr   := unsafe.Pointer(val.Index(0).Addr().UnsafePointer())
-	slice := unsafe.Slice((*uint8)(ptr), val.Len())
+	slice := unsafe.Slice((*T)(ptr), val.Len())
 
 	binary.Write(buf, binary.BigEndian, slice)
 }
