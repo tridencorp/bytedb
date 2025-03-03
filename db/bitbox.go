@@ -45,7 +45,7 @@ func Encode(elements ...any) (bytes.Buffer, error) {
 
 		case []any: {
 			data, _ := Encode(elem.([]any)...)
-			encode(&buf, data.Bytes())
+			write(&buf, data.Bytes())
 		}
 
 		default:
@@ -57,6 +57,7 @@ func Encode(elements ...any) (bytes.Buffer, error) {
 				if ok {
 					bytes := val.Encode()
 					encodeBytes(&buf, bytes)
+					continue
 				}
 
 				// Encode all struct fields.
@@ -68,7 +69,7 @@ func Encode(elements ...any) (bytes.Buffer, error) {
 				_, ok := val.Index(0).Interface().(Encoder)
 				if ok {
 					// Encode total number of elements in slice.
-					encode(&buf, int64(val.Len()))
+					write(&buf, int64(val.Len()))
 
 					// Iterate all elements.
 					for i:=0; i < val.Len(); i++  {
@@ -78,12 +79,12 @@ func Encode(elements ...any) (bytes.Buffer, error) {
 					continue
 				}
 
-				encode(&buf, int64(val.Len()))
-				encode(&buf, elem)
+				write(&buf, int64(val.Len()))
+				write(&buf, elem)
 				continue
 			}
 
-			encode(&buf, elem)
+			write(&buf, elem)
 		}
 	}
 
@@ -96,30 +97,36 @@ func encodeStructFields(elem any) error {
 	}
 
 	value := reflect.ValueOf(elem)
+	buf := bytes.Buffer{}
+
 	for i := 0; i < value.NumField(); i++ {
 		field := value.Field(i)
+
 		fmt.Println(field)
+		write(&buf, field)
+
+		fmt.Println(buf)
 	}
 
 	return nil
 }
 
 func encodeSlice[T any](buf *bytes.Buffer, elem []T) {
-	encode(buf, int64(len(elem)))
+	write(buf, int64(len(elem)))
 	tmp := make([]T, len(elem))
 
 	// More efficient than copying?
 	elem, tmp = tmp, elem
-	encode(buf, tmp)
+	write(buf, tmp)
 }
 
-func encode(buf *bytes.Buffer, elem any) {
+func write(buf *bytes.Buffer, elem any) {
 	binary.Write(buf, binary.BigEndian, elem)
 }
 
 func encodeBytes(buf *bytes.Buffer, bytes []byte) {
-	encode(buf, int64(len(bytes)))
-	encode(buf, bytes)
+	write(buf, int64(len(bytes)))
+	write(buf, bytes)
 }
 
 // **************
