@@ -58,6 +58,9 @@ func Encode(elements ...any) (bytes.Buffer, error) {
 					bytes := val.Encode()
 					encodeBytes(&buf, bytes)
 				}
+
+				// Encode all struct fields.
+				encodeStructFields(elem)
 				continue
 			}
 
@@ -87,6 +90,20 @@ func Encode(elements ...any) (bytes.Buffer, error) {
 	return buf, nil
 }
 
+func encodeStructFields(elem any) error {
+	if reflect.TypeOf(elem).Kind() != reflect.Struct {
+		return fmt.Errorf("Element is not a struct") 
+	}
+
+	value := reflect.ValueOf(elem)
+	for i := 0; i < value.NumField(); i++ {
+		field := value.Field(i)
+		fmt.Println(field)
+	}
+
+	return nil
+}
+
 func encodeSlice[T any](buf *bytes.Buffer, elem []T) {
 	encode(buf, int64(len(elem)))
 	tmp := make([]T, len(elem))
@@ -114,7 +131,7 @@ func Decode(buf *bytes.Buffer, items ...any) error {
 		elem := reflect.TypeOf(item)
 		val  := reflect.ValueOf(item)
 
-		if elem.Kind() == reflect.Ptr && elem.Elem().Kind() == reflect.Slice {
+		if isSlicePtr(item) {
 			elem = elem.Elem().Elem()
 
 			switch elem.Kind() {

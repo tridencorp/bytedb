@@ -2,9 +2,12 @@ package db
 
 import (
 	"bytes"
+	"fmt"
+	"math/big"
 	"slices"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 )
 
@@ -151,4 +154,37 @@ func TestDecodeEncodeArrayOfStructs(t *testing.T) {
 	if !bytes.Equal(v2[1].Data, v1[1].Data) {
 		t.Errorf("Expected \n to get %v,\nbut got %v", v1[1].Data, v2[1].Data) 
 	}
+}
+
+// For testing purpose only. Will be removed.
+type Tx struct {
+	Type              uint8
+	From              *common.Address
+	To                *common.Address
+	Value             *big.Int
+	Nonce             uint64
+	Hash              common.Hash
+	ChainID           *big.Int
+	Status            uint64
+	BlockNumber       *big.Int
+
+	GasUsed           uint64
+	GasPrice          *big.Int
+	CumulativeGasUsed uint64
+	Gas               uint64
+	GasTipCap         *big.Int
+	V, R, S           *big.Int
+
+	Data []byte
+}
+
+func TestEncodeStructFields(t *testing.T) {
+	tx := Tx{Type: 10}
+
+	buf, err := Encode(tx)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println(buf)
 }
