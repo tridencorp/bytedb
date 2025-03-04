@@ -69,8 +69,8 @@ func encodeStructFields(buf *bytes.Buffer, elem any) error {
 	
 	for i := 0; i < val.NumField(); i++ {
 		fv := val.Field(i)
-
-		if fv.IsNil() {
+		
+		if isPointer(fv) && fv.IsNil() {
 			encodeEmptyCollection(buf, fv)
 			continue
 		}
@@ -85,8 +85,17 @@ func encodeStructFields(buf *bytes.Buffer, elem any) error {
 func encodeEmptyCollection(buf *bytes.Buffer, val reflect.Value) {
 	kind := val.Type().Kind()
 
+
 	if isPointer(val) {
 		kind = val.Type().Elem().Kind()
+	}
+
+	if kind == reflect.Struct {
+		// TODO: handle all this types in one custom function.
+		if isBigInt(val.Type().Elem()) {
+			size := int64(0)
+			write(buf, &size)			
+		}
 	}
 
 	if kind == reflect.Array || kind == reflect.Slice {
@@ -130,7 +139,7 @@ func encode(buf *bytes.Buffer, val reflect.Value) {
 
 	if isStruct(val) {
 		// Special case for big.Int
-		if isBigInt(val) {
+		if isBigInt(val.Type()) {
 			bigint := val.Interface().(big.Int)
 			encodeSlice[uint8](buf, reflect.ValueOf(bigint.Bytes()))
 		}
@@ -154,6 +163,7 @@ func encode(buf *bytes.Buffer, val reflect.Value) {
 func encodeSlice[T any](buf *bytes.Buffer, val reflect.Value) {
 	// TODO: Handle nil and empty collections
 	if val.Len() == 0 {
+		write(buf, int64(0))
 		return
 	}
 
@@ -163,7 +173,7 @@ func encodeSlice[T any](buf *bytes.Buffer, val reflect.Value) {
 	if !isArray(val) {
 		write(buf, int64(val.Len()))
 	}
-	
+
 	// [OLD] Slower but safer.
 	// binary.Write(buf, binary.BigEndian, ar.Slice(0, ar.Len()).Interface().([]int8))
 	// 
@@ -218,13 +228,16 @@ func Decode(buf *bytes.Buffer, items ...any) error {
 				val.Decode(buf.Bytes())
 				continue
 			}
+
+			decodeStructFields(buf, item)
+			continue
 		}
 
 		// Decode big.Int.
 		// TODO: Clean this.
 		val = reflect.Indirect(val)
 		if isPointer(val) {
-			if isBigInt(val.Elem()) {
+			if isBigInt(val.Elem().Type()) {
 				tmp := []byte{}
 				decodeSlice[uint8](buf, &tmp)
 
@@ -238,6 +251,63 @@ func Decode(buf *bytes.Buffer, items ...any) error {
 	}
 
 	return nil
+}
+
+func decodeStructFields(buf *bytes.Buffer, dst any) {
+	val := reflect.ValueOf(dst)
+	val = reflect.Indirect(val)
+	
+	for i := 0; i < val.NumField(); i++ {
+		fv := val.Field(i)
+
+		if isPointer(fv) && fv.IsNil() {
+			// Create and set element.
+			// TODO: Make function from this.
+			elem := createElem(fv)
+
+			if fv.Type().Elem().Kind() == reflect.Array {
+				// We must also read size from buffer.
+				size := int64(0)
+				decode(buf, &size)				
+				fv.Set(elem)
+			}
+
+			if isBigInt(elem.Type().Elem()) {
+				tmp := []byte{}
+				decodeSlice[uint8](buf, &tmp)
+				
+				bigint:= elem.Interface().(*big.Int)
+				bigint.SetBytes(tmp)
+				fv.Set(reflect.ValueOf(bigint))
+			}
+		}
+
+		if !isPointer(fv) {
+			if isSlice(fv) {
+				size := int64(0)
+				decode(buf, &size)
+				if size == 0 { continue }
+				// TODO: Decode slice.
+				continue
+			}
+
+			elem := createElem(fv)
+		 	decode(buf, elem.Interface())
+		 	elem = elem.Elem()
+		 	fv.Set(elem)
+		}
+	}
+}
+
+func createElem(val reflect.Value) reflect.Value {
+	typ := val.Type()
+	
+	if isPointer(val) {
+		typ = typ.Elem()
+	}
+
+	elem := reflect.New(typ)
+	return elem
 }
 
 func decodeSlice[T any](buf *bytes.Buffer, dst any) {
@@ -292,8 +362,8 @@ func isEncoder(v reflect.Value) bool {
 }
 
 // Check if value is big.Int.
-func isBigInt(v reflect.Value) bool {
-	return v.Type().PkgPath() == "math/big" && v.Type().Name() == "Int"
+func isBigInt(v reflect.Type) bool {
+	return v.PkgPath() == "math/big" && v.Name() == "Int"
 }
 
 // Check if value is pointer.

@@ -169,12 +169,12 @@ func TestDecodeEncodeArrayOfStructs(t *testing.T) {
 // For testing purpose only. Will be removed.
 type Tx struct {
 	// Type              uint16
-	To                *common.Address
-	From              *common.Address
-	Ids               []int32
-	// Value             *big.Int
+	// To                *common.Address
+	// From              *common.Address
+	// Ids               []int32
+	// Value             *big.Int	
 	// Nonce             uint64
-	// Hash              common.Hash
+	Hash              common.Hash
 	// ChainID           *big.Int
 	// Status            uint64
 	// BlockNumber       *big.Int
@@ -186,19 +186,24 @@ type Tx struct {
 	// GasTipCap         *big.Int
 	// V, R, S           *big.Int
 
-	// Data []byte
+	Data []byte
 }
 
 func TestEncodeStructFields(t *testing.T) {
 	// tx := Tx{Value: big.NewInt(1000), Type: uint16(2), Ids: []int32{}, To: &common.Address{6, 6, 6}, From: &common.Address{1, 2, 3}}
-	// tx := Tx{Value: big.NewInt(999999999999999999)}
-	tx := Tx{}
+	// tx1 := Tx{Type: uint16(1), Value: big.NewInt(999)}
+	tx1 := Tx{}
+	tx2 := Tx{}
 
-	buf, err := Encode(tx)
+	buf, err := Encode(tx1)
 	if err != nil {
 		fmt.Println(err)
 	}
 
 	fmt.Println(buf.Bytes())
+	
+	Decode(buf, &tx2)
 	fmt.Println(buf)
+	fmt.Println(tx1)
+	fmt.Println(tx2)
 }
