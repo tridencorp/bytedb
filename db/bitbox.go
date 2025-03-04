@@ -85,7 +85,6 @@ func encodeStructFields(buf *bytes.Buffer, elem any) error {
 func encodeEmptyCollection(buf *bytes.Buffer, val reflect.Value) {
 	kind := val.Type().Kind()
 
-
 	if isPointer(val) {
 		kind = val.Type().Elem().Kind()
 	}
@@ -98,7 +97,15 @@ func encodeEmptyCollection(buf *bytes.Buffer, val reflect.Value) {
 		}
 	}
 
-	if kind == reflect.Array || kind == reflect.Slice {
+	// For empty array we must create one and fill buffer with it's default values.
+	// We are not adding size for arrays, decoder should now the size.
+	if kind == reflect.Array {
+		elem := createElem(val)
+		write(buf, elem.Interface())
+	}
+
+	// For empty slice we only write size 0.
+	if kind == reflect.Slice {
 		size := int64(0)
 		write(buf, &size)
 	}
@@ -109,7 +116,7 @@ func encode(buf *bytes.Buffer, val reflect.Value) {
 	val = reflect.Indirect(val)
 
 	// Encode arrays and structs.
-	if isArray(val) || isSlice(val) {
+	if isArray(val.Type()) || isSlice(val) {
 		switch val.Type().Elem().Kind() {
 			case reflect.Uint8:   encodeSlice[uint8](buf, val)
 			case reflect.Uint16:  encodeSlice[uint16](buf, val)
@@ -159,7 +166,7 @@ func encode(buf *bytes.Buffer, val reflect.Value) {
 		case reflect.Float64: write(buf, val.Interface())
 	}
 }
-		
+
 func encodeSlice[T any](buf *bytes.Buffer, val reflect.Value) {
 	// TODO: Handle nil and empty collections
 	if val.Len() == 0 {
@@ -170,8 +177,13 @@ func encodeSlice[T any](buf *bytes.Buffer, val reflect.Value) {
 	// If we have array, we know the number of elements so we
 	// don't have to write them to buffer. Decoder should
 	// know the exact type.
-	if !isArray(val) {
+	if !isArray(val.Type()) {
 		write(buf, int64(val.Len()))
+	}
+
+	if !isPointer(val) {
+		binary.Write(buf, binary.BigEndian, val.Interface())
+		return
 	}
 
 	// [OLD] Slower but safer.
@@ -180,7 +192,7 @@ func encodeSlice[T any](buf *bytes.Buffer, val reflect.Value) {
 	// [NEW] Unsafe but faster.
 	ptr   := unsafe.Pointer(val.Index(0).Addr().UnsafePointer())
 	slice := unsafe.Slice((*T)(ptr), val.Len())
-	
+
 	binary.Write(buf, binary.BigEndian, slice)
 }
 
@@ -255,21 +267,17 @@ func Decode(buf *bytes.Buffer, items ...any) error {
 
 func decodeStructFields(buf *bytes.Buffer, dst any) {
 	val := reflect.ValueOf(dst)
-	val = reflect.Indirect(val)
-	
+	val  = reflect.Indirect(val)
+
 	for i := 0; i < val.NumField(); i++ {
-		fv := val.Field(i)
+		 field := val.Field(i)
 
-		if isPointer(fv) && fv.IsNil() {
-			// Create and set element.
-			// TODO: Make function from this.
-			elem := createElem(fv)
+		if isPointer(field) && field.IsNil() {
+			elem := createElem(field)
 
-			if fv.Type().Elem().Kind() == reflect.Array {
-				// We must also read size from buffer.
-				size := int64(0)
-				decode(buf, &size)				
-				fv.Set(elem)
+			if isArray(field.Type().Elem()) {
+				decode(buf, elem.Interface())
+				field.Set(elem)
 			}
 
 			if isBigInt(elem.Type().Elem()) {
@@ -278,23 +286,35 @@ func decodeStructFields(buf *bytes.Buffer, dst any) {
 				
 				bigint:= elem.Interface().(*big.Int)
 				bigint.SetBytes(tmp)
-				fv.Set(reflect.ValueOf(bigint))
+				field.Set(reflect.ValueOf(bigint))
 			}
 		}
 
-		if !isPointer(fv) {
-			if isSlice(fv) {
+		if !isPointer(field) {
+			if isSlice(field) {
 				size := int64(0)
 				decode(buf, &size)
+
+				// Slice size is 0, there are no elements so we can continue with next field.
 				if size == 0 { continue }
-				// TODO: Decode slice.
+
+				// Fast path for []byte.
+				if field.Type().Elem().Kind() == reflect.Uint8 {
+					tmp := make([]byte, size)
+					buf.Read(tmp)
+					field.SetBytes(tmp[:])
+					continue
+				}
+
+				decodeSlice2(buf, field, size)
 				continue
 			}
 
-			elem := createElem(fv)
-		 	decode(buf, elem.Interface())
-		 	elem = elem.Elem()
-		 	fv.Set(elem)
+			elem := createElem(field)
+			decode(buf, elem.Interface())
+			elem = elem.Elem()
+
+		 	field.Set(elem)
 		}
 	}
 }
@@ -308,6 +328,15 @@ func createElem(val reflect.Value) reflect.Value {
 
 	elem := reflect.New(typ)
 	return elem
+}
+
+// TODO: Temporary only, will be refactor.
+func decodeSlice2(buf *bytes.Buffer, val reflect.Value, size int64) {
+	typ  := val.Type().Elem()
+	elem := reflect.MakeSlice(reflect.SliceOf(typ), int(size), int(size))
+
+	decode(buf, elem.Interface())
+	val.Set(elem)
 }
 
 func decodeSlice[T any](buf *bytes.Buffer, dst any) {
@@ -326,11 +355,8 @@ func decodeSlice[T any](buf *bytes.Buffer, dst any) {
 	val1.Elem().Set(val2)
 }
 
-func decode(buf *bytes.Buffer, dst any) {
-	err := binary.Read(buf, binary.BigEndian, dst)	
-	if err != nil {
-		fmt.Println(err)
-	}
+func decode(buf *bytes.Buffer, dst any) error {
+	return binary.Read(buf, binary.BigEndian, dst)	
 }
 
 func decodeArrayStruct(buf *bytes.Buffer, val reflect.Value, item any) {
@@ -382,7 +408,7 @@ func isSlice(v reflect.Value) bool {
 }
 
 // Check if value is array.
-func isArray(v reflect.Value) bool {
+func isArray(v reflect.Type) bool {
 	return v.Kind() == reflect.Array	
 }
 

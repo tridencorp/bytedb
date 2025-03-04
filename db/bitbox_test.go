@@ -168,31 +168,42 @@ func TestDecodeEncodeArrayOfStructs(t *testing.T) {
 
 // For testing purpose only. Will be removed.
 type Tx struct {
-	// Type              uint16
-	// To                *common.Address
-	// From              *common.Address
-	// Ids               []int32
-	// Value             *big.Int	
-	// Nonce             uint64
+	Type              uint16
+	To                *common.Address
+	From              *common.Address
+	Ids               []int32
+	Value             *big.Int	
+	Nonce             uint64
 	Hash              common.Hash
-	// ChainID           *big.Int
-	// Status            uint64
-	// BlockNumber       *big.Int
+	ChainID           *big.Int
+	Status            uint64
+	BlockNumber       *big.Int
 
-	// GasUsed           uint64
-	// GasPrice          *big.Int
-	// CumulativeGasUsed uint64
-	// Gas               uint64
-	// GasTipCap         *big.Int
-	// V, R, S           *big.Int
+	GasUsed           uint64
+	GasPrice          *big.Int
+	CumulativeGasUsed uint64
+	Gas               uint64
+	GasTipCap         *big.Int
+	V, R, S           *big.Int
 
 	Data []byte
 }
 
 func TestEncodeStructFields(t *testing.T) {
-	// tx := Tx{Value: big.NewInt(1000), Type: uint16(2), Ids: []int32{}, To: &common.Address{6, 6, 6}, From: &common.Address{1, 2, 3}}
-	// tx1 := Tx{Type: uint16(1), Value: big.NewInt(999)}
-	tx1 := Tx{}
+	tx1 := Tx{
+		Hash: common.Hash{1, 2, 3, 4},
+		Nonce: uint64(444), 
+		Ids: []int32{22, 33, 44},
+		ChainID: big.NewInt(666), 
+		Value: big.NewInt(333444), 
+		Type: uint16(22), 
+		From: &common.Address{6, 6, 6, 7, 7, 7},
+		Status: uint64(123),
+		BlockNumber: big.NewInt(666999),
+		Data: []byte{20, 30, 40, 50},
+		GasTipCap: big.NewInt(12345678910),
+	}
+	
 	tx2 := Tx{}
 
 	buf, err := Encode(tx1)
@@ -201,9 +212,19 @@ func TestEncodeStructFields(t *testing.T) {
 	}
 
 	fmt.Println(buf.Bytes())
-	
+
 	Decode(buf, &tx2)
 	fmt.Println(buf)
-	fmt.Println(tx1)
-	fmt.Println(tx2)
+	fmt.Println("Type: ",    tx1.Type,    " ", tx2.Type)
+	fmt.Println("To: ",      tx1.To,      " ", tx2.To)
+	fmt.Println("Ids: ",     tx1.Ids,     " ", tx2.Ids)
+	fmt.Println("Value: ",   tx1.Value,   " ", tx2.Value)
+	fmt.Println("Nonce: ",   tx1.Nonce,   " ", tx2.Nonce)
+	fmt.Println("Hash: ",    tx1.Hash,    " ", tx2.Hash)
+	fmt.Println("ChainID: ", tx1.ChainID, " ", tx2.ChainID)
+	fmt.Println("Status: ",  tx1.Status,  " ", tx2.Status)
+	fmt.Println("Data: ",    tx1.Data,    " ", tx2.Data)
+
+	fmt.Println("GasTip: ",  tx1.GasTipCap,   " ", tx2.GasTipCap)
+	fmt.Println("Number: ",  tx1.BlockNumber, " ", tx2.BlockNumber)
 }
