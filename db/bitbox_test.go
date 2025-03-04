@@ -29,6 +29,7 @@ func EncodeDecodeSlice[T comparable](elem []T, result *[]T, t *testing.T) {
 
 func EncodeDecode[T comparable](elem, result *T, t *testing.T) {
 	raw, _ := Encode(elem)
+	fmt.Println(raw.Bytes())
 	Decode(raw, result)
 
 	if *elem != *result {
@@ -62,7 +63,7 @@ func TestEncodeDecode(t *testing.T) {
 	v15, v16 := uint64(10), uint64(0)
 	EncodeDecode(&v15, &v16, t)
 
-	// // Slices.
+	// Slices.
 	s1, s2 := []byte{1, 2, 3}, []byte{}
 	EncodeDecodeSlice(s1, &s2, t)
 
@@ -121,15 +122,16 @@ func TestDecodeEncodeAny(t *testing.T) {
 }
 
 type TestStruct struct { Data []byte }
-func (t *TestStruct) Encode() []byte { return t.Data }
-func (t *TestStruct) Decode(raw []byte) error { t.Data = raw; return nil }
+func (t *TestStruct) Encode() []byte {return t.Data}
+func (t *TestStruct) Decode(raw []byte) error {t.Data = raw; return nil}
 
 func TestDecodeEncodeStruct(t *testing.T) {
-	v1 := TestStruct{[]byte{6, 6, 6}}
-	v2 := TestStruct{[]byte{}}
+	v1 := &TestStruct{[]byte{6, 6, 6}}
+	v2 := &TestStruct{[]byte{}}
 
-	raw, _ := Encode(&v1)
-	Decode(raw, &v2)
+	raw, _ := Encode(v1)
+	Decode(raw, v2)
+	fmt.Println(v2)
 
 	if !bytes.Equal([]byte{0,0,0,0,0,0,0,3,6,6,6}, v2.Data) {
 		t.Errorf("Expected \n to get %v,\nbut got %v", v1.Data, v2.Data) 
@@ -145,7 +147,7 @@ func TestDecodeEncodeArrayOfStructs(t *testing.T) {
 	v2 := []*TestStruct{}	
 
 	raw, _ := Encode(v1)
-	Decode(raw, &v2)
+	Decode(raw, v2)
 
 	if !bytes.Equal(v2[0].Data, v1[0].Data) {
 		t.Errorf("Expected \n to get %v,\nbut got %v", v1[0].Data, v2[0].Data) 

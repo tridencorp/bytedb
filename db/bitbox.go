@@ -30,38 +30,57 @@ func Encode(elements ...any) (*bytes.Buffer, error) {
 
 	for _, elem := range elements {
 		val := reflect.ValueOf(elem)
-		val  = reflect.Indirect(val)
-
+		
+		if isPointer(val) && isStruct(val.Elem()) {
+			if isEncoder(val) { structEncode(buf, val) }
+			continue
+		}
+		
+		val = reflect.Indirect(val)
+		
+		// Encode structs.
 		if isStruct(val) {
-			// Check if struct implements Encoder interface.
-			val, ok := val.Interface().(Encoder)
-			if ok {
-				fmt.Println(val)
-				bytes := val.Encode()
-				encodeBytes(buf, bytes)
+			if isEncoder(val) {
+				val := val.Interface().(Encoder)
+				bytes := reflect.ValueOf(val.Encode())
+				encode(buf, bytes)
 				continue
 			}
-
+			
 			encodeStructFields(buf, elem)
+			continue
 		}
+		
+		// Encode slices and arrays.
+		if isSlice(val) || isArray(val) {
+			encode(buf, val)
+			continue
+		}
+		
+		// Encode single types.
+		encode(buf, val)
 	}
-
 	return buf, nil
+}
+
+func structEncode(buf *bytes.Buffer, v reflect.Value) {
+	val := v.Interface().(Encoder)
+	bytes := reflect.ValueOf(val.Encode())
+	encode(buf, bytes)
 }
 
 func encodeStructFields(buf *bytes.Buffer, elem any) error {
 	if reflect.TypeOf(elem).Kind() != reflect.Struct {
 		return fmt.Errorf("Element is not a struct") 
 	}
-
+	
 	v := reflect.ValueOf(elem)
-
+	
 	for i := 0; i < v.NumField(); i++ {
 		fv := v.Field(i)
-
+		
 		// If we have pointer, get it's value.
 		fv = reflect.Indirect(fv)
-		
 		encode(buf, fv)
 	}
 	return nil
@@ -71,44 +90,51 @@ func encode(buf *bytes.Buffer, val reflect.Value) {
 	// Encode arrays and structs.
 	if isArray(val) || isSlice(val) {
 		switch val.Type().Elem().Kind() {
-			case reflect.Uint8:  encodeSlice[uint8](buf, val)
-			case reflect.Uint16: encodeSlice[uint16](buf, val)
-			case reflect.Uint32: encodeSlice[uint32](buf, val)
-			case reflect.Uint64: encodeSlice[uint64](buf, val)
-
-			case reflect.Int8:  encodeSlice[int8](buf, val)
-			case reflect.Int16: encodeSlice[int16](buf, val)
-			case reflect.Int32: encodeSlice[int32](buf, val)
-			case reflect.Int64: encodeSlice[int64](buf, val)
-
+			case reflect.Uint8:   encodeSlice[uint8](buf, val)
+			case reflect.Uint16:  encodeSlice[uint16](buf, val)
+			case reflect.Uint32:  encodeSlice[uint32](buf, val)
+			case reflect.Uint64:  encodeSlice[uint64](buf, val)		
+			case reflect.Int8:    encodeSlice[int8](buf, val)
+			case reflect.Int16:   encodeSlice[int16](buf, val)
+			case reflect.Int32:   encodeSlice[int32](buf, val)
+			case reflect.Int64:   encodeSlice[int64](buf, val)
 			case reflect.Float32: encodeSlice[float32](buf, val)
 			case reflect.Float64: encodeSlice[float64](buf, val)
-		}		
-	}
-
-	if isStruct(val) {
-		// Special case for big.Int
-		if isBigInt(val) {
-			bigint := val.Interface().(big.Int)
-			encodeSlice[uint8](buf, reflect.ValueOf(bigint.Bytes()))
+		default:
+			// We have slice with structs, let's iterate.
+			write(buf, int64(val.Len()))
+			
+			for i := 0; i < val.Len(); i++ {
+				elem := val.Index(i)
+				if isEncoder(elem) {
+					bytes := elem.Interface().(Encoder)
+					encode(buf, reflect.ValueOf(bytes.Encode()))
+				}
+			}
+			}		
 		}
-	}
-
-	// Decode single types.
-	switch val.Kind() {
-		case reflect.Uint8:  write(buf, val.Interface().(uint8))
-		case reflect.Uint16: write(buf, val.Interface().(uint16))
-		case reflect.Uint32: write(buf, val.Interface().(uint32))
-		case reflect.Uint64: write(buf, val.Interface().(uint64))
-
-		case reflect.Int8:  write(buf, val.Interface().(int8))
-		case reflect.Int16: write(buf, val.Interface().(int8))
-		case reflect.Int32: write(buf, val.Interface().(int8))
-		case reflect.Int64: write(buf, val.Interface().(int8))
-
-		case reflect.Float32: write(buf, val.Interface().(float32))
-		case reflect.Float64: write(buf, val.Interface().(float64))
-	}
+		
+		if isStruct(val) {
+			// Special case for big.Int
+			if isBigInt(val) {
+				bigint := val.Interface().(big.Int)
+				encodeSlice[uint8](buf, reflect.ValueOf(bigint.Bytes()))
+			}
+		}
+		
+		// Encode single types.
+		switch val.Kind() {
+			case reflect.Uint8:   write(buf, val.Interface())
+			case reflect.Uint16:  write(buf, val.Interface())
+			case reflect.Uint32:  write(buf, val.Interface())
+			case reflect.Uint64:  write(buf, val.Interface())
+			case reflect.Int8:    write(buf, val.Interface())
+			case reflect.Int16:   write(buf, val.Interface())
+			case reflect.Int32:   write(buf, val.Interface())
+			case reflect.Int64:   write(buf, val.Interface())
+			case reflect.Float32: write(buf, val.Interface())
+			case reflect.Float64: write(buf, val.Interface())
+		}
 }
 		
 func encodeSlice[T any](buf *bytes.Buffer, val reflect.Value) {
@@ -117,16 +143,17 @@ func encodeSlice[T any](buf *bytes.Buffer, val reflect.Value) {
 		return
 	}
 
-	// Write collection length first.
+	// Write collection length first - only if bytes.
 	write(buf, int64(val.Len()))
 
+	
 	// [OLD] Slower but safer.
 	// binary.Write(buf, binary.BigEndian, ar.Slice(0, ar.Len()).Interface().([]int8))
 	// 
 	// [NEW] Unsafe but faster.
 	ptr   := unsafe.Pointer(val.Index(0).Addr().UnsafePointer())
 	slice := unsafe.Slice((*T)(ptr), val.Len())
-
+	
 	binary.Write(buf, binary.BigEndian, slice)
 }
 	
@@ -152,15 +179,14 @@ func Decode(buf *bytes.Buffer, items ...any) error {
 			elem = elem.Elem().Elem()
 
 			switch elem.Kind() {
-				case reflect.Uint8:  decodeSlice[uint8](buf, item)
-				case reflect.Uint16: decodeSlice[uint16](buf, item)
-				case reflect.Uint64: decodeSlice[uint64](buf, item)
-				case reflect.Uint32: decodeSlice[uint32](buf, item)
-				case reflect.Int64:  decodeSlice[int64](buf, item)
-				case reflect.Int32:  decodeSlice[int32](buf, item)
-				case reflect.Int16:  decodeSlice[int16](buf, item)
-				case reflect.Int8:   decodeSlice[int8](buf, item)
-
+				case reflect.Uint8:   decodeSlice[uint8](buf, item)
+				case reflect.Uint16:  decodeSlice[uint16](buf, item)
+				case reflect.Uint64:  decodeSlice[uint64](buf, item)
+				case reflect.Uint32:  decodeSlice[uint32](buf, item)
+				case reflect.Int64:   decodeSlice[int64](buf, item)
+				case reflect.Int32:   decodeSlice[int32](buf, item)
+				case reflect.Int16:   decodeSlice[int16](buf, item)
+				case reflect.Int8:    decodeSlice[int8](buf, item)
 				case reflect.Float64: decodeSlice[float64](buf, item)
 				case reflect.Float32: decodeSlice[float32](buf, item)
 
@@ -176,6 +202,8 @@ func Decode(buf *bytes.Buffer, items ...any) error {
 		}
 
 		if isStruct(reflect.Indirect(val)) {
+			fmt.Println("decoder")
+
 			val, ok := val.Interface().(Decoder)
 			if ok {
 				val.Decode(buf.Bytes())
@@ -190,6 +218,7 @@ func Decode(buf *bytes.Buffer, items ...any) error {
 }
 
 func decodeSlice[T any](buf *bytes.Buffer, dst any) {
+	fmt.Println("Decode: ", buf.Bytes())
 	// Decode slice size.
 	size := int64(0)
 	decode(buf, &size)
@@ -234,9 +263,20 @@ func decodeArrayStruct(buf *bytes.Buffer, val reflect.Value, item any) {
 	val.Elem().Set(slice)
 }
 
+// Check if struct implements Encoder interface.
+func isEncoder(v reflect.Value) bool {
+	_, ok := v.Interface().(Encoder)	
+	return ok
+}
+
 // Check if value is big.Int.
 func isBigInt(v reflect.Value) bool {
 	return v.Type().PkgPath() == "math/big" && v.Type().Name() == "Int"
+}
+
+// Check if value is pointer.
+func isPointer(v reflect.Value) bool {
+	return v.Kind() == reflect.Pointer	
 }
 
 // Check if value is struct.
