@@ -143,9 +143,12 @@ func encodeSlice[T any](buf *bytes.Buffer, val reflect.Value) {
 		return
 	}
 
-	// Write collection length first - only if bytes.
-	write(buf, int64(val.Len()))
-
+	// If we have array, we know the number of elements so we
+	// don't have to write them to buffer. Decoder should
+	// know the exact type.
+	if !isArray(val) {
+		write(buf, int64(val.Len()))
+	}
 	
 	// [OLD] Slower but safer.
 	// binary.Write(buf, binary.BigEndian, ar.Slice(0, ar.Len()).Interface().([]int8))
@@ -177,7 +180,6 @@ func Decode(buf *bytes.Buffer, items ...any) error {
 
 		if isSlicePtr(item) {
 			elem = elem.Elem().Elem()
-
 			switch elem.Kind() {
 				case reflect.Uint8:   decodeSlice[uint8](buf, item)
 				case reflect.Uint16:  decodeSlice[uint16](buf, item)
@@ -218,7 +220,6 @@ func Decode(buf *bytes.Buffer, items ...any) error {
 }
 
 func decodeSlice[T any](buf *bytes.Buffer, dst any) {
-	fmt.Println("Decode: ", buf.Bytes())
 	// Decode slice size.
 	size := int64(0)
 	decode(buf, &size)
