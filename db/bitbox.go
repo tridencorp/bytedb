@@ -30,7 +30,7 @@ func Encode(elements ...any) (*bytes.Buffer, error) {
 
 	for _, elem := range elements {
 		val := reflect.ValueOf(elem)
-		
+
 		if isPointer(val) && isStruct(val.Elem()) {
 			if isEncoder(val) { structEncode(buf, val) }
 			continue
@@ -69,10 +69,30 @@ func encodeStructFields(buf *bytes.Buffer, elem any) error {
 	
 	for i := 0; i < val.NumField(); i++ {
 		fv := val.Field(i)
+
+		if fv.IsNil() {
+			encodeEmptyCollection(buf, fv)
+			continue
+		}
+
 		encode(buf, fv)
 	}
 
 	return nil
+}
+
+// Encode empty (nil) slice, array.
+func encodeEmptyCollection(buf *bytes.Buffer, val reflect.Value) {
+	kind := val.Type().Kind()
+
+	if isPointer(val) {
+		kind = val.Type().Elem().Kind()
+	}
+
+	if kind == reflect.Array || kind == reflect.Slice {
+		size := int64(0)
+		write(buf, &size)
+	}
 }
 
 func encode(buf *bytes.Buffer, val reflect.Value) {
@@ -153,9 +173,9 @@ func encodeSlice[T any](buf *bytes.Buffer, val reflect.Value) {
 	
 	binary.Write(buf, binary.BigEndian, slice)
 }
-	
-func write(buf *bytes.Buffer, elem any) {
-	binary.Write(buf, binary.BigEndian, elem)
+
+func write(buf *bytes.Buffer, elem any) error {
+	return binary.Write(buf, binary.BigEndian, elem)
 }
 
 // **************
