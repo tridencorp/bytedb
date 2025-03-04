@@ -35,9 +35,9 @@ func Encode(elements ...any) (*bytes.Buffer, error) {
 			if isEncoder(val) { structEncode(buf, val) }
 			continue
 		}
-		
+
 		val = reflect.Indirect(val)
-		
+
 		// Encode structs.
 		if isStruct(val) {
 			// Using Encoder() interface.
@@ -76,6 +76,9 @@ func encodeStructFields(buf *bytes.Buffer, elem any) error {
 }
 
 func encode(buf *bytes.Buffer, val reflect.Value) {
+	// Get rid of pointers, use values.
+	val = reflect.Indirect(val)
+
 	// Encode arrays and structs.
 	if isArray(val) || isSlice(val) {
 		switch val.Type().Elem().Kind() {
@@ -190,11 +193,23 @@ func Decode(buf *bytes.Buffer, items ...any) error {
 		}
 
 		if isStruct(reflect.Indirect(val)) {
-			fmt.Println("decoder")
-
 			val, ok := val.Interface().(Decoder)
 			if ok {
 				val.Decode(buf.Bytes())
+				continue
+			}
+		}
+
+		// Decode big.Int.
+		// TODO: Clean this.
+		val = reflect.Indirect(val)
+		if isPointer(val) {
+			if isBigInt(val.Elem()) {
+				tmp := []byte{}
+				decodeSlice[uint8](buf, &tmp)
+
+				bigint := new(big.Int).SetBytes(tmp)
+				val.Elem().Set(reflect.ValueOf(*bigint))
 				continue
 			}
 		}

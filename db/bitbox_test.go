@@ -29,7 +29,6 @@ func EncodeDecodeSlice[T comparable](elem []T, result *[]T, t *testing.T) {
 
 func EncodeDecode[T comparable](elem, result *T, t *testing.T) {
 	raw, _ := Encode(elem)
-	fmt.Println(raw.Bytes())
 	Decode(raw, result)
 
 	if *elem != *result {
@@ -99,13 +98,13 @@ func TestEncodeDecode(t *testing.T) {
 }
 
 func TestDecodeEncodeCustom(t *testing.T) {
-	// c1, c2 := CustomInt{1, 2, 3, 4}, CustomInt{}
-	// raw, _ := Encode(c1)
-	// Decode(raw, &c2)
+	c1, c2 := CustomInt{1, 2, 3, 4}, CustomInt{}
+	raw, _ := Encode(c1)
+	Decode(raw, &c2)
 
-	// c3, c4 := CustomByte{1, 2, 3, 4}, CustomByte{}
-	// raw, _  = Encode(c3)
-	// Decode(raw, &c4)
+	c3, c4 := CustomByte{1, 2, 3, 4}, CustomByte{}
+	raw, _  = Encode(c3)
+	Decode(raw, &c4)
 
 	// Arrays.
 	c5, c6 := &CustomArrByte{1,2,3}, &CustomArrByte{}
@@ -113,6 +112,15 @@ func TestDecodeEncodeCustom(t *testing.T) {
 	
 	c7, c8 := &CustomArrInt{3, 2, 1}, &CustomArrInt{}
 	EncodeDecode(c7, c8, t)
+
+	// Big Int.
+	c9, c10 := big.NewInt(99999), big.NewInt(0)
+	raw, _ = Encode(&c9)
+	Decode(raw, &c10)
+
+	if !bytes.Equal(c9.Bytes(), c10.Bytes()) {
+		t.Errorf("Expected \n to get %v,\nbut got %v", c9.Bytes(), c10.Bytes())
+	}
 }
 
 func TestDecodeEncodeAny(t *testing.T) {
