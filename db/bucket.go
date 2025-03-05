@@ -30,6 +30,9 @@ type Bucket struct {
 	ID  uint32
 	Dir string
 
+	// Keeping track how many times we resize bucket.
+	ResizeCount uint32
+
 	// This is the main file to which we will read and write.
 	file atomic.Pointer[File]
 
@@ -58,6 +61,7 @@ func OpenBucket(root string, keysLimit uint32, sizeLimit int64, bucketsPerDir in
 		ID:1, 
 		Dir: root,
 		keysLimit: uint64(keysLimit),
+		ResizeCount: 0,
 		bucketsPerDir: int16(bucketsPerDir),
 	}
 
@@ -124,18 +128,18 @@ func (bucket *Bucket) nextBucket() (*os.File, error) {
 	// Based on buckets per dir we can calculate folder ID in which
 	// bucket should be.
 	folderId := int(math.Ceil(float64(id) / float64(bucket.bucketsPerDir)))
-	
+
 	path := filepath.Join(bucket.Dir, fmt.Sprintf("%d", folderId))
 	err  := os.MkdirAll(path, 0755)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	path = filepath.Join(bucket.Dir, fmt.Sprintf("%d", folderId), fmt.Sprintf("%d.bucket", id))
 	fd, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
-	
+
 	bucket.ID = id
-	
+
 	// We created new bucket file, there are no keys yet so we must restart counters, 
 	// offsets, ...
 	file := &File{fd: fd}	
@@ -143,6 +147,7 @@ func (bucket *Bucket) nextBucket() (*os.File, error) {
 
 	bucket.keysCount.Store(0)
 	bucket.file.Store(file)
+	bucket.ResizeCount = 0
 
 	return fd, err
 }
@@ -206,6 +211,7 @@ func (bucket *Bucket) Write(data []byte) (int64, int64, error) {
 func (bucket *Bucket) resize(file *File) error {
 	file.sizeLimit = file.sizeLimit * 2
 	err := file.fd.Truncate(int64(file.sizeLimit))
+	bucket.ResizeCount += 1
 	return err
 }
 
