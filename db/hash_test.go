@@ -9,7 +9,7 @@ func TestHash(t *testing.T) {
 	db, _ := Open("./db")
 	defer db.Delete()
 
-	col, _  := db.Collection("test")
+	col, _  := db.Collection("test", conf)
 	hash, _ := col.Hash("test_hash")
 
 	// Test Sete.

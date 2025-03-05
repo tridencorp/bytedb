@@ -25,8 +25,13 @@ type Collection struct {
 // TODO: Maybe better naming will be Record?
 type Key struct {
 	data []byte
-	// Key size
 	size uint32
+}
+
+type Config struct {
+	keysLimit     uint32
+	sizeLimit     int64
+	bucketsPerDir int32
 }
 
 func NewKey(val []byte) *Key {
@@ -65,7 +70,7 @@ func (key *Key) Bytes() ([]byte, error) {
 
 // Open the collection. If it doesn't exist,
 // create it with default values.
-func (db *DB) Collection(name string) (*Collection, error) {
+func (db *DB) Collection(name string, conf Config) (*Collection, error) {
 	// Build collection path.
 	path := db.root + CollectionsPath + name
 	return newCollection(path)

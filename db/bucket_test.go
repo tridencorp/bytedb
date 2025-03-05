@@ -7,11 +7,13 @@ import (
 	"testing"
 )
 
+var conf = Config{keysLimit: 2, sizeLimit: 10, bucketsPerDir: 2}
+
 func TestOpenBucket(t *testing.T) {
 	db1, _ := Open("./db")
 	db1.Delete()
 
-	coll, _:= db1.Collection("test")
+	coll, _:= db1.Collection("test", conf)
 
 	bck, _ := OpenBucket(coll.root, 10, 5, 2)
 	if bck == nil {
@@ -23,7 +25,7 @@ func TestBucketWrite(t *testing.T) {
 	db, _ := Open("./db")
 	defer db.Delete()
 
-	coll, _ := db.Collection("test")
+	coll, _ := db.Collection("test", conf)
 	bck, _ := OpenBucket(coll.root, 10, 5, 5)
 
 	data := []byte("value_1 ")
@@ -43,7 +45,7 @@ func TestBucketRead(t *testing.T) {
 	db, _ := Open("./db")
 	defer db.Delete()
 
-	coll, _ := db.Collection("test")
+	coll, _ := db.Collection("test", conf)
 	bck,  _ := OpenBucket(coll.root, 10, 5, 2)
 
 	data1 := []byte("value1")
@@ -60,7 +62,7 @@ func TestBucketResize(t *testing.T) {
 	db, _ := Open("./db")
 	defer db.Delete()
 
-	coll, _ := db.Collection("test")
+	coll, _ := db.Collection("test", conf)
 	bck,  _ := OpenBucket(coll.root, 100, 5, 2)
 
 	data := []byte("value")
@@ -164,11 +166,11 @@ func TestGetOffset(t *testing.T) {
 	db, _ := Open("./db")
 	defer db.Delete()
 
-	coll, _ := db.Collection("test")
+	coll, _ := db.Collection("test", conf)
 	bck,  _ := OpenBucket(coll.root, 10, 5, 2)
 
-	coll.Set("key1",[]byte("value_1 "))
-	coll.Set("key2",[]byte("value_1 "))
+	coll.Set("key1",[]byte("value_1"))
+	coll.Set("key2",[]byte("value_1"))
 
 	off := getOffset(bck)
 

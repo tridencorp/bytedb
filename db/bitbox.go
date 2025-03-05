@@ -9,9 +9,9 @@ import (
 	"unsafe"
 )
 
-// *********************************************************************
-// Common interfaces struct must implement to be compatible with bitbox
-// *********************************************************************
+// *********************************
+// Bitbox Encoder/Decoder interfaces
+// *********************************
 
 type Encoder interface {
 	Encode() []byte

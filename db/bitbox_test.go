@@ -212,8 +212,8 @@ func TestEncodeStructFields(t *testing.T) {
 	}
 
 	fmt.Println(buf.Bytes())
-
 	Decode(buf, &tx2)
+
 	fmt.Println(buf)
 	fmt.Println("Type: ",    tx1.Type,    " ", tx2.Type)
 	fmt.Println("To: ",      tx1.To,      " ", tx2.To)

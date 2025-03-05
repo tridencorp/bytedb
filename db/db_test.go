@@ -20,7 +20,7 @@ func TestCollection(t *testing.T) {
 	db, _ := Open("./db")
 	defer db.Delete()
 
-	db.Collection("test")
+	db.Collection("test", conf)
 
 	// At this point, we only want to check if the proper
 	// directories have been created.
@@ -32,7 +32,7 @@ func TestCollection(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	db, _ := Open("./db")
-	db.Collection("test")
+	db.Collection("test", conf)
 
 	db.Delete()
 
@@ -47,7 +47,7 @@ func TestSet(t *testing.T) {
 	db, _ := Open("./db")
 	defer db.Delete()
 
-	coll, _ := db.Collection("test")
+	coll, _ := db.Collection("test", conf)
 
 	coll.Set("key1", []byte("value 1"))
 	coll.Set("key2", []byte("value 2"))
@@ -58,7 +58,7 @@ func TestSetGet(t *testing.T) {
 	db, _ := Open("./db")
 	defer db.Delete()
 
-	coll, _ := db.Collection("test")
+	coll, _ := db.Collection("test", conf)
 
 	val1 := []byte("value 1")
 	val2 := []byte("value 2")
@@ -81,7 +81,7 @@ func TestIterate(t *testing.T) {
 	db, _ := Open("./db")
 	// defer db.Delete()
 
-	coll, _ := db.Collection("test")
+	coll, _ := db.Collection("test", conf)
 
 	coll.Set("key1", []byte("value 1"))
 	coll.Set("key2", []byte("value 2"))
@@ -104,7 +104,7 @@ func TestLoadIndexFile(t *testing.T) {
 	db, _ := Open("./db")
 	defer db.Delete()
 
-	coll, _ := db.Collection("test")
+	coll, _ := db.Collection("test", conf)
 
 	indexes, err := LoadIndexFile(coll.root)
 	if err != nil {
@@ -129,7 +129,7 @@ func TestDel(t *testing.T) {
 	db, _ := Open("./db")
 	defer db.Delete()
 
-	coll, _ := db.Collection("test")
+	coll, _ := db.Collection("test", conf)
 	coll.Set("key1", []byte("value1"))
 
 	coll.Del("key1")
@@ -144,7 +144,7 @@ func TestUpdate(t *testing.T) {
 	db, _ := Open("./db")
 	defer db.Delete()
 
-	coll, _ := db.Collection("test")
+	coll, _ := db.Collection("test", conf)
 	coll.Set("key1", []byte("value1"))
 
 	coll.Update("key1", []byte("value2"))
@@ -153,6 +153,16 @@ func TestUpdate(t *testing.T) {
 	if !bytes.Equal(res, []byte("value2")) {
 		t.Errorf("Expected to get %s, got %s", []byte("value2"), res)
 	}
+} 
+
+// Test if we are creating new buckets if size limit is reached.
+func TestBucketCreate(t *testing.T) {
+	db, _ := Open("./db")
+	defer db.Delete()
+
+	conf := Config{keysLimit: 2, sizeLimit: 10, bucketsPerDir: 2}
+	coll, _ := db.Collection("test", conf)
+	fmt.Println(coll)
 }
 
 // func TestSetConcurrent(t *testing.T) {
@@ -166,11 +176,8 @@ func TestUpdate(t *testing.T) {
 // 	defer db.Delete()
 
 // 	coll, _ := db.Collection("test")
-
-// 	// We must truncate file !!!
-// 	coll.file.Truncate(17_000_000)
-
-// 	for i := 0; i < 500_000; i++ {
+		
+// 	for i := 0; i < 100_000; i++ {
 // 		go func() {
 // 			coll.Set("key1", []byte("value 1"))
 // 			coll.Set("key2", []byte("value 2"))
