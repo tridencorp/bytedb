@@ -9,10 +9,10 @@ import (
 )
 
 const(
-	MaxIndexesPerFile = 10_000
+	MaxIndexesPerFile = 5_000
 
 	// Index size in bytes.
-	IndexSize = 18
+	IndexSize = 37
 )
 
 const (
@@ -20,19 +20,27 @@ const (
 	TypeHash = 1 
 )
 
-
 // Index will represent key in our database.
 type Index struct {
-	// Tells us which data type we are dealing with, 
-	// ex: kv, hash.
-	DataType int8 // 1 byte
+	// Because of collisions we will keep first 20 bytes of each
+	// key in index. Each index block will have space for around 
+	// 6 collision keys. We will read them at once and will be able
+	// to match them in memory. This will save us 1-6 file reads 
+	// (worst case scenario).
+	// 
+	// TODO: In the end try to align this struct in memory.
+	Key [20]byte
 
-	// Indicates if key is deleted or not.
-	Deleted bool // 1 byte
-
+	Deleted  bool    // 1 byte: Indicates if key is deleted or not.
 	BucketId uint32  // 4 bytes
 	Size     uint32  // 4 bytes
 	Offset   uint64  // 8 bytes
+}
+
+// Index block that will be used to read/write indexes from file.
+// One index block will be able to fit 6 keys: 1 key + 5 collisions.
+type Block struct {
+	Keys [6]Index
 }
 
 type IndexFile struct {
@@ -114,8 +122,7 @@ func (indexes *IndexFile) Del(key string) error {
 
 // Hash the key.
 func HashKey(key string) uint32 {
-  hash := fnv.New32a()
-	hash.Write([]byte(key))
-
-	return hash.Sum32()
+ 	h := fnv.New32()
+	h.Write([]byte(key))
+	return h.Sum32()
 }

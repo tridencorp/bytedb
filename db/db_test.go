@@ -209,3 +209,25 @@ func TestBucketTruncate(t *testing.T) {
 		t.Errorf("Expected file size limit to be %d, got %d", 240, limit)
 	}
 }
+
+func TestSetGet2(t *testing.T) {
+	conf := Config{KeysLimit: 10_000, SizeLimit: 1_00_000, BucketsPerDir: 10}
+
+	testdb, coll := CreateCollection("test", conf)
+	defer testdb.Delete()
+
+	// Set all keys.
+	_, keys := FillCollection(coll, 5_000, 200)
+
+	// Get all keys and check if they are correct.
+	count := 0
+	for key, val := range keys {
+		k, _ := coll.Get(key)
+
+		count += 1
+		if !bytes.Equal(k, val) {
+			t.Errorf("Expected key to be %v, got %v", val, k)
+			break
+		}
+	}
+}
