@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-var conf = Config{keysLimit: 2, sizeLimit: 10, bucketsPerDir: 2}
+var conf = Config{KeysLimit: 2, SizeLimit: 10, BucketsPerDir: 2}
 
 func TestOpenBucket(t *testing.T) {
 	db1, _ := Open("./db")

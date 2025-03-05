@@ -11,6 +11,7 @@ import (
 type Collection struct {
 	bucket  *Bucket
 	indexes *IndexFile
+	config  Config
 
 	// Collection root directory.
 	root string
@@ -29,9 +30,9 @@ type Key struct {
 }
 
 type Config struct {
-	keysLimit     uint32
-	sizeLimit     int64
-	bucketsPerDir int32
+	KeysLimit     uint32
+	SizeLimit     int64
+	BucketsPerDir int32
 }
 
 func NewKey(val []byte) *Key {
@@ -73,10 +74,10 @@ func (key *Key) Bytes() ([]byte, error) {
 func (db *DB) Collection(name string, conf Config) (*Collection, error) {
 	// Build collection path.
 	path := db.root + CollectionsPath + name
-	return newCollection(path)
+	return newCollection(path, conf)
 }
 
-func newCollection(path string) (*Collection, error) {
+func newCollection(path string, conf Config) (*Collection, error) {
 	// Build collection path.
 	dir  := filepath.Dir(path)
 
@@ -87,7 +88,7 @@ func newCollection(path string) (*Collection, error) {
 	}
 
 	// Open most recent bucket.
-	bucket, err := OpenBucket(path, 100, 10, 10)
+	bucket, err := OpenBucket(path, conf.KeysLimit, conf.SizeLimit, conf.BucketsPerDir)
 	if err != nil {
 		return nil, err
 	}
@@ -101,6 +102,7 @@ func newCollection(path string) (*Collection, error) {
 		bucket:  bucket, 
 		root:    path,
 		indexes: indexes,
+		config:  conf,
 	}
 
 	// TODO: because of file truncation we should track current 
@@ -113,7 +115,7 @@ func newCollection(path string) (*Collection, error) {
 // Open or create new hash.
 func (coll *Collection) Hash(name string) (*Hash, error) {
 	root := coll.root + "/hashes/"
-	keys, err := newCollection(root)
+	keys, err := newCollection(root, coll.config)
 	if err != nil {
 		return nil, err
 	}

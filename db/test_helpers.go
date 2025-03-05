@@ -26,8 +26,9 @@ func FillCollection(coll *Collection, numOfKeys, sizeOfKey uint32) (written int6
 		}
 
 		key := fmt.Sprintf("key_%d", i)
-		coll.Set(key, val)
+		_, size, _ := coll.Set(key, val)
 
+		written += size
 		values = append(values, val)
 	}
 

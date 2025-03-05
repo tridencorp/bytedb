@@ -157,12 +157,13 @@ func TestUpdate(t *testing.T) {
 
 // Test if we are creating new buckets if size limit is reached.
 func TestBucketCreate(t *testing.T) {
-	db, _ := Open("./db")
-	defer db.Delete()
+	testdb, coll := CreateCollection("test", 2, 10, 2)
+	defer testdb.Delete()
 
-	conf := Config{keysLimit: 2, sizeLimit: 10, bucketsPerDir: 2}
-	coll, _ := db.Collection("test", conf)
-	fmt.Println(coll)
+	// 10 keys, 10 Bytes each. 
+	written, _ := FillCollection(coll, 10, 10)	
+
+	fmt.Println("written bytes: ", written)
 }
 
 // func TestSetConcurrent(t *testing.T) {
