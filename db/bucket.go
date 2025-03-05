@@ -72,34 +72,39 @@ func OpenBucket(root string, keysLimit uint32, sizeLimit int64, bucketsPerDir in
 // Find the last bucket ID for given root.
 // Empty string in response mesteans that there is no bucket yet.
 func getLastBucket(root string) (*os.File, error) {
-	// Sort directories.
-	dirs, _ := os.ReadDir(root)
+	// Get all folders.
+	folders, _ := os.ReadDir(root)
 	max := 0
 
-	for _, dir := range dirs {
-		id, _ := strconv.Atoi(dir.Name())
+	// Sort all folders based on their number.
+	// All folders have name like: 1/ 2/ 3/ ...
+	for _, folder := range folders {
+		id, _ := strconv.Atoi(folder.Name())
 		if id > max { max = id }
 	}
 
-	// Directory is empty, no buckets yet, so we have to create first one.
-	if max == 0 {
+	// Directory is empty, no buckets yet, so we have to create one.
+	if len(folders) == 0 {
 		root = filepath.Join(root, "1")
 		os.MkdirAll(root, 0755)
 
 		root = filepath.Join(root, "1.bucket")
 		file, err := os.OpenFile(root, os.O_RDWR|os.O_CREATE, 0644)
+
 		return file, err
 	}
 
-	// Sort files.
+	// Get the last folder (with highest number so it's the last one) and list all bucket 
+	// files that are there.
 	root += fmt.Sprintf("/%d", max)
 	files, _ := os.ReadDir(root)
 
 	for _, file := range files {
-		// Split .bucket file.
-		fileId := strings.Split(file.Name(), ".")[0]
+		// Bucket file names are in format 1.bucket, 2.bucket, ... 
+		// We can just split them on '.' and have their id.
+		name  := strings.Split(file.Name(), ".")
+		id, _ := strconv.Atoi(name[0]) 
 
-		id, _ := strconv.Atoi(fileId) 
 		if id > max { max = id }
 	}
 
@@ -115,7 +120,7 @@ func getLastBucket(root string) (*os.File, error) {
 // Create next bucket.
 func (bucket *Bucket) nextBucket() (*os.File, error) {
 	id := bucket.ID + 1
-	
+
 	// Based on buckets per dir we can calculate folder ID in which
 	// bucket should be.
 	folderId := int(math.Ceil(float64(id) / float64(bucket.bucketsPerDir)))

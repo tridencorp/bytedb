@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -155,36 +156,21 @@ func TestUpdate(t *testing.T) {
 	}
 } 
 
-// Test if we are creating new buckets if size limit is reached.
+// Test if we are creating new buckets if keys limit is reached.
 func TestBucketCreate(t *testing.T) {
-	testdb, coll := CreateCollection("test", 2, 10, 2)
+	conf := Config{KeysLimit: 2, SizeLimit: 10, BucketsPerDir: 2}
+
+	testdb, coll := CreateCollection("test", conf)
 	defer testdb.Delete()
 
-	// 10 keys, 10 Bytes each. 
-	written, _ := FillCollection(coll, 10, 10)	
+	// 10 keys, 10 Bytes each.
+	FillCollection(coll, 10, 10)
+	file, _ := getLastBucket(coll.root)
 
-	fmt.Println("written bytes: ", written)
+	expected := "3/6.bucket"
+	got, _   := filepath.Rel(coll.root, file.Name())
+
+	if expected != got {
+		t.Errorf("Expected path to be %s, got %s", expected, got)
+	}
 }
-
-// func TestSetConcurrent(t *testing.T) {
-// 	defer func() {
-// 		if r := recover(); r != nil {
-// 				fmt.Println("Recovered from panic:", r)
-// 		}
-// 	}()
-
-// 	db, _ := Open("./db")
-// 	defer db.Delete()
-
-// 	coll, _ := db.Collection("test")
-		
-// 	for i := 0; i < 100_000; i++ {
-// 		go func() {
-// 			coll.Set("key1", []byte("value 1"))
-// 			coll.Set("key2", []byte("value 2"))
-// 			coll.Set("key3", []byte("value 3"))
-// 		}()
-// 	}
-
-// 	fmt.Printf("OFFSET: %d\n", coll.offset.Load())
-// }
