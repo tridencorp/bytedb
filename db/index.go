@@ -17,6 +17,7 @@ const (
 
 // Index size in bytes.
 const IndexSize = 37 
+const BlockSize = IndexSize * 6
 
 // Index will represent key in our database.
 type Index struct {
@@ -70,15 +71,21 @@ func LoadIndexFile(path string) (*IndexFile, error) {
 // Create an index for the given key/value and store it in the index file.
 // This will allow us for faster lookups.
 func (file *IndexFile) Set(key []byte, size int, keyOffset uint64, bucketID uint32) error {	
-	idx := Index{BucketId: 1, Size: uint32(size), Offset: keyOffset}
+  hash  := HashKey(key)
+  block := Block{}
+  pos   := file.collisions(hash)
+
+  idx := Index{BucketId: 1, Size: uint32(size), Offset: keyOffset}
+  copy(idx.Key[:], key)
+
+  block.Keys[pos] = idx
 
 	buf := new(bytes.Buffer)
-	err := binary.Write(buf, binary.BigEndian, idx)
+	err := binary.Write(buf, binary.BigEndian, block)
 	if err != nil {
     return err
 	}
 
-  hash := HashKey(key)
   off := file.offset(hash)
 	_, err = file.fd.WriteAt(buf.Bytes(), int64(off))
 	if err != nil {
@@ -103,7 +110,7 @@ func (file *IndexFile) collisions(hash uint64) int8 {
 // Also checks for hash collisions 
 // and update the offset accordingly.
 func (file *IndexFile) offset(hash uint64) uint64 {
-  return hash % file.indexesPerFile * IndexSize
+  return hash % file.indexesPerFile * BlockSize
 }
 
 // Read index for given key.
