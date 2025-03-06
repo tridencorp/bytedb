@@ -27,9 +27,10 @@ type Index struct {
 	// (worst case scenario).
 	//
 	// TODO: In the end try to align this struct in memory.
-	Key [20]byte
+	Key [20]byte     // 20 bytes
 
-	Deleted  bool    // 1 byte
+	Deleted    bool  // 1 byte
+	Collisions bool  // 1 byte
 	BucketId uint32  // 4 bytes
 	Size     uint32  // 4 bytes
 	Offset   uint64  // 8 bytes
@@ -38,7 +39,7 @@ type Index struct {
 // Index block that will be used to read/write indexes from file.
 // One index block will be able to fit 6 keys: 1 key + 5 collisions.
 type Block struct {
-	Keys [6]Index
+	Keys [5]Index
 }
 
 type IndexFile struct {
@@ -68,16 +69,17 @@ func LoadIndexFile(path string) (*IndexFile, error) {
 
 // Create an index for the given key/value and store it in the index file.
 // This will allow us for faster lookups.
-func (file *IndexFile) Add(key []byte, size int, keyOffset uint64, bucketID uint32) error {	
-	idx  := Index{BucketId: 1, Size: uint32(size), Offset: keyOffset}
+func (file *IndexFile) Set(key []byte, size int, keyOffset uint64, bucketID uint32) error {	
+	idx := Index{BucketId: 1, Size: uint32(size), Offset: keyOffset}
 
 	buf := new(bytes.Buffer)
 	err := binary.Write(buf, binary.BigEndian, idx)
 	if err != nil {
-		return err
+    return err
 	}
 
-  off := file.offset(key)
+  hash := HashKey(key)
+  off := file.offset(hash)
 	_, err = file.fd.WriteAt(buf.Bytes(), int64(off))
 	if err != nil {
 		return err
@@ -86,18 +88,28 @@ func (file *IndexFile) Add(key []byte, size int, keyOffset uint64, bucketID uint
 	return nil
 }
 
+// Get number of collisions for given hash.
+// Returned value will determine position in block.
+func (file *IndexFile) collisions(hash uint64) int8 {
+  _, exists := file.Collisions[hash]
+  if exists {
+    file.Collisions[hash] += 1
+  }
+
+  return file.Collisions[hash]
+}
+
 // Calculate index offset for new key.
 // Also checks for hash collisions 
 // and update the offset accordingly.
-func (indexes *IndexFile) offset(key []byte) uint64 {
-	hash := HashKey(key)
-  return hash % indexes.indexesPerFile * IndexSize
+func (file *IndexFile) offset(hash uint64) uint64 {
+  return hash % file.indexesPerFile * IndexSize
 }
 
 // Read index for given key.
 func (file *IndexFile) Get(key []byte) (*Index, error) {
 	// Find index position
-	offset := file.offset(key)
+	offset := file.offset(HashKey(key))
 	data := make([]byte, IndexSize)
 
 	file.fd.ReadAt(data, int64(offset))
@@ -119,7 +131,7 @@ func (file *IndexFile) Get(key []byte) (*Index, error) {
 // Delete index for given key.
 func (file *IndexFile) Del(key []byte) error {
 	// Find index offset.
-	offset := file.offset(key)
+	offset := file.offset(HashKey(key))
 
 	// If we know the position of index, we can just
 	// set it's second byte to 1.
