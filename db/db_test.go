@@ -114,12 +114,12 @@ func TestLoadIndexFile(t *testing.T) {
 
 	offset, _, _ := coll.Set("key1", []byte("value 1"))
 
-	err = indexes.Add("key1", []byte("value 1"), uint64(offset))
+	err = indexes.Add([]byte("key1"), []byte("value 1"), uint64(offset))
 	if err != nil {
 		fmt.Printf("%v\n", err)
 	}
 
-	idx, _ := indexes.Get("key1")
+	idx, _ := indexes.Get([]byte("key1"))
 
 	if idx == nil        { t.Errorf("Index for the given key wasn't find.") }
 	if idx.BucketId != 1 { t.Errorf("Expected bucketId to be %d, was %d", 1, idx.BucketId) }

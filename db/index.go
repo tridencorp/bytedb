@@ -47,7 +47,7 @@ type IndexFile struct {
 	file *os.File
 
 	// Maximum number of indexes per index file.
-	maxIndexes uint32
+	maxIndexes uint64
 }
 
 // Load index file.
@@ -64,9 +64,8 @@ func LoadIndexFile(path string) (*IndexFile, error) {
 
 // Create an index for the given key/value and store it in the index file.
 // This will allow us for faster lookups.
-func (indexes *IndexFile) Add(key string, val []byte, offset uint64) error {	
-	hash := HashKey(key)
-	idx  := Index{BucketId: 1, Size: uint32(len(val)), Offset: offset}
+func (indexes *IndexFile) Add(key []byte, val []byte, keyOffset uint64) error {	
+	idx  := Index{BucketId: 1, Size: uint32(len(val)), Offset: keyOffset}
 
 	buf := new(bytes.Buffer)
 	err := binary.Write(buf, binary.BigEndian, idx)
@@ -74,8 +73,8 @@ func (indexes *IndexFile) Add(key string, val []byte, offset uint64) error {
 		return err
 	}
 
-	pos := (hash % indexes.maxIndexes) * IndexSize
-	_, err = indexes.file.WriteAt(buf.Bytes(), int64(pos))
+	off := indexes.offset(key)
+	_, err = indexes.file.WriteAt(buf.Bytes(), int64(off))
 	if err != nil {
 		return err
 	}
@@ -83,15 +82,19 @@ func (indexes *IndexFile) Add(key string, val []byte, offset uint64) error {
 	return nil
 }
 
-// Read index for given key.
-func (indexes *IndexFile) Get(key string) (*Index, error) {
+// Calculate index offset for new key.
+func (indexes *IndexFile) offset(key []byte) uint64 {
 	hash := HashKey(key)
+	return hash % indexes.maxIndexes * IndexSize	
+}
 
+// Read index for given key.
+func (indexes *IndexFile) Get(key []byte) (*Index, error) {
 	// Find index position
-	pos  := (hash % indexes.maxIndexes) * IndexSize
+	offset := indexes.offset(key)
 	data := make([]byte, IndexSize)
 
-	indexes.file.ReadAt(data, int64(pos))
+	indexes.file.ReadAt(data, int64(offset))
 	idx := Index{}
 
 	buf := bytes.NewBuffer(data)
@@ -108,21 +111,20 @@ func (indexes *IndexFile) Get(key string) (*Index, error) {
 }
 
 // Delete index for given key.
-func (indexes *IndexFile) Del(key string) error {
-	hash := HashKey(key)
-
-	// Find index position.
-	pos := (hash % indexes.maxIndexes) * IndexSize
+func (indexes *IndexFile) Del(key []byte) error {
+	// Find index offset.
+	offset := indexes.offset(key)
 
 	// If we know the position of index, we can just
 	// set it's second byte to 1.
-	_, err := indexes.file.WriteAt([]byte{1}, int64(pos + 1))
+	// TODO: struct changed, this won't work anymore.
+	_, err := indexes.file.WriteAt([]byte{1}, int64(offset + 1))
 	return err
 }
 
 // Hash the key.
-func HashKey(key string) uint32 {
- 	h := fnv.New32()
-	h.Write([]byte(key))
-	return h.Sum32()
+func HashKey(key []byte) uint64 {
+ 	h := fnv.New64()
+	h.Write(key)
+	return h.Sum64()
 }

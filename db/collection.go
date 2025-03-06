@@ -132,8 +132,8 @@ func (coll *Collection) Set(key string, val []byte) (int64, int64, error) {
 
 	off, size, err := coll.bucket.Write(data)
 
-	// Index new key.
-	err = coll.indexes.Add(key, data, uint64(off))
+	// Index new key.	
+	err = coll.indexes.Add([]byte(key), data, uint64(off))
 	if err != nil {
 		return 0, 0, err
 	}
@@ -143,7 +143,7 @@ func (coll *Collection) Set(key string, val []byte) (int64, int64, error) {
 
 // Get key from collection.
 func (coll *Collection) Get(key string) ([]byte, error) {
-	idx, err := coll.indexes.Get(key)
+	idx, err := coll.indexes.Get([]byte(key))
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +160,7 @@ func (coll *Collection) Get(key string) ([]byte, error) {
 // Delete key from collection.
 // TODO: Set Deleted flag for Key.
 func (coll *Collection) Del(key string) error {
-	return coll.indexes.Del(key)
+	return coll.indexes.Del([]byte(key))	
 }
 
 // Update key from collection.
