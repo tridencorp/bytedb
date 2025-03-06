@@ -211,18 +211,18 @@ func TestBucketTruncate(t *testing.T) {
 }
 
 func TestSetGet2(t *testing.T) {
-	conf := Config{KeysLimit: 10_000, SizeLimit: 1_00_000, BucketsPerDir: 10}
+	conf := Config{KeysLimit: 6_000	, SizeLimit: 1_00_000, BucketsPerDir: 2}
 
-	testdb, coll := CreateCollection("test", conf)
-	defer testdb.Delete()
+	db, c := CreateCollection("test", conf)
+	defer db.Delete()
 
 	// Set all keys.
-	_, keys := FillCollection(coll, 5_000, 200)
+	_, keys := FillCollection(c, 5_000, 200)
 
 	// Get all keys and check if they are correct.
 	count := 0
 	for key, val := range keys {
-		k, _ := coll.Get(key)
+		k, _ := c.Get(key)
 
 		count += 1
 		if !bytes.Equal(k, val) {

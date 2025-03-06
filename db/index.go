@@ -8,21 +8,19 @@ import (
 	"os"
 )
 
-const(
-	IndexesPerFile = 5_000
-
-	// Index size in bytes.
-	IndexSize = 37
-)
-
 const (
-	TypeKv   = 0
+  TypeKv   = 0
 	TypeHash = 1 
+
+  IndexesPerFile = 5_000
 )
+
+// Index size in bytes.
+const IndexSize = 37 
 
 // Index will represent key in our database.
 type Index struct {
-	// Because of collisions we will keep first 20 bytes of each
+  // Because of collisions we will keep first 20 bytes of each
 	// key in index. Each index block will have space for around 
 	// 6 collision keys. We will read them at once and will be able
 	// to match them in memory. This will save us 1-6 file reads 
@@ -46,6 +44,12 @@ type Block struct {
 type IndexFile struct {
   fd *os.File
 
+  // We are keeping track of all collisions that are happening in the 
+  // latest block (block with the highest ID). We increase the counter 
+  // each time collision happens. Thanks to that we know which entry 
+  // in index block we should fill. 
+  Collisions map[uint64]int8
+
 	// Number of indexes file can handle.
 	indexesPerFile uint64
 }
@@ -58,8 +62,8 @@ func LoadIndexFile(path string) (*IndexFile, error) {
 		return nil, nil
 	}
 
-	indexFile := &IndexFile{fd: file, indexesPerFile: IndexesPerFile}
-	return indexFile, nil
+	f := &IndexFile{fd: file, indexesPerFile: IndexesPerFile}
+	return f, nil
 }
 
 // Create an index for the given key/value and store it in the index file.
@@ -73,7 +77,7 @@ func (file *IndexFile) Add(key []byte, size int, keyOffset uint64, bucketID uint
 		return err
 	}
 
-	off := file.offset(key)
+  off := file.offset(key)
 	_, err = file.fd.WriteAt(buf.Bytes(), int64(off))
 	if err != nil {
 		return err
@@ -83,6 +87,8 @@ func (file *IndexFile) Add(key []byte, size int, keyOffset uint64, bucketID uint
 }
 
 // Calculate index offset for new key.
+// Also checks for hash collisions 
+// and update the offset accordingly.
 func (indexes *IndexFile) offset(key []byte) uint64 {
 	hash := HashKey(key)
   return hash % indexes.indexesPerFile * IndexSize

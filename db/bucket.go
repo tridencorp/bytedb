@@ -15,7 +15,7 @@ import (
 // to use this in concurrent world.
 type File struct {
 	fd *os.File
-	bucketID uint32 
+	bucketID uint32
 
 	// We will be using atomic.Add() for each key.
 	// In combination with WriteAt, it should give
@@ -24,6 +24,7 @@ type File struct {
 
 	// If offset reach size limit, we resize the file.
 	// We double it's size.
+  // TODO: will be changed.
 	sizeLimit uint64
 }
 
@@ -171,18 +172,19 @@ func (bucket *Bucket) Write(data []byte) (int64, int64, uint32, error) {
 
 	// We are adding len to atomic value and then deducting it
 	// from the result, this should give us space for our data.
-	totalOff := file.offset.Add(int64(len(data)))
-	writeOff := totalOff - int64(len(data))
+	offset    := file.offset.Add(int64(len(data)))
+	keyOffset := offset - int64(len(data))
+
 
 	off  := int64(0)
 	size := int64(0)
 
 	// Resize the file when we reach size limit.
-	if totalOff >= int64(file.sizeLimit) {
+	if offset >= int64(file.sizeLimit) {
 		bucket.mux.Lock()
 		// Check if our condition is still valid - some other goroutine 
 		// could changed the size limit in the time we was waiting for lock.
-		if totalOff >= int64(file.sizeLimit) {
+		if offset >= int64(file.sizeLimit) {
 			err := bucket.resize(file)
 			if err != nil {
 				return 0, 0, 0, err
@@ -206,7 +208,7 @@ func (bucket *Bucket) Write(data []byte) (int64, int64, uint32, error) {
 
 	if count <= limit {
 		bucket.mux.RLock()
-		off, size, _ = bucket.write(file.fd, writeOff, data)
+		off, size, _ = bucket.write(file.fd, keyOffset, data)
 		bucket.mux.RUnlock()
 	}
 
