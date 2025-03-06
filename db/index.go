@@ -9,7 +9,7 @@ import (
 )
 
 const(
-	MaxIndexesPerFile = 5_000
+	IndexesPerFile = 5_000
 
 	// Index size in bytes.
 	IndexSize = 37
@@ -27,7 +27,7 @@ type Index struct {
 	// 6 collision keys. We will read them at once and will be able
 	// to match them in memory. This will save us 1-6 file reads 
 	// (worst case scenario).
-	// 
+	//
 	// TODO: In the end try to align this struct in memory.
 	Key [20]byte
 
@@ -46,11 +46,8 @@ type Block struct {
 type IndexFile struct {
 	file *os.File
 
-	// Keep in memory indexes from latest bucket.
-	
-
-	// Maximum number of indexes per index file.
-	maxIndexes uint64
+	// Number of indexes file can handle.
+	indexesPerFile uint64
 }
 
 // Load index file.
@@ -61,7 +58,7 @@ func LoadIndexFile(path string) (*IndexFile, error) {
 		return nil, nil
 	}
 
-	indexFile := &IndexFile{file: file, maxIndexes: MaxIndexesPerFile}
+	indexFile := &IndexFile{file: file, indexesPerFile: IndexesPerFile}
 	return indexFile, nil
 }
 
@@ -88,7 +85,7 @@ func (indexes *IndexFile) Add(key []byte, size int, keyOffset uint64, bucketID u
 // Calculate index offset for new key.
 func (indexes *IndexFile) offset(key []byte) uint64 {
 	hash := HashKey(key)
-	return hash % indexes.maxIndexes * IndexSize	
+	return hash % indexes.indexesPerFile * IndexSize
 }
 
 // Read index for given key.
