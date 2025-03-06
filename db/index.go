@@ -31,7 +31,7 @@ type Index struct {
 	// TODO: In the end try to align this struct in memory.
 	Key [20]byte
 
-	Deleted  bool    // 1 byte: Indicates if key is deleted or not.
+	Deleted  bool    // 1 byte
 	BucketId uint32  // 4 bytes
 	Size     uint32  // 4 bytes
 	Offset   uint64  // 8 bytes
@@ -44,7 +44,7 @@ type Block struct {
 }
 
 type IndexFile struct {
-	file *os.File
+  fd *os.File
 
 	// Number of indexes file can handle.
 	indexesPerFile uint64
@@ -58,13 +58,13 @@ func LoadIndexFile(path string) (*IndexFile, error) {
 		return nil, nil
 	}
 
-	indexFile := &IndexFile{file: file, indexesPerFile: IndexesPerFile}
+	indexFile := &IndexFile{fd: file, indexesPerFile: IndexesPerFile}
 	return indexFile, nil
 }
 
 // Create an index for the given key/value and store it in the index file.
 // This will allow us for faster lookups.
-func (indexes *IndexFile) Add(key []byte, size int, keyOffset uint64, bucketID uint32) error {	
+func (file *IndexFile) Add(key []byte, size int, keyOffset uint64, bucketID uint32) error {	
 	idx  := Index{BucketId: 1, Size: uint32(size), Offset: keyOffset}
 
 	buf := new(bytes.Buffer)
@@ -73,8 +73,8 @@ func (indexes *IndexFile) Add(key []byte, size int, keyOffset uint64, bucketID u
 		return err
 	}
 
-	off := indexes.offset(key)
-	_, err = indexes.file.WriteAt(buf.Bytes(), int64(off))
+	off := file.offset(key)
+	_, err = file.fd.WriteAt(buf.Bytes(), int64(off))
 	if err != nil {
 		return err
 	}
@@ -85,16 +85,16 @@ func (indexes *IndexFile) Add(key []byte, size int, keyOffset uint64, bucketID u
 // Calculate index offset for new key.
 func (indexes *IndexFile) offset(key []byte) uint64 {
 	hash := HashKey(key)
-	return hash % indexes.indexesPerFile * IndexSize
+  return hash % indexes.indexesPerFile * IndexSize
 }
 
 // Read index for given key.
-func (indexes *IndexFile) Get(key []byte) (*Index, error) {
+func (file *IndexFile) Get(key []byte) (*Index, error) {
 	// Find index position
-	offset := indexes.offset(key)
+	offset := file.offset(key)
 	data := make([]byte, IndexSize)
 
-	indexes.file.ReadAt(data, int64(offset))
+	file.fd.ReadAt(data, int64(offset))
 	idx := Index{}
 
 	buf := bytes.NewBuffer(data)
@@ -111,14 +111,14 @@ func (indexes *IndexFile) Get(key []byte) (*Index, error) {
 }
 
 // Delete index for given key.
-func (indexes *IndexFile) Del(key []byte) error {
+func (file *IndexFile) Del(key []byte) error {
 	// Find index offset.
-	offset := indexes.offset(key)
+	offset := file.offset(key)
 
 	// If we know the position of index, we can just
 	// set it's second byte to 1.
 	// TODO: struct changed, this won't work anymore.
-	_, err := indexes.file.WriteAt([]byte{1}, int64(offset + 1))
+	_, err := file.fd.WriteAt([]byte{1}, int64(offset + 1))
 	return err
 }
 
