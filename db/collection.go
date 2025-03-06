@@ -130,10 +130,10 @@ func (coll *Collection) Set(key string, val []byte) (int64, int64, error) {
 		return 0, 0, err
 	}
 
-	off, size, err := coll.bucket.Write(data)
+	off, size, id, err := coll.bucket.Write(data)
 
-	// Index new key.	
-	err = coll.indexes.Add([]byte(key), data, uint64(off))
+	// Index new key.
+	err = coll.indexes.Add([]byte(key), len(data), uint64(off), id)
 	if err != nil {
 		return 0, 0, err
 	}

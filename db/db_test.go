@@ -114,7 +114,7 @@ func TestLoadIndexFile(t *testing.T) {
 
 	offset, _, _ := coll.Set("key1", []byte("value 1"))
 
-	err = indexes.Add([]byte("key1"), []byte("value 1"), uint64(offset))
+	err = indexes.Add([]byte("key1"), len([]byte("value 1")), uint64(offset), coll.bucket.ID)
 	if err != nil {
 		fmt.Printf("%v\n", err)
 	}

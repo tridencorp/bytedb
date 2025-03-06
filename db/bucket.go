@@ -15,6 +15,9 @@ import (
 // to use this in concurrent world.
 type File struct {
 	fd *os.File
+	
+	// Tell us which bucket id this file belongs to.
+	id uint32 
 
 	// We will be using atomic.Add() for each key.
 	// In combination with WriteAt, it should give
@@ -65,7 +68,7 @@ func OpenBucket(root string, keysLimit uint32, sizeLimit int64, bucketsPerDir in
 		bucketsPerDir: int16(bucketsPerDir),
 	}
 
-	file := &File{fd: f, sizeLimit: uint64(sizeLimit)}
+	file := &File{fd: f, id: bucket.ID, sizeLimit: uint64(sizeLimit)}
 
 	bucket.file.Store(file)
 	file.offset.Store(getOffset(bucket))
@@ -142,7 +145,7 @@ func (bucket *Bucket) nextBucket() (*os.File, error) {
 
 	// We created new bucket file, there are no keys yet so we must restart counters, 
 	// offsets, ...
-	file := &File{fd: fd}	
+	file := &File{fd: fd, id: bucket.ID}	
 	file.offset.Store(0)
 
 	bucket.keysCount.Store(0)
@@ -156,7 +159,7 @@ func (bucket *Bucket) nextBucket() (*os.File, error) {
 //
 // TODO: Should buckets know about keys and other
 // types ? Should they operate only on raw bytes ?
-func (bucket *Bucket) Write(data []byte) (int64, int64, error) {
+func (bucket *Bucket) Write(data []byte) (int64, int64, uint32, error) {
 	// Load file - we want to load all file related data at once.
 	file := bucket.file.Load()
 
@@ -182,7 +185,7 @@ func (bucket *Bucket) Write(data []byte) (int64, int64, error) {
 		if totalOff >= int64(file.sizeLimit) {
 			err := bucket.resize(file)
 			if err != nil {
-				return 0, 0, err
+				return 0, 0, 0, err
 			}
 		}
 		bucket.mux.Unlock()
@@ -194,8 +197,10 @@ func (bucket *Bucket) Write(data []byte) (int64, int64, error) {
 		bucket.mux.Lock()
 		_, err := bucket.nextBucket()
 		if err != nil {
-			return 0, 0, err
+			return 0, 0, 0, err
 		}
+		// TODO: Test this.
+		// file = bucket.file.Load()
 		bucket.mux.Unlock()
 	}
 
@@ -205,7 +210,7 @@ func (bucket *Bucket) Write(data []byte) (int64, int64, error) {
 		bucket.mux.RUnlock()
 	}
 
-	return off, size, nil
+	return off, size, file.id, nil
 }
 
 func (bucket *Bucket) resize(file *File) error {

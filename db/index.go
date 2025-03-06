@@ -46,6 +46,9 @@ type Block struct {
 type IndexFile struct {
 	file *os.File
 
+	// Keep in memory indexes from latest bucket.
+	
+
 	// Maximum number of indexes per index file.
 	maxIndexes uint64
 }
@@ -64,8 +67,8 @@ func LoadIndexFile(path string) (*IndexFile, error) {
 
 // Create an index for the given key/value and store it in the index file.
 // This will allow us for faster lookups.
-func (indexes *IndexFile) Add(key []byte, val []byte, keyOffset uint64) error {	
-	idx  := Index{BucketId: 1, Size: uint32(len(val)), Offset: keyOffset}
+func (indexes *IndexFile) Add(key []byte, size int, keyOffset uint64, bucketID uint32) error {	
+	idx  := Index{BucketId: 1, Size: uint32(size), Offset: keyOffset}
 
 	buf := new(bytes.Buffer)
 	err := binary.Write(buf, binary.BigEndian, idx)

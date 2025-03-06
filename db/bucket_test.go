@@ -32,7 +32,7 @@ func TestBucketWrite(t *testing.T) {
 	size := int64(0)
 
 	for i := 0; i < 100; i++ {
-		_, len, _ := bck.Write(data)
+		_, len, _, _ := bck.Write(data)
 		size += len
 	}
 
