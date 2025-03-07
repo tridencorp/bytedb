@@ -36,16 +36,19 @@ type Index struct {
 type Key [24]byte
 
 func (k *Key) Empty() bool {
-	empty := new(Key)
-	return k == empty
+	return *k == *new(Key)
+}
+
+func (k *Key) Set(key []byte) int {
+	return copy(k[:], key)	
 }
 
 type IndexFile struct {
   fd *os.File
 
   // Keeping key/collision offsets in memory.
-  Keys       []*Key
-  Collisions []*Key
+  Keys       []Key
+  Collisions []Key
 
   // Offset of next collision slot in index file.
   CollisionOffset atomic.Uint64
@@ -65,10 +68,10 @@ func Load(dir string, indexesPerFile uint64) (*IndexFile, error) {
 	}
 
   f := &IndexFile{fd: file, indexesPerFile: indexesPerFile}
-	f.Keys = make([]*Key, f.indexesPerFile)
+	f.Keys = make([]Key, f.indexesPerFile)
 
 	size := uint64(math.Ceil(float64(30.0*float64(f.indexesPerFile)/100))) 
-	f.Collisions = make([]*Key, size)
+	f.Collisions = make([]Key, size)
 
 	return f, nil
 }
@@ -81,15 +84,17 @@ func (f *IndexFile) Set(keyName []byte, size int, keyOffset uint64, bucketID uin
 	off  := hash % f.indexesPerFile
 
 	// Find key in Keys.
-	key := f.Keys[off]
+	key := &f.Keys[off]
 	fmt.Println(key)
 
 	if key.Empty() {
-		fmt.Println("empty key")
+		key.Set(keyName)
 	}
 
+	fmt.Println(f.Keys[off])
+
   // idx := Index{BucketId: 1, Size: uint32(size), Offset: keyOffset}
-  // copy(idx.Key[:], keyName)
+  // /opy(idx.Key[:], keyName)
 	
 	// buf := new(bytes.Buffer)
 	// err := binary.Write(buf, binary.BigEndian, block)
