@@ -36,7 +36,7 @@ type Index struct {
 // Key
 //
 // [0:20]  - first 20 bytes are keyval name.
-// [20:24] - next 4 bytes are index to next collision key.
+// [20:24] - next 4 bytes are index to next slot in Collisions table.
 // [24:32] - last 8 bytes are index offset in file.
 type Key [32]byte
 
@@ -44,6 +44,7 @@ func (k *Key) Empty() bool {
 	return *k == *new(Key)
 }
 
+// Set key name (kv name).
 func (k *Key) Set(key []byte) int {
 	return copy(k[:], key)	
 }
@@ -54,6 +55,11 @@ func (k *Key) HasCollision() bool {
 	return !bytes.Equal(k[20:24], []byte{0, 0, 0, 0})
 }
 
+// Set key slot.
+func (k *Key) SetSlot(index uint32) {
+	binary.BigEndian.PutUint32(k[20:], index)
+}
+
 type IndexFile struct {
   fd *os.File
 
@@ -61,8 +67,7 @@ type IndexFile struct {
   Keys       []Key
   Collisions []Key
 
-  // Offset of next collision slot in index file.
-  CollisionOffset atomic.Uint64
+	collisionIndex atomic.Uint32
 
 	// Number of indexes file can handle.
 	indexesPerFile uint64
@@ -80,13 +85,13 @@ func Load(dir string, indexesPerFile uint64) (*IndexFile, error) {
 
   f := &IndexFile{fd: file, indexesPerFile: indexesPerFile}
 	f.Keys = make([]Key, f.indexesPerFile)
+	f.collisionIndex.Store(0)
 
 	size := uint64(math.Ceil(float64(30.0*float64(f.indexesPerFile)/100))) 
 	f.Collisions = make([]Key, size)
 
 	return f, nil
 }
-
 
 // Create an index for the given key/value and store it in the index file.
 // This will allow us for faster lookups.
@@ -100,10 +105,10 @@ func (f *IndexFile) Set(keyName []byte, size int, keyOffset uint64, bucketID uin
 
 	if key.Empty() {
 		key.Set(keyName)
-	}
-
-	if key.HasCollision() {
-		fmt.Println("xxxxxx")
+	} else {
+		// We have collision. We must pick next empty index in Collisions table.
+		index := f.collisionIndex.Add(1)
+		key.SetSlot(index)
 	}
 
 	fmt.Println(f.Keys[off])
