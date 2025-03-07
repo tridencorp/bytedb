@@ -41,3 +41,8 @@ func (k *Key) SetOffset(offset uint64) {
 func (k *Key) Offset() int64 {
 	return int64(binary.BigEndian.Uint64(k[24:]))
 }
+
+// Return key slot in Collisions table.
+func (k *Key) Slot() uint32 {
+	return binary.BigEndian.Uint32(k[20:])
+}
