@@ -23,9 +23,6 @@ const BlockSize = IndexSize * 6
 type Index struct {
 	Key [20]byte // 20 bytes
 
-  // Next collision key.
-  next uint64
-
   // KeyVal
 	Deleted    bool  // 1 byte
 	BucketId uint32  // 4 bytes
@@ -72,7 +69,8 @@ type File struct {
   Keys       []Key
   Collisions []Key
 
-	collisionIndex atomic.Uint32
+	collisionIndex  atomic.Uint32 // Index in Collisions table.
+	collisionOffset atomic.Uint64 // Offset in index file.
 
 	// Number of indexes file can handle.
 	indexesPerFile uint64
@@ -90,7 +88,9 @@ func Load(dir string, indexesPerFile uint64) (*File, error) {
 
   f := &File{fd: file, indexesPerFile: indexesPerFile}
 	f.Keys = make([]Key, f.indexesPerFile)
+
 	f.collisionIndex.Store(0)
+	f.collisionOffset.Store(f.indexesPerFile * IndexSize)
 
 	size := uint64(math.Ceil(float64(30.0*float64(f.indexesPerFile)/100))) 
 	f.Collisions = make([]Key, size)
@@ -110,28 +110,33 @@ func (f *File) Set(keyName []byte, size int, keyOffset uint64, bucketID uint32) 
 
 	if key.Empty() {
 		key.Set(keyName)
+
+		offset := f.offset(hash)
+		key.SetOffset(offset)
 	} else {
 		// We have collision. We must pick next empty index in Collisions table.
 		index := f.collisionIndex.Add(1)
 		key.SetSlot(index)
+
+		offset := f.collisionOffset.Add(uint64(len(Key{})))
+		key.SetOffset(offset)
 	}
 
 	fmt.Println(f.Keys[off])
 
-  // idx := Index{BucketId: 1, Size: uint32(size), Offset: keyOffset}
-  // /opy(idx.Key[:], keyName)
-	
+  // idx := Index{BucketId: bucketID, Size: uint32(size), Offset: keyOffset}
+
 	// buf := new(bytes.Buffer)
 	// err := binary.Write(buf, binary.BigEndian, block)
 	// if err != nil {
 		//   return err
 		// }
 		
-		// off := file.offset(hash)
-		// _, err = file.fd.WriteAt(buf.Bytes(), int64(off))
-		// if err != nil {
-			// 	return err
-			// }
+	// off := file.offset(hash)
+	// _, err = file.fd.WriteAt(buf.Bytes(), int64(off))
+	// if err != nil {
+		// 	return err
+		// }
 			
 		return nil
 	}
@@ -155,7 +160,7 @@ func LoadIndexFile(path string, indexesPerFile uint64) (*File, error) {
 // Also checks for hash collisions 
 // and update the offset accordingly.
 func (f *File) offset(hash uint64) uint64 {
-  return hash % f.indexesPerFile * BlockSize
+  return hash % f.indexesPerFile * IndexSize
 }
 
 // Read index for given key.
