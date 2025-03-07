@@ -33,7 +33,12 @@ type Index struct {
 	Offset   uint64  // 8 bytes
 }
 
-type Key [24]byte
+// Key
+//
+// [0:20]  - first 20 bytes are keyval name.
+// [20:24] - next 4 bytes are index to next collision key.
+// [24:32] - last 8 bytes are index offset in file.
+type Key [32]byte
 
 func (k *Key) Empty() bool {
 	return *k == *new(Key)
@@ -41,6 +46,12 @@ func (k *Key) Empty() bool {
 
 func (k *Key) Set(key []byte) int {
 	return copy(k[:], key)	
+}
+
+// Check if bytes 20:24 are set. If they are, this indicates that
+// the index for the next key is set, meaning we have a collision.
+func (k *Key) HasCollision() bool {
+	return !bytes.Equal(k[20:24], []byte{0, 0, 0, 0})
 }
 
 type IndexFile struct {
@@ -89,6 +100,10 @@ func (f *IndexFile) Set(keyName []byte, size int, keyOffset uint64, bucketID uin
 
 	if key.Empty() {
 		key.Set(keyName)
+	}
+
+	if key.HasCollision() {
+		fmt.Println("xxxxxx")
 	}
 
 	fmt.Println(f.Keys[off])
