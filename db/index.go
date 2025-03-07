@@ -5,14 +5,13 @@ import (
 	"encoding/binary"
 	"fmt"
 	"hash/fnv"
+	"math"
 	"os"
 )
 
 const (
   TypeKv   = 0
 	TypeHash = 1 
-
-  IndexesPerFile = 5_000
 )
 
 // Index size in bytes.
@@ -31,40 +30,42 @@ type Index struct {
 	Key [20]byte     // 20 bytes
 
 	Deleted    bool  // 1 byte
-	Collisions bool  // 1 byte
 	BucketId uint32  // 4 bytes
 	Size     uint32  // 4 bytes
 	Offset   uint64  // 8 bytes
 }
 
-// Index block that will be used to read/write indexes from file.
-// One index block will be able to fit 6 keys: 1 key + 5 collisions.
-type Block struct {
-	Keys [5]Index
-}
+// We are keeping this in arrays because structs and slices have
+// around 24 bytes overhead each.
+type Block [28]byte // 24b + 4b(next)
 
 type IndexFile struct {
   fd *os.File
 
-  // We are keeping track of all collisions that are happening in the 
-  // latest block (block with the highest ID). We increase the counter 
-  // each time collision happens. Thanks to that we know which entry 
-  // in index block we should fill. 
-  Collisions map[uint64]int8
+  // Keeping key/collision offsets in memory.
+  Keys       []Block
+  Collisions []Block
 
 	// Number of indexes file can handle.
 	indexesPerFile uint64
 }
 
 // Load index file.
-func LoadIndexFile(path string) (*IndexFile, error) {
+func LoadIndexFile(path string, indexesPerFile uint64) (*IndexFile, error) {
 	path += "/index.idx"
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		return nil, nil
 	}
 
-	f := &IndexFile{fd: file, indexesPerFile: IndexesPerFile}
+  f := &IndexFile{fd: file, indexesPerFile: indexesPerFile}
+  f.Keys = make([]Block, f.indexesPerFile)
+  
+  // ~30% of keys size.
+  size := uint64(math.Ceil(float64(30.0*float64(f.indexesPerFile)/100))) 
+
+  f.Collisions = make([]Block, size)
+
 	return f, nil
 }
 
@@ -73,12 +74,9 @@ func LoadIndexFile(path string) (*IndexFile, error) {
 func (file *IndexFile) Set(key []byte, size int, keyOffset uint64, bucketID uint32) error {	
   hash  := HashKey(key)
   block := Block{}
-  pos   := file.collisions(hash)
 
   idx := Index{BucketId: 1, Size: uint32(size), Offset: keyOffset}
   copy(idx.Key[:], key)
-
-  block.Keys[pos] = idx
 
 	buf := new(bytes.Buffer)
 	err := binary.Write(buf, binary.BigEndian, block)
@@ -93,17 +91,6 @@ func (file *IndexFile) Set(key []byte, size int, keyOffset uint64, bucketID uint
 	}
 
 	return nil
-}
-
-// Get number of collisions for given hash.
-// Returned value will determine position in block.
-func (file *IndexFile) collisions(hash uint64) int8 {
-  _, exists := file.Collisions[hash]
-  if exists {
-    file.Collisions[hash] += 1
-  }
-
-  return file.Collisions[hash]
 }
 
 // Calculate index offset for new key.

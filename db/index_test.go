@@ -7,12 +7,14 @@ import (
 )
 
 func TestIndexSet(t *testing.T) {
-	file, _ := LoadIndexFile(".")
+	file, _ := LoadIndexFile(".", 5_000)
 	defer os.Remove("./index.idx")
 
-	for i:=0; i < 5_000; i++ {
-		key := fmt.Sprintf("key_%d", i)
-		file.Set([]byte(key), 10, 10, 1)
-	}
+	key := fmt.Sprintf("key_%d", 1)
+	file.Set([]byte(key), 10, 10, 1)
 
+	fmt.Println("keys: ", len(file.Keys))
+	fmt.Println("collisions: ", len(file.Collisions))
+
+	
 }

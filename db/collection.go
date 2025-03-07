@@ -93,7 +93,7 @@ func newCollection(path string, conf Config) (*Collection, error) {
 		return nil, err
 	}
 
-	indexes, err := LoadIndexFile(dir)
+	indexes, err := LoadIndexFile(dir, 5_000)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +132,7 @@ func (coll *Collection) Set(key string, val []byte) (int64, int64, error) {
 
 	off, size, id, err := coll.bucket.Write(data)
 
-	// Index new key.
+	// Index new key. 
 	err = coll.indexes.Set([]byte(key), len(data), uint64(off), id)
 	if err != nil {
 		return 0, 0, err

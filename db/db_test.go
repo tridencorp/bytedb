@@ -107,7 +107,7 @@ func TestLoadIndexFile(t *testing.T) {
 
 	coll, _ := db.Collection("test", conf)
 
-	indexes, err := LoadIndexFile(coll.root)
+	indexes, err := LoadIndexFile(coll.root, 5_000)
 	if err != nil {
 		fmt.Printf("%v\n", err)
 	}
