@@ -74,7 +74,6 @@ func (f *File) Set(keyName []byte, size int, keyOffset uint64, bucketID uint32) 
 
 	// Find key in Keys.
 	key := &f.Keys[off]
-	fmt.Println(key)
 
 	if key.Empty() {
 		key.Set(keyName)
@@ -83,11 +82,49 @@ func (f *File) Set(keyName []byte, size int, keyOffset uint64, bucketID uint32) 
 		key.SetOffset(offset)
 	} else {
 		// We have collision. We must pick next empty index in Collisions table.
-		index := f.collisionIndex.Add(1)
-		key.SetSlot(index)
+		if !key.HasCollision() {
+			// First collision.
+			index := f.collisionIndex.Add(1)
+			key.SetSlot(index)
 
-		offset := f.collisionOff()
-		key.SetOffset(offset)
+			// New collision key.
+			key := new(Key)
+			key.Set(keyName)
+
+			offset := f.collisionOff()
+			key.SetOffset(offset)
+
+			if index >= uint32(len(f.Collisions)) {
+				f.Collisions = append(f.Collisions, make([]Key, 100)...)
+			}
+
+			f.Collisions[index] = *key
+		} else {
+			// We had more than 1 collision already. Iterate and find last one.
+			for {
+				slot := key.Slot()
+				if slot == 0 {
+					break
+				}
+
+				key = &f.Collisions[slot]
+			}
+
+			index := f.collisionIndex.Add(1)
+			key.SetSlot(index)
+
+			key := new(Key)
+			key.Set(keyName)
+
+			offset := f.collisionOff()
+			key.SetOffset(offset)
+
+			if index >= uint32(len(f.Collisions)) {
+				f.Collisions = append(f.Collisions, make([]Key, 100)...)
+			}
+
+			f.Collisions[index] = *key
+		}
 	}
 
   idx := Index{BucketId: bucketID, Size: uint32(size), Offset: keyOffset}
@@ -104,7 +141,6 @@ func (f *File) Set(keyName []byte, size int, keyOffset uint64, bucketID uint32) 
 		return err
 	}
 
-	fmt.Println(f.Keys[off])
 	return nil
 }
 		
