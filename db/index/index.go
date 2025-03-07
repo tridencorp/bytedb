@@ -30,38 +30,6 @@ type Index struct {
 	Offset   uint64  // 8 bytes
 }
 
-// Key
-//
-// [0:20]  - first 20 bytes are keyval name.
-// [20:24] - next 4 bytes are index to next slot in Collisions table.
-// [24:32] - last 8 bytes are index offset in file.
-type Key [32]byte
-
-func (k *Key) Empty() bool {
-	return *k == *new(Key)
-}
-
-// Set key name (kv name).
-func (k *Key) Set(key []byte) int {
-	return copy(k[:], key)	
-}
-
-// Check if bytes 20:24 are set. If they are, this indicates that
-// the index for the next key is set, meaning we have a collision.
-func (k *Key) HasCollision() bool {
-	return !bytes.Equal(k[20:24], []byte{0, 0, 0, 0})
-}
-
-// Set key slot.
-func (k *Key) SetSlot(index uint32) {
-	binary.BigEndian.PutUint32(k[20:], index)
-}
-
-// Set key offset.
-func (k *Key) SetOffset(offset uint64) {
-	binary.BigEndian.PutUint64(k[24:], offset)
-}
-
 type File struct {
   fd *os.File
 
@@ -118,28 +86,27 @@ func (f *File) Set(keyName []byte, size int, keyOffset uint64, bucketID uint32) 
 		index := f.collisionIndex.Add(1)
 		key.SetSlot(index)
 
-		offset := f.collisionOffset.Add(uint64(len(Key{})))
+		offset := f.collisionOff()
 		key.SetOffset(offset)
 	}
 
-	fmt.Println(f.Keys[off])
+  idx := Index{BucketId: bucketID, Size: uint32(size), Offset: keyOffset}
 
-  // idx := Index{BucketId: bucketID, Size: uint32(size), Offset: keyOffset}
-
-	// buf := new(bytes.Buffer)
-	// err := binary.Write(buf, binary.BigEndian, block)
-	// if err != nil {
-		//   return err
-		// }
-		
-	// off := file.offset(hash)
-	// _, err = file.fd.WriteAt(buf.Bytes(), int64(off))
-	// if err != nil {
-		// 	return err
-		// }
-			
-		return nil
+	buf := new(bytes.Buffer)
+	err := binary.Write(buf, binary.BigEndian, idx)
+	if err != nil {
+		fmt.Println(err)
+		return err
 	}
+
+	_, err = f.fd.WriteAt(buf.Bytes(), key.Offset())
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(f.Keys[off])
+	return nil
+}
 		
 // Load index file.
 func LoadIndexFile(path string, indexesPerFile uint64) (*File, error) {
@@ -161,6 +128,11 @@ func LoadIndexFile(path string, indexesPerFile uint64) (*File, error) {
 // and update the offset accordingly.
 func (f *File) offset(hash uint64) uint64 {
   return hash % f.indexesPerFile * IndexSize
+}
+
+// Calculate collision offset in index file.
+func (f *File) collisionOff() uint64 {
+	return f.collisionOffset.Add(IndexSize) - IndexSize
 }
 
 // Read index for given key.
