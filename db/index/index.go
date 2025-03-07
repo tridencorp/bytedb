@@ -60,7 +60,12 @@ func (k *Key) SetSlot(index uint32) {
 	binary.BigEndian.PutUint32(k[20:], index)
 }
 
-type IndexFile struct {
+// Set key offset.
+func (k *Key) SetOffset(offset uint64) {
+	binary.BigEndian.PutUint64(k[24:], offset)
+}
+
+type File struct {
   fd *os.File
 
   // Keeping key/collision offsets in memory.
@@ -74,7 +79,7 @@ type IndexFile struct {
 }
 
 // Load index file from given directory. 
-func Load(dir string, indexesPerFile uint64) (*IndexFile, error) {
+func Load(dir string, indexesPerFile uint64) (*File, error) {
 	// TODO: Only temporary and will be replaced by proper index file.
 	dir += "/index.idx"
 
@@ -83,7 +88,7 @@ func Load(dir string, indexesPerFile uint64) (*IndexFile, error) {
 		return nil, nil
 	}
 
-  f := &IndexFile{fd: file, indexesPerFile: indexesPerFile}
+  f := &File{fd: file, indexesPerFile: indexesPerFile}
 	f.Keys = make([]Key, f.indexesPerFile)
 	f.collisionIndex.Store(0)
 
@@ -95,7 +100,7 @@ func Load(dir string, indexesPerFile uint64) (*IndexFile, error) {
 
 // Create an index for the given key/value and store it in the index file.
 // This will allow us for faster lookups.
-func (f *IndexFile) Set(keyName []byte, size int, keyOffset uint64, bucketID uint32) error {	
+func (f *File) Set(keyName []byte, size int, keyOffset uint64, bucketID uint32) error {	
 	hash := HashKey(keyName)
 	off  := hash % f.indexesPerFile
 
@@ -132,14 +137,14 @@ func (f *IndexFile) Set(keyName []byte, size int, keyOffset uint64, bucketID uin
 	}
 		
 // Load index file.
-func LoadIndexFile(path string, indexesPerFile uint64) (*IndexFile, error) {
+func LoadIndexFile(path string, indexesPerFile uint64) (*File, error) {
 	path += "/index.idx"
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		return nil, nil
 	}
 
-	f := &IndexFile{fd: file, indexesPerFile: indexesPerFile}
+	f := &File{fd: file, indexesPerFile: indexesPerFile}
 
 	// ~30% of keys size.
 	// size := uint64(math.Ceil(float64(30.0*float64(f.indexesPerFile)/100))) 
@@ -149,17 +154,17 @@ func LoadIndexFile(path string, indexesPerFile uint64) (*IndexFile, error) {
 // Calculate index offset for new key.
 // Also checks for hash collisions 
 // and update the offset accordingly.
-func (file *IndexFile) offset(hash uint64) uint64 {
-  return hash % file.indexesPerFile * BlockSize
+func (f *File) offset(hash uint64) uint64 {
+  return hash % f.indexesPerFile * BlockSize
 }
 
 // Read index for given key.
-func (file *IndexFile) Get(key []byte) (*Index, error) {
+func (f *File) Get(key []byte) (*Index, error) {
 	// Find index position
-	offset := file.offset(HashKey(key))
+	offset := f.offset(HashKey(key))
 	data := make([]byte, IndexSize)
 
-	file.fd.ReadAt(data, int64(offset))
+	f.fd.ReadAt(data, int64(offset))
 	idx := Index{}
 
 	buf := bytes.NewBuffer(data)
@@ -176,14 +181,14 @@ func (file *IndexFile) Get(key []byte) (*Index, error) {
 }
 
 // Delete index for given key.
-func (file *IndexFile) Del(key []byte) error {
+func (f *File) Del(key []byte) error {
 	// Find index offset.
-	offset := file.offset(HashKey(key))
+	offset := f.offset(HashKey(key))
 
 	// If we know the position of index, we can just
 	// set it's second byte to 1.
 	// TODO: struct changed, this won't work anymore.
-	_, err := file.fd.WriteAt([]byte{1}, int64(offset + 1))
+	_, err := f.fd.WriteAt([]byte{1}, int64(offset + 1))
 	return err
 }
 
