@@ -1,6 +1,7 @@
 package db
 
 import (
+	"bucketdb/db/index"
 	"bytes"
 	"encoding/binary"
 	"os"
@@ -10,7 +11,7 @@ import (
 
 type Collection struct {
 	bucket  *Bucket
-	indexes *IndexFile
+	indexes *index.IndexFile
 	config  Config
 
 	// Collection root directory.
@@ -93,7 +94,7 @@ func newCollection(path string, conf Config) (*Collection, error) {
 		return nil, err
 	}
 
-	indexes, err := LoadIndexFile(dir, 5_000)
+	indexes, err := index.LoadIndexFile(dir, 5_000)
 	if err != nil {
 		return nil, err
 	}

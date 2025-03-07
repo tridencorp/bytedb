@@ -1,12 +1,12 @@
-package db
+package index
 
 import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
 	"hash/fnv"
-	"math"
 	"os"
+	"sync/atomic"
 )
 
 const (
@@ -20,34 +20,46 @@ const BlockSize = IndexSize * 6
 
 // Index will represent key in our database.
 type Index struct {
-  // Because of collisions we will keep first 20 bytes of each
-	// key in index. Each index block will have space for around 
-	// 6 collision keys. We will read them at once and will be able
-	// to match them in memory. This will save us 1-6 file reads 
-	// (worst case scenario).
-	//
-	// TODO: In the end try to align this struct in memory.
-	Key [20]byte     // 20 bytes
+	Key [20]byte // 20 bytes
 
+  // Next collision key.
+  next uint64
+
+  // KeyVal
 	Deleted    bool  // 1 byte
 	BucketId uint32  // 4 bytes
 	Size     uint32  // 4 bytes
 	Offset   uint64  // 8 bytes
 }
 
-// We are keeping this in arrays because structs and slices have
-// around 24 bytes overhead each.
-type Block [28]byte // 24b + 4b(next)
+type Key [24]byte
 
 type IndexFile struct {
   fd *os.File
 
   // Keeping key/collision offsets in memory.
-  Keys       []Block
-  Collisions []Block
+  Keys       []Key
+  Collisions []Key
+
+  // Offset of next collision slot in index file.
+  CollisionOffset atomic.Uint64
 
 	// Number of indexes file can handle.
 	indexesPerFile uint64
+}
+
+// Load index file from given directory. 
+func Load(dir string, indexesPerFile uint64) (*IndexFile, error) {
+	// TODO: Only temporary and will be replaced by proper index file.
+	dir += "/index.idx"
+
+	file, err := os.OpenFile(dir, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		return nil, nil
+	}
+
+  f := &IndexFile{fd: file, indexesPerFile: indexesPerFile}
+	return f, nil
 }
 
 // Load index file.
@@ -59,36 +71,35 @@ func LoadIndexFile(path string, indexesPerFile uint64) (*IndexFile, error) {
 	}
 
   f := &IndexFile{fd: file, indexesPerFile: indexesPerFile}
-  f.Keys = make([]Block, f.indexesPerFile)
-  
+
   // ~30% of keys size.
-  size := uint64(math.Ceil(float64(30.0*float64(f.indexesPerFile)/100))) 
-
-  f.Collisions = make([]Block, size)
-
+  // size := uint64(math.Ceil(float64(30.0*float64(f.indexesPerFile)/100))) 
 	return f, nil
 }
 
 // Create an index for the given key/value and store it in the index file.
 // This will allow us for faster lookups.
-func (file *IndexFile) Set(key []byte, size int, keyOffset uint64, bucketID uint32) error {	
-  hash  := HashKey(key)
-  block := Block{}
+func (f *IndexFile) Set(keyName []byte, size int, keyOffset uint64, bucketID uint32) error {	
+  hash := HashKey(keyName)
 
-  idx := Index{BucketId: 1, Size: uint32(size), Offset: keyOffset}
-  copy(idx.Key[:], key)
+	// Get key from Keys.
+	key := f.Keys[hash]
+	fmt.Println(key)
 
-	buf := new(bytes.Buffer)
-	err := binary.Write(buf, binary.BigEndian, block)
-	if err != nil {
-    return err
-	}
+  // idx := Index{BucketId: 1, Size: uint32(size), Offset: keyOffset}
+  // copy(idx.Key[:], keyName)
 
-  off := file.offset(hash)
-	_, err = file.fd.WriteAt(buf.Bytes(), int64(off))
-	if err != nil {
-		return err
-	}
+	// buf := new(bytes.Buffer)
+	// err := binary.Write(buf, binary.BigEndian, block)
+	// if err != nil {
+  //   return err
+	// }
+
+  // off := file.offset(hash)
+	// _, err = file.fd.WriteAt(buf.Bytes(), int64(off))
+	// if err != nil {
+	// 	return err
+	// }
 
 	return nil
 }

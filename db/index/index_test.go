@@ -1,4 +1,4 @@
-package db
+package index
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 )
 
 func TestIndexSet(t *testing.T) {
-	file, _ := LoadIndexFile(".", 5_000)
+	file, _ := Load(".", 5_000)
 	defer os.Remove("./index.idx")
 
 	key := fmt.Sprintf("key_%d", 1)
@@ -16,5 +16,4 @@ func TestIndexSet(t *testing.T) {
 	fmt.Println("keys: ", len(file.Keys))
 	fmt.Println("collisions: ", len(file.Collisions))
 
-	
 }
