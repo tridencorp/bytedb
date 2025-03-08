@@ -82,16 +82,12 @@ func (f *File) Set(keyName []byte, size int, keyOffset uint64, bucketID uint32) 
 		// We have collision. We must pick next empty index in Collision table.
 		if !key.HasCollision() {
 			// First collision.
-			index := f.nextCollision.Add(1)
+			index := f.NextCollision()
 			key.SetSlot(index)
 
 			// New collision key.
 			key = new(Key)
 			f.setCollisionKey(key, keyName)
-
-			if index >= uint32(len(f.Collisions)) {
-				f.Collisions = append(f.Collisions, make([]Key, 100)...)
-			}
 
 			f.Collisions[index] = *key
 		} else {
@@ -105,15 +101,11 @@ func (f *File) Set(keyName []byte, size int, keyOffset uint64, bucketID uint32) 
 				key = &f.Collisions[slot]
 			}
 
-			index := f.nextCollision.Add(1)
+			index := f.NextCollision()
 			key.SetSlot(index)
 
 			key = new(Key)
 			f.setCollisionKey(key, keyName)
-
-			if index >= uint32(len(f.Collisions)) {
-				f.Collisions = append(f.Collisions, make([]Key, 100)...)
-			}
 
 			f.Collisions[index] = *key
 		}
@@ -136,6 +128,19 @@ func (f *File) Set(keyName []byte, size int, keyOffset uint64, bucketID uint32) 
 	return nil
 }
 
+// Return next collision index. If index exceed collisions table length,
+// it will resize it. 
+func (f *File) NextCollision() uint32 {
+	index := f.nextCollision.Add(1)
+
+	if index >= uint32(len(f.Collisions)) {
+		f.Collisions = append(f.Collisions, make([]Key, 100)...)
+	}
+
+	return index
+}
+
+// Set key.
 func (f *File) setKey(key *Key, name []byte) {
 	hash   := HashKey(name)
 	offset := f.offset(hash)
@@ -144,6 +149,7 @@ func (f *File) setKey(key *Key, name []byte) {
 	key.SetOffset(offset)
 }
 
+// Set collision key.
 func (f *File) setCollisionKey(key *Key, name []byte) {
 	key.Set(name)
 
