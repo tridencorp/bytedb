@@ -87,10 +87,7 @@ func (f *File) Set(keyName []byte, size int, keyOffset uint64, bucketID uint32) 
 
 			// New collision key.
 			key = new(Key)
-			key.Set(keyName)
-
-			offset := f.collisionOff()
-			key.SetOffset(offset-IndexSize)
+			f.setCollisionKey(key, keyName)
 
 			if index >= uint32(len(f.Collisions)) {
 				f.Collisions = append(f.Collisions, make([]Key, 100)...)
@@ -112,10 +109,7 @@ func (f *File) Set(keyName []byte, size int, keyOffset uint64, bucketID uint32) 
 			key.SetSlot(index)
 
 			key = new(Key)
-			key.Set(keyName)
-
-			offset := f.collisionOff()
-			key.SetOffset(offset - IndexSize)
+			f.setCollisionKey(key, keyName)
 
 			if index >= uint32(len(f.Collisions)) {
 				f.Collisions = append(f.Collisions, make([]Key, 100)...)
@@ -148,6 +142,13 @@ func (f *File) setKey(key *Key, name []byte) {
 
 	key.Set(name)
 	key.SetOffset(offset)
+}
+
+func (f *File) setCollisionKey(key *Key, name []byte) {
+	key.Set(name)
+
+	offset := f.collisionOff()
+	key.SetOffset(offset-IndexSize)
 }
 
 // Load index file.
