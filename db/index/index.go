@@ -44,6 +44,7 @@ type File struct {
 	indexesPerFile uint64
 }
 
+
 // Load index file from given directory. 
 func Load(dir string, indexesPerFile uint64) (*File, error) {
 	// TODO: Only temporary and will be replaced by proper index file.
@@ -76,12 +77,8 @@ func (f *File) Set(keyName []byte, size int, keyOffset uint64, bucketID uint32) 
 	key := &f.Keys[off]
 
 	if key.Empty() {
-		key.Set(keyName)
-
-		offset := f.offset(hash)
-		key.SetOffset(offset)
-
-		} else {
+		f.setKey(key, keyName)
+	} else {
 		// We have collision. We must pick next empty index in Collision table.
 		if !key.HasCollision() {
 			// First collision.
@@ -100,8 +97,7 @@ func (f *File) Set(keyName []byte, size int, keyOffset uint64, bucketID uint32) 
 			}
 
 			f.Collisions[index] = *key
-			} else {
-
+		} else {
 			// We had more than 1 collision already. Iterate and find last one.
 			for {
 				slot := key.Slot()
@@ -119,7 +115,7 @@ func (f *File) Set(keyName []byte, size int, keyOffset uint64, bucketID uint32) 
 			key.Set(keyName)
 
 			offset := f.collisionOff()
-			key.SetOffset(offset-IndexSize)
+			key.SetOffset(offset - IndexSize)
 
 			if index >= uint32(len(f.Collisions)) {
 				f.Collisions = append(f.Collisions, make([]Key, 100)...)
@@ -128,7 +124,6 @@ func (f *File) Set(keyName []byte, size int, keyOffset uint64, bucketID uint32) 
 			f.Collisions[index] = *key
 		}
 	}
-
 
   idx := Index{BucketId: bucketID, Size: uint32(size), Offset: keyOffset}
 	copy(idx.Key[:], key[:20])
@@ -146,7 +141,15 @@ func (f *File) Set(keyName []byte, size int, keyOffset uint64, bucketID uint32) 
 
 	return nil
 }
-		
+
+func (f *File) setKey(key *Key, name []byte) {
+	hash   := HashKey(name)
+	offset := f.offset(hash)
+
+	key.Set(name)
+	key.SetOffset(offset)
+}
+
 // Load index file.
 func LoadIndexFile(path string, indexesPerFile uint64) (*File, error) {
 	path += "/index.idx"
