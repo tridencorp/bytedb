@@ -33,11 +33,11 @@ type Index struct {
 type File struct {
   fd *os.File
 
-  // Keeping key/collision offsets in memory.
+  // Keeping keys/collisions in memory.
   Keys       []Key
   Collisions []Key
 
-	collisionIndex  atomic.Uint32 // Index in Collisions table.
+	nextCollision   atomic.Uint32 // Index in Collisions table.
 	collisionOffset atomic.Uint64 // Offset in index file.
 
 	// Number of indexes file can handle.
@@ -57,7 +57,7 @@ func Load(dir string, indexesPerFile uint64) (*File, error) {
   f := &File{fd: file, indexesPerFile: indexesPerFile}
 	f.Keys = make([]Key, f.indexesPerFile)
 
-	f.collisionIndex.Store(0)
+	f.nextCollision.Store(0)
 	f.collisionOffset.Store(f.indexesPerFile * IndexSize)
 
 	size := uint64(math.Ceil(float64(30.0*float64(f.indexesPerFile)/100))) 
@@ -80,26 +80,28 @@ func (f *File) Set(keyName []byte, size int, keyOffset uint64, bucketID uint32) 
 
 		offset := f.offset(hash)
 		key.SetOffset(offset)
-	} else {
-		// We have collision. We must pick next empty index in Collisions table.
+
+		} else {
+		// We have collision. We must pick next empty index in Collision table.
 		if !key.HasCollision() {
 			// First collision.
-			index := f.collisionIndex.Add(1)
+			index := f.nextCollision.Add(1)
 			key.SetSlot(index)
 
 			// New collision key.
-			key := new(Key)
+			key = new(Key)
 			key.Set(keyName)
 
 			offset := f.collisionOff()
-			key.SetOffset(offset)
+			key.SetOffset(offset-IndexSize)
 
 			if index >= uint32(len(f.Collisions)) {
 				f.Collisions = append(f.Collisions, make([]Key, 100)...)
 			}
 
 			f.Collisions[index] = *key
-		} else {
+			} else {
+
 			// We had more than 1 collision already. Iterate and find last one.
 			for {
 				slot := key.Slot()
@@ -110,14 +112,14 @@ func (f *File) Set(keyName []byte, size int, keyOffset uint64, bucketID uint32) 
 				key = &f.Collisions[slot]
 			}
 
-			index := f.collisionIndex.Add(1)
+			index := f.nextCollision.Add(1)
 			key.SetSlot(index)
 
-			key := new(Key)
+			key = new(Key)
 			key.Set(keyName)
 
 			offset := f.collisionOff()
-			key.SetOffset(offset)
+			key.SetOffset(offset-IndexSize)
 
 			if index >= uint32(len(f.Collisions)) {
 				f.Collisions = append(f.Collisions, make([]Key, 100)...)
@@ -127,12 +129,13 @@ func (f *File) Set(keyName []byte, size int, keyOffset uint64, bucketID uint32) 
 		}
 	}
 
+
   idx := Index{BucketId: bucketID, Size: uint32(size), Offset: keyOffset}
+	copy(idx.Key[:], key[:20])
 
 	buf := new(bytes.Buffer)
 	err := binary.Write(buf, binary.BigEndian, idx)
 	if err != nil {
-		fmt.Println(err)
 		return err
 	}
 
@@ -153,9 +156,6 @@ func LoadIndexFile(path string, indexesPerFile uint64) (*File, error) {
 	}
 
 	f := &File{fd: file, indexesPerFile: indexesPerFile}
-
-	// ~30% of keys size.
-	// size := uint64(math.Ceil(float64(30.0*float64(f.indexesPerFile)/100))) 
 	return f, nil
 }
 
@@ -168,29 +168,50 @@ func (f *File) offset(hash uint64) uint64 {
 
 // Calculate collision offset in index file.
 func (f *File) collisionOff() uint64 {
-	return f.collisionOffset.Add(IndexSize) - IndexSize
+	return f.collisionOffset.Add(IndexSize)
 }
 
 // Read index for given key.
-func (f *File) Get(key []byte) (*Index, error) {
-	// Find index position
-	offset := f.offset(HashKey(key))
+func (f *File) Get(kv []byte) (*Index, error) {
+	offset := HashKey(kv) % f.indexesPerFile
+	key := f.Keys[offset]
+	
+	// No key.
+	if key.Empty() {
+		return nil, fmt.Errorf("no key")
+	}
+
+	// Find key in Keys or Collisions.
+	for {
+		// Key without collisions.
+		if !key.HasCollision(){
+			break
+		}
+
+		// Key with collisions, find the correct one.
+		if key.Equal(kv) {
+			break
+		} else {
+			key = f.Collisions[key.Slot()]
+		}
+	}
+
+	// TODO: Optimize this.
 	data := make([]byte, IndexSize)
+	_, err := f.fd.ReadAt(data, key.Offset())
 
-	f.fd.ReadAt(data, int64(offset))
-	idx := Index{}
-
+	index := Index{}
 	buf := bytes.NewBuffer(data)
-	err := binary.Read(buf, binary.BigEndian, &idx)
+	err = binary.Read(buf, binary.BigEndian, &index)
 	if err != nil {
 		return nil, err
 	}
 
-	if idx.Deleted {
+	if index.Deleted {
 		return nil, fmt.Errorf("Key was %s deleted", key)
 	}
 
-	return &idx, nil
+	return &index, nil
 }
 
 // Delete index for given key.

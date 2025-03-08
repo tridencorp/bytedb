@@ -6,6 +6,8 @@ import (
 )
 
 // Key
+// Why not structs or slices? Because each one of them
+// has overhead of 24 bytes.
 //
 // [0:20]  - first 20 bytes are keyval name.
 // [20:24] - next 4 bytes are index to next slot in Collisions table.
@@ -18,7 +20,12 @@ func (k *Key) Empty() bool {
 
 // Set key name (kv name).
 func (k *Key) Set(key []byte) int {
-	return copy(k[:], key)
+	return copy(k[:20], key)
+}
+
+// Get key name.
+func (k *Key) Name() string {
+	return string(k[:20])
 }
 
 // Check if bytes 20:24 are set. If they are, this indicates that
@@ -29,7 +36,7 @@ func (k *Key) HasCollision() bool {
 
 // Set key slot.
 func (k *Key) SetSlot(index uint32) {
-	binary.BigEndian.PutUint32(k[20:], index)
+	binary.BigEndian.PutUint32(k[20:24], index)
 }
 
 // Set key offset.
@@ -45,4 +52,13 @@ func (k *Key) Offset() int64 {
 // Return key slot in Collisions table.
 func (k *Key) Slot() uint32 {
 	return binary.BigEndian.Uint32(k[20:])
+}
+
+// Check if kv name is egual to key. 
+// TODO: Can be simplified.
+func (k *Key) Equal(kv []byte) bool {
+	tmp := Key{}
+	copy(tmp[:20], kv)
+
+	return bytes.Equal(k[:20], tmp[:20])
 }
