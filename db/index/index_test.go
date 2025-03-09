@@ -8,18 +8,10 @@ import (
 )
 
 func TestIndexSet(t *testing.T) {
-	num := 5_000
+	num := 100_000
 
 	file, _ := Load(".", uint64(num))
 	defer os.Remove("./index.idx")
-
-	hash := HashKey([]byte("key_4997"))
-	off  := hash % file.indexesPerFile
-	fmt.Println("off 1:", off)
-
-	hash = HashKey([]byte("key_3080"))
-	off2 := hash % file.indexesPerFile
-	fmt.Println("off 2:", off2)
 
 	for i:=0; i < num; i++ {
 		key := fmt.Sprintf("key_%d", i)
@@ -32,15 +24,18 @@ func TestIndexSet(t *testing.T) {
 		if err != nil {
 			fmt.Println(err)
 		}
-
+		
 		expected := [20]byte{}
 		copy(expected[:20], []byte(key))
 
 		if !bytes.Equal(i.Key[:20], expected[:]) { 
-			t.Errorf("Expected %s, got %v", expected, i.Key[:20]) 
+			t.Errorf("Expected %s, got %s", expected, i.Key[:20]) 
 		}
 	}
 
-	index, _ := file.Get([]byte("key_4997"))
-	fmt.Println("index: ", index)
+	// fmt.Println("xxxx2: ", file.Collisions[19371].Name())
+	// fmt.Println("xxxx2: ", file.Collisions[19371].Slot())
+	// fmt.Println("xxxx3: ", file.Collisions[30000].Name())
+
+	fmt.Println("hash collisions: ", num - len(file.Hashes))
 }
