@@ -22,8 +22,8 @@ const BlockSize = IndexSize * 6
 // Index will represent key in our database.
 type Index struct {
 	Key [20]byte // 20 bytes
-
-  // KeyVal
+	
+	// KeyVal
 	Deleted    bool  // 1 byte
 	BucketId uint32  // 4 bytes
 	Size     uint32  // 4 bytes
@@ -31,17 +31,17 @@ type Index struct {
 }
 
 type File struct {
-  fd *os.File
-
-  // Keeping keys/collisions in memory.
-  Keys       []Key
-  Collisions []Key
-
+	fd *os.File
+	
+	// Keeping keys/collisions in memory.
+	Keys       []Key
+	Collisions []Key
+	
 	Hashes map[uint64]int
-
+	
 	nextCollision   atomic.Uint32 // Index in Collisions table.
 	collisionOffset atomic.Uint64 // Offset in index file.
-
+	
 	// Number of indexes file can handle.
 	indexesPerFile uint64
 }
@@ -57,7 +57,7 @@ func Load(dir string, indexesPerFile uint64) (*File, error) {
 		return nil, nil
 	}
 
-  f := &File{fd: file, indexesPerFile: indexesPerFile, Hashes: map[uint64]int{}}
+	f := &File{fd: file, indexesPerFile: indexesPerFile, Hashes: map[uint64]int{}}
 	f.Keys = make([]Key, f.indexesPerFile)
 
 	f.nextCollision.Store(0)
@@ -103,7 +103,7 @@ func (f *File) Set(keyName []byte, size int, keyOffset uint64, bucketID uint32) 
 	}
 
 	idx := Index{BucketId: bucketID, Size: uint32(size), Offset: keyOffset}
-	copy(idx.Key[:], key[:20])
+	copy(idx.Key[:], key[:20])	
 
 	buf := new(bytes.Buffer)
 	err := binary.Write(buf, binary.BigEndian, idx)
@@ -114,7 +114,7 @@ func (f *File) Set(keyName []byte, size int, keyOffset uint64, bucketID uint32) 
 	_, err = f.fd.WriteAt(buf.Bytes(), key.Offset())
 	if err != nil {
 		return err
-	}
+	}	
 
 	return nil
 }
@@ -212,7 +212,7 @@ func (f *File) Get(kv []byte) (*Index, error) {
 func (f *File) Del(key []byte) error {
 	// Find index offset.
 	offset := f.offset(HashKey(key))
-	
+
 	// If we know the position of index, we can just
 	// set it's second byte to 1.
 	// TODO: struct changed, this won't work anymore.
