@@ -76,32 +76,7 @@ func (f *File) Set(keyName []byte, size int, keyOffset uint64, bucketID uint32) 
 		f.Collisions = append(f.Collisions, make([]Key, 1000)...)
 	}
 
-	hash := HashKey(keyName)
-	f.Hashes[hash]++
-	off  := hash % f.indexesPerFile
-
-	// Find key in Keys.
-	key := &f.Keys[off] 
-
-	if key.Empty() {
-		f.setKey(key, keyName)
-	} else {
-		// We have collision. We must pick next empty index in Collision table.
-		if !key.HasCollision() {
-			// First collision.
-			key = f.newCollision(key, keyName)
-		} else {
-			// We had more than 1 collision already. Iterate and find last one.
-			for {
-				slot := key.Slot()
-				if slot == 0 { break }
-				key = &f.Collisions[slot]
-			}
-
-			key = f.newCollision(key, keyName)
-		}
-	}
-
+	key := f.getKey(keyName)
 	idx := Index{BucketId: bucketID, Size: uint32(size), Offset: keyOffset}
 	copy(idx.Key[:], key[:20])	
 
@@ -117,6 +92,40 @@ func (f *File) Set(keyName []byte, size int, keyOffset uint64, bucketID uint32) 
 	}	
 
 	return nil
+}
+
+func (f *File) getKey(keyName []byte) *Key {
+	hash := HashKey(keyName)
+	off := hash % f.indexesPerFile
+	f.Hashes[hash]++
+
+	// Find key in Keys.
+	key := &f.Keys[off] 
+
+	if key.Empty() {
+		f.setKey(key, keyName)
+		return key
+	}
+
+	// We have collision. We must pick next empty index in Collision table.
+	if !key.HasCollision() {
+		// First collision.
+		return f.newCollision(key, keyName)
+	}
+
+	// We had more than 1 collision already.Get the last one.
+	key = f.lastCollision(key)
+	return f.newCollision(key, keyName)
+}
+
+func (f *File) lastCollision(key *Key) *Key {
+	for {
+		slot := key.Slot()
+		if slot == 0 { break }
+		key = &f.Collisions[slot]
+	}
+
+	return key
 }
 
 func (f *File) newCollision(key *Key, collisionKey []byte) *Key {
@@ -172,40 +181,49 @@ func (f *File) collisionOff() uint64 {
 }
 
 // Read index for given key.
-func (f *File) Get(kv []byte) (*Index, error) {
-	offset := HashKey(kv) % f.indexesPerFile
-	key := f.Keys[offset]
-	
-	// No key.
-	if key.Empty() {
-		return nil, fmt.Errorf("no key")
-	}
-	
-	// Find key in Keys or Collisions.
-	for {
-		if !key.HasCollision() || key.Equal(kv) {
-			break
-		}
-		
-		key = f.Collisions[key.Slot()]
-	}
-	
+func (f *File) Get(name []byte) (*Index, error) {
+	key, _ := f.findKey(name)
+
 	// TODO: Optimize this.
 	data := make([]byte, IndexSize)
 	_, err := f.fd.ReadAt(data, key.Offset())
-	
+
 	index := Index{}
+
 	buf := bytes.NewBuffer(data)
 	err  = binary.Read(buf, binary.BigEndian, &index)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if index.Deleted {
 		return nil, fmt.Errorf("Key was %s deleted", key)
 	}
-	
+
 	return &index, nil
+}
+
+func (f *File) findKey(name []byte) (*Key, error) {
+	offset := HashKey(name) % f.indexesPerFile
+	key := &f.Keys[offset]
+
+	// No key.
+	if key.Empty() {
+		return nil, fmt.Errorf("no key")
+	}
+
+	if key.Equal(name) {
+		return key, nil
+	}
+
+	// Find key in collisions table.
+	for {
+		key = &f.Collisions[key.Slot()]
+
+		if !key.HasCollision() || key.Equal(name) {
+			return key, nil
+		}
+	}
 }
 
 // Delete index for given key.
