@@ -3,7 +3,6 @@ package index
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"testing"
 )
 
@@ -11,7 +10,7 @@ func TestIndexSet(t *testing.T) {
 	num := 100_000
 
 	file, _ := Load(".", uint64(num))
-	defer os.Remove("./index.idx")
+	// defer os.Remove("./index.idx")
 
 	for i:=0; i < num; i++ {
 		key := fmt.Sprintf("key_%d", i)
