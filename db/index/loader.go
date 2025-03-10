@@ -65,16 +65,16 @@ func (f *File) LoadIndexes(num int) {
 		data := it.Next(IndexSize)
 
 		key := Key{}
-		key.Set(data[:20])
+		key.SetHash(HashKey(data[:20]))
 		f.Keys[i] = key
 	}
 
 	// Read collisions.
 	for i:=0; i < len(f.Collisions); i++ {
 		data := it.Next(IndexSize)
-		
+	
 		key := Key{}
-		key.Set(data[:20])
+		key.SetHash(HashKey(data[:20]))
 		f.Collisions[i] = key
 	}
 }

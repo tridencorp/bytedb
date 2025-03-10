@@ -1,7 +1,6 @@
 package index
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"testing"
@@ -18,14 +17,14 @@ func TestIndexSet(t *testing.T) {
 	}
 
 	for i:=0; i < num; i++ {
-		key := fmt.Sprintf("key_%d", i)
+		key  := fmt.Sprintf("key_%d", i)
 		i, _ := file.Get([]byte(key))
 
-		expected := [20]byte{}
-		copy(expected[:20], []byte(key))
+		expected := HashKey([]byte(key))
+		got    	 := i.Hash
 
-		if !bytes.Equal(i.Key[:20], expected[:]) { 
-			t.Errorf("Expected %s, got %s", expected, i.Key[:20]) 
+		if expected != got { 
+			t.Errorf("Expected %d, got %d", expected, got) 
 		}
 	}
 }
@@ -49,11 +48,11 @@ func TestLoader(t *testing.T) {
 		key := fmt.Sprintf("key_%d", i)
 		i, _ := file.Get([]byte(key))
 
-		expected := [20]byte{}
-		copy(expected[:20], []byte(key))
+		expected := HashKey([]byte(key))
+		got    	 := i.Hash
 
-		if !bytes.Equal(i.Key[:20], expected[:]) { 
-			t.Errorf("Expected %s, got %s", expected, i.Key[:20]) 
+		if expected != got { 
+			t.Errorf("Expected %s: %d, got %d", key, expected, got) 
 		}
 	}
 }

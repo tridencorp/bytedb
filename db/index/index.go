@@ -21,10 +21,8 @@ const BlockSize = IndexSize * 6
 
 // Index will represent key in our database.
 type Index struct {
-	Key [20]byte // 20 bytes
-
-	// KeyVal
-	Deleted    bool  // 1 byte
+	Hash 		 uint64  // 8 bytes
+	Deleted  bool    // 1 byte
 	BucketId uint32  // 4 bytes
 	Size     uint32  // 4 bytes
 	Offset   uint64  // 8 bytes
@@ -84,8 +82,7 @@ func (f *File) Set(keyName []byte, size int, keyOffset uint64, bucketID uint32) 
 		key = f.newCollision(key, keyName)
 	}
 
-	idx := Index{BucketId: bucketID, Size: uint32(size), Offset: keyOffset}
-	copy(idx.Key[:], key[:20])
+	idx := Index{Hash: key.Hash(), BucketId: bucketID, Size: uint32(size), Offset: keyOffset}
 
 	buf := new(bytes.Buffer)
 	err := binary.Write(buf, binary.BigEndian, idx)
@@ -135,9 +132,10 @@ func (f *File) newCollision(key *Key, collisionKey []byte) *Key {
 	index := f.NextCollision()
 	key.SetSlot(index)
 
+
 	// New collision key.
 	key = new(Key)
-	key.Set(collisionKey)
+	key.SetHash(HashKey(collisionKey))
 
 	offset := f.collisionOff()
 	key.SetOffset(offset - IndexSize)
@@ -157,7 +155,7 @@ func (f *File) setKey(key *Key, name []byte) {
 	hash   := HashKey(name)
 	offset := f.offset(hash)
 
-	key.Set(name)
+	key.SetHash(hash)
 	key.SetOffset(offset)
 }
 
