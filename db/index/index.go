@@ -22,7 +22,7 @@ const BlockSize = IndexSize * 6
 // Index will represent key in our database.
 type Index struct {
 	Key [20]byte // 20 bytes
-	
+
 	// KeyVal
 	Deleted    bool  // 1 byte
 	BucketId uint32  // 4 bytes

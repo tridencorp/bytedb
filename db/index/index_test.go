@@ -8,7 +8,6 @@ import (
 
 func TestIndexSet(t *testing.T) {
 	num := 100_000
-
 	file, _ := Load(".", uint64(num))
 	// defer os.Remove("./index.idx")
 
@@ -32,9 +31,11 @@ func TestIndexSet(t *testing.T) {
 		}
 	}
 
-	// fmt.Println("xxxx2: ", file.Collisions[19371].Name())
-	// fmt.Println("xxxx2: ", file.Collisions[19371].Slot())
-	// fmt.Println("xxxx3: ", file.Collisions[30000].Name())
-
 	fmt.Println("hash collisions: ", num - len(file.Hashes))
+}
+
+func TestLoader(t *testing.T) {
+	num := 100_000
+	file, _ := Load(".", uint64(num))
+	file.LoadIndexes()
 }
