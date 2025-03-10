@@ -42,13 +42,12 @@ type File struct {
 	nextCollision   atomic.Uint32 // Index in Collisions table.
 	collisionOffset atomic.Uint64 // Offset in index file.
 	
-	// Number of indexes file can handle.
-	indexesPerFile uint64
+	// Max number of indexes file can have.
+	capacity uint64	
 }
 
-
 // Load index file from given directory. 
-func Load(dir string, indexesPerFile uint64) (*File, error) {
+func Load(dir string, capacity uint64) (*File, error) {
 	// TODO: Only temporary and will be replaced by proper index file.
 	dir += "/index.idx"
 
@@ -57,13 +56,13 @@ func Load(dir string, indexesPerFile uint64) (*File, error) {
 		return nil, nil
 	}
 
-	f := &File{fd: file, indexesPerFile: indexesPerFile, Hashes: map[uint64]int{}}
-	f.Keys = make([]Key, f.indexesPerFile)
+	f := &File{fd: file, capacity: capacity, Hashes: map[uint64]int{}}
+	f.Keys = make([]Key, f.capacity)
 
 	f.nextCollision.Store(0)
-	f.collisionOffset.Store(f.indexesPerFile * IndexSize)
+	f.collisionOffset.Store(f.capacity * IndexSize)
 
-	size := uint64(math.Ceil(float64(40.0*float64(f.indexesPerFile)/100))) 
+	size := uint64(math.Ceil(float64(40.0*float64(f.capacity)/100))) 
 	f.Collisions = make([]Key, size)
 
 	return f, nil
@@ -103,7 +102,7 @@ func (f *File) Set(keyName []byte, size int, keyOffset uint64, bucketID uint32) 
 }
 
 func (f *File) findKey(name []byte) *Key {
-	offset := HashKey(name) % f.indexesPerFile
+	offset := HashKey(name) % f.capacity
 	key := &f.Keys[offset]
 
 	// No key or we have match for the first time.
@@ -163,20 +162,20 @@ func (f *File) setKey(key *Key, name []byte) {
 }
 
 // Load index file.
-func LoadIndexFile(path string, indexesPerFile uint64) (*File, error) {
+func LoadIndexFile(path string, capacity uint64) (*File, error) {
 	path += "/index.idx"
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		return nil, nil
 	}
 	
-	f := &File{fd: file, indexesPerFile: indexesPerFile}
+	f := &File{fd: file, capacity: capacity}
 	return f, nil
 }
 
 // Calculate index offset for new key.
 func (f *File) offset(hash uint64) uint64 {
-	return hash % f.indexesPerFile * IndexSize
+	return hash % f.capacity * IndexSize
 }
 
 // Calculate collision offset in index file.

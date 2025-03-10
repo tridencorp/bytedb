@@ -27,65 +27,54 @@ func (i *Iterator) Read() (int, error) {
 func (i *Iterator) Next(num int) []byte {
 	// We have enough data in buffer.
 	if i.offset + num <= len(i.buf) {
-		data := i.buf[i.offset:i.offset+num]
+		data := i.buf[i.offset:i.offset + num]
+
 		i.offset += num
-		
 		return data
 	}
 
 	// We don't have enough data in buffer, read what's left 
 	// and then read next batch.
-	tmp := i.buf[i.offset:]
+	rest := i.buf[i.offset:]
 
 	// Read next batch from file.
-	n, _ := i.Read()
+	n, err := i.Read()
 	if n == 0 {
-		return tmp
+		fmt.Println("err: ", err)
+		return rest
 	}
 
 	// Read remaining data.
-	remaining := num - len(tmp)
-	return append(tmp, i.Next(remaining)...)
+	remaining := num - len(rest)
+	return append(rest, i.Next(remaining)...)
 }
 
 func (f *File) LoadIndexes(num int) {
-	count := 0
 	it := NewIterator(f.fd, num)
 
-	stat, _    := f.fd.Stat()
-	totalCount := stat.Size() / IndexSize
+	stat, _ := f.fd.Stat()
+	total   := stat.Size() / IndexSize
 
-	keys 			 := f.indexesPerFile
-	collisions := totalCount - int64(keys)
+	collisions := uint64(total) - f.capacity
 
-	f.Keys       = make([]Key, keys)
+	f.Keys			 = make([]Key, f.capacity)
 	f.Collisions = make([]Key, collisions)
 
 	// Read keys.
-	for i:=uint64(0); i < keys; i++ {
+	for i:=0; i < len(f.Keys); i++ {
 		data := it.Next(IndexSize)
 
 		key := Key{}
 		key.Set(data[:20])
-
-		if !key.Empty() {
-			count++
-			// fmt.Println(key.Name())
-		}
+		f.Keys[i] = key
 	}
 
 	// Read collisions.
-	for i:=int64(0); i < collisions; i++ {
+	for i:=0; i < len(f.Collisions); i++ {
 		data := it.Next(IndexSize)
 		
 		key := Key{}
 		key.Set(data[:20])
-
-		if !key.Empty() {
-			count++
-			fmt.Println("XXXXXXX")
-		}
+		f.Collisions[i] = key
 	}
-
-	fmt.Println(count)
 }
