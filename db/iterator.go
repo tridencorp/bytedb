@@ -11,6 +11,7 @@ type Iterator struct {
 	bucket *Bucket
 }
 
+
 func (it *Iterator) Iterate() ([]*Key, int64, error) {
 	// Read the whole file.
 	// TODO: Read it in chunks.
@@ -40,7 +41,7 @@ func (it *Iterator) Iterate() ([]*Key, int64, error) {
 		// 
 		// TODO: This is wrong because we could have
 		// situation where we have blank spots between
-		// records, so we will have to change this condition
+		// recordĺs, so we will have to change this condition
 		// in near future. It's temporary.
 		if size == 0 {
 			break

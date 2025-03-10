@@ -86,7 +86,7 @@ func (f *File) Set(keyName []byte, size int, keyOffset uint64, bucketID uint32) 
 	}
 
 	idx := Index{BucketId: bucketID, Size: uint32(size), Offset: keyOffset}
-	copy(idx.Key[:], key[:20])	
+	copy(idx.Key[:], key[:20])
 
 	buf := new(bytes.Buffer)
 	err := binary.Write(buf, binary.BigEndian, idx)
@@ -122,6 +122,7 @@ func (f *File) findKey(name []byte) *Key {
 
 	return key
 }
+
 
 func (f *File) lastCollision(key *Key) *Key {
 	for key.HasCollision() {
