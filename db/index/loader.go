@@ -17,7 +17,10 @@ type Iterator struct {
 }
 
 func NewIterator(file *os.File, batchSize int) *Iterator {
-	return &Iterator{file: file, batchSize: batchSize}
+	it := &Iterator{file: file, batchSize: batchSize}
+	it.Read()
+
+	return it
 }
 
 func (it *Iterator) Read() (int, error) {
@@ -25,7 +28,6 @@ func (it *Iterator) Read() (int, error) {
 
 	n, err := it.file.Read(it.buf)
 	if err != nil {
-		fmt.Println("ERROR: ", err)
 		return n, err
 	}
 
@@ -34,26 +36,29 @@ func (it *Iterator) Read() (int, error) {
 }
 
 func (it *Iterator) Next(num int) []byte {
-	// We don't have enough data in buffer, read next batch.
-	if it.offset + num > len(it.buf) {
-		// Read what's left.
-		tmp := it.buf[it.offset:it.offset + num]
+	// We have enough data in buffer.
+	if it.offset + num <= len(it.buf) {
+		off := it.offset
+		it.offset += num
+		return it.buf[off:it.offset]
+	}
 
-		// Read next batch from file.
-		it.Read()
+	// We don't have enough data in buffer, read what's left 
+	// and then read next batch.
+	tmp := it.buf[it.offset:]
 
-		// Read remaining data from fresh buffer.
-		remaining := num - len(tmp)
-		tmp = append(tmp, it.Next(remaining)...)
-
-		it.offset += remaining
+	// Read next batch from file.
+	n, _ := it.Read()
+	if n == 0 {
 		return tmp
 	}
 
-	// We have enough data in buffer.
-	off := it.offset
-	it.offset += num
-	return it.buf[off:it.offset]
+	// Read remaining data from fresh buffer.
+	remaining := num - len(tmp)
+	tmp = append(tmp, it.Next(remaining)...)
+
+	it.offset += remaining
+	return tmp
 }
 
 func (f *File) LoadIndexes() {
@@ -65,10 +70,6 @@ func (f *File) LoadIndexes() {
 	size := 1024*1024*1 // 10 MB
 	it := NewIterator(f.fd, size)
 
-	it.Read()
-	fmt.Println(it.Next(IndexSize))
-	fmt.Println(it.Next(IndexSize))
-
 	stat, _    := f.fd.Stat()
 	totalCount := stat.Size() / IndexSize
 
@@ -78,10 +79,11 @@ func (f *File) LoadIndexes() {
 	f.Collisions = make([]Key, collisionCount)
 
 	// Read keys.
-	// limit := f.indexesPerFile
-	// for i:=uint64(0); i < limit; i++ {
-	// 	key := it.Next(IndexSize)
-	// }
+	limit := f.indexesPerFile
+	for i:=uint64(0); i < limit; i++ {
+		key := it.Next(IndexSize)
+		fmt.Println(key)
+	}
 
 	// for {
 	// 	start = 0
