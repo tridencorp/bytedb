@@ -10,15 +10,19 @@ const size = 10_000 * IndexSize
 
 type Iterator struct {
 	file 	  *os.File
-	buf 		[]byte
 	offset 	int 
+
+	buf 		  []byte
+	batchSize int
 }
 
 func NewIterator(file *os.File, batchSize int) *Iterator {
-	return &Iterator{file: file, buf: make([]byte, batchSize)}
+	return &Iterator{file: file, batchSize: batchSize}
 }
 
 func (it *Iterator) Read() (int, error) {
+	it.buf = make([]byte, it.batchSize)
+
 	n, err := it.file.Read(it.buf)
 	if err != nil {
 		fmt.Println("ERROR: ", err)
@@ -29,17 +33,28 @@ func (it *Iterator) Read() (int, error) {
 	return n, nil
 }
 
-// func (it *Iterator) Next(num int) []byte {
-// 	// We don't have enough data, read next batch.
-// 	if it.offset + num > len(it.buf) {
-// 		// Read what's left.
-// 		tmp := it.buf[it.offset:num]
-// 		remaining := num - len(tmp)
+func (it *Iterator) Next(num int) []byte {
+	// We don't have enough data in buffer, read next batch.
+	if it.offset + num > len(it.buf) {
+		// Read what's left.
+		tmp := it.buf[it.offset:it.offset + num]
 
-// 		// Read next batch from file.
-// 		it.Read()
-// 	}
-// }
+		// Read next batch from file.
+		it.Read()
+
+		// Read remaining data from fresh buffer.
+		remaining := num - len(tmp)
+		tmp = append(tmp, it.Next(remaining)...)
+
+		it.offset += remaining
+		return tmp
+	}
+
+	// We have enough data in buffer.
+	off := it.offset
+	it.offset += num
+	return it.buf[off:it.offset]
+}
 
 func (f *File) LoadIndexes() {
 	// buff   := make([]byte, size)
@@ -51,7 +66,8 @@ func (f *File) LoadIndexes() {
 	it := NewIterator(f.fd, size)
 
 	it.Read()
-	fmt.Println(it.buf)
+	fmt.Println(it.Next(IndexSize))
+	fmt.Println(it.Next(IndexSize))
 
 	stat, _    := f.fd.Stat()
 	totalCount := stat.Size() / IndexSize
