@@ -30,12 +30,10 @@ func TestIndexSet(t *testing.T) {
 			t.Errorf("Expected %s, got %s", expected, i.Key[:20]) 
 		}
 	}
-
-	fmt.Println("hash collisions: ", num - len(file.Hashes))
 }
 
 func TestLoader(t *testing.T) {
 	num := 100_000
 	file, _ := Load(".", uint64(num))
-	file.LoadIndexes()
+	file.LoadIndexes(1024*1024*1)
 }

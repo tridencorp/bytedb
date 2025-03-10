@@ -5,121 +5,87 @@ import (
 	"os"
 )
 
-// Number of indexes (bytes) to read in each chunk.
-const size = 10_000 * IndexSize
-
 type Iterator struct {
-	file 	  *os.File
-	offset 	int 
-
+	file 	  	*os.File
+	offset 		int 
 	buf 		  []byte
 	batchSize int
 }
 
 func NewIterator(file *os.File, batchSize int) *Iterator {
-	it := &Iterator{file: file, batchSize: batchSize}
-	it.Read()
-
+	it := &Iterator{offset: 0, file: file, batchSize: batchSize}
 	return it
 }
 
-func (it *Iterator) Read() (int, error) {
-	it.buf = make([]byte, it.batchSize)
+func (i *Iterator) Read() (int, error) {
+	i.buf = make([]byte, i.batchSize)
+	i.offset = 0
 
-	n, err := it.file.Read(it.buf)
-	if err != nil {
-		return n, err
-	}
-
-	it.offset = 0
-	return n, nil
+	return i.file.Read(i.buf)
 }
 
-func (it *Iterator) Next(num int) []byte {
+func (i *Iterator) Next(num int) []byte {
 	// We have enough data in buffer.
-	if it.offset + num <= len(it.buf) {
-		off := it.offset
-		it.offset += num
-		return it.buf[off:it.offset]
+	if i.offset + num <= len(i.buf) {
+		data := i.buf[i.offset:i.offset+num]
+		i.offset += num
+		
+		return data
 	}
 
 	// We don't have enough data in buffer, read what's left 
 	// and then read next batch.
-	tmp := it.buf[it.offset:]
+	tmp := i.buf[i.offset:]
 
 	// Read next batch from file.
-	n, _ := it.Read()
+	n, _ := i.Read()
 	if n == 0 {
 		return tmp
 	}
 
-	// Read remaining data from fresh buffer.
+	// Read remaining data.
 	remaining := num - len(tmp)
-	tmp = append(tmp, it.Next(remaining)...)
-
-	it.offset += remaining
-	return tmp
+	return append(tmp, i.Next(remaining)...)
 }
 
-func (f *File) LoadIndexes() {
-	// buff   := make([]byte, size)
-	// start  := 0
-	// offset := uint64(0)
-	count  := 0
-
-	size := 1024*1024*1 // 10 MB
-	it := NewIterator(f.fd, size)
+func (f *File) LoadIndexes(num int) {
+	count := 0
+	it := NewIterator(f.fd, num)
 
 	stat, _    := f.fd.Stat()
 	totalCount := stat.Size() / IndexSize
 
-	collisionCount := totalCount - int64(f.indexesPerFile)
+	keys 			 := f.indexesPerFile
+	collisions := totalCount - int64(keys)
 
-	f.Keys       = make([]Key, f.indexesPerFile)
-	f.Collisions = make([]Key, collisionCount)
+	f.Keys       = make([]Key, keys)
+	f.Collisions = make([]Key, collisions)
 
 	// Read keys.
-	limit := f.indexesPerFile
-	for i:=uint64(0); i < limit; i++ {
-		key := it.Next(IndexSize)
-		fmt.Println(key)
+	for i:=uint64(0); i < keys; i++ {
+		data := it.Next(IndexSize)
+
+		key := Key{}
+		key.Set(data[:20])
+
+		if !key.Empty() {
+			count++
+			// fmt.Println(key.Name())
+		}
 	}
 
-	// for {
-	// 	start = 0
+	// Read collisions.
+	for i:=int64(0); i < collisions; i++ {
+		data := it.Next(IndexSize)
+		
+		key := Key{}
+		key.Set(data[:20])
 
-	// 	_, err := f.fd.Read(buff)
-	// 	if err != nil {
-	// 		fmt.Println("ERROR: ", err)
-	// 		break
-	// 	}
-
-	// 	for {
-	// 		index := buff[start:start+IndexSize]
-
-	// 		key := Key{}
-	// 		key.Set(index[:20])
-	// 		key.SetOffset(offset)
-
-	// 		// fmt.Println(key)
-
-	// 		offset += IndexSize
-	// 		start  += IndexSize
-
-	// 		if count < int(totalCount) {
-	// 			count++
-	// 		}
-
-	// 		// Break and start reading collision keys.
-	// 		if count == int(f.indexesPerFile) {
-	// 			break;
-	// 		}
-
-	// 		if start == size {
-	// 			break
-	// 		}
-	// 	}
-	// }
+		if !key.Empty() {
+			count++
+			fmt.Println("XXXXXXX")
+		}
+	}
 
 	fmt.Println(count)
 }
