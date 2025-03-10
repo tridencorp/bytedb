@@ -9,82 +9,99 @@ import (
 const size = 10_000 * IndexSize
 
 type Iterator struct {
-	file 			*os.File
-	buf 		 	[]byte
-	batchSize int
+	file 	  *os.File
+	buf 		[]byte
+	offset 	int 
 }
 
 func NewIterator(file *os.File, batchSize int) *Iterator {
-	return &Iterator{file: file, buf: []byte{}, batchSize: batchSize}
+	return &Iterator{file: file, buf: make([]byte, batchSize)}
 }
 
+func (it *Iterator) Read() (int, error) {
+	n, err := it.file.Read(it.buf)
+	if err != nil {
+		fmt.Println("ERROR: ", err)
+		return n, err
+	}
+
+	it.offset = 0
+	return n, nil
+}
+
+// func (it *Iterator) Next(num int) []byte {
+// 	// We don't have enough data, read next batch.
+// 	if it.offset + num > len(it.buf) {
+// 		// Read what's left.
+// 		tmp := it.buf[it.offset:num]
+// 		remaining := num - len(tmp)
+
+// 		// Read next batch from file.
+// 		it.Read()
+// 	}
+// }
+
 func (f *File) LoadIndexes() {
-	buff   := make([]byte, size)
-	start  := 0
-	offset := uint64(0)
+	// buff   := make([]byte, size)
+	// start  := 0
+	// offset := uint64(0)
 	count  := 0
 
-	size := 1024*1024*10 // 10 MB
+	size := 1024*1024*1 // 10 MB
 	it := NewIterator(f.fd, size)
 
-	stat, _   := f.fd.Stat()
+	it.Read()
+	fmt.Println(it.buf)
+
+	stat, _    := f.fd.Stat()
 	totalCount := stat.Size() / IndexSize
 
 	collisionCount := totalCount - int64(f.indexesPerFile)
-
-	fmt.Println("expected: ", totalCount)
 
 	f.Keys       = make([]Key, f.indexesPerFile)
 	f.Collisions = make([]Key, collisionCount)
 
 	// Read keys.
-	limit := f.indexesPerFile
-	for i:=uint64(0); i < limit; i++ {
+	// limit := f.indexesPerFile
+	// for i:=uint64(0); i < limit; i++ {
+	// 	key := it.Next(IndexSize)
+	// }
 
-	}
+	// for {
+	// 	start = 0
 
-	limit = uint64(collisionCount)
-	// Read collisions.
+	// 	_, err := f.fd.Read(buff)
+	// 	if err != nil {
+	// 		fmt.Println("ERROR: ", err)
+	// 		break
+	// 	}
 
-	for {
-		start = 0
+	// 	for {
+	// 		index := buff[start:start+IndexSize]
 
-		_, err := f.fd.Read(buff)
-		if err != nil {
-			fmt.Println("ERROR: ", err)
-			break
-		}
+	// 		key := Key{}
+	// 		key.Set(index[:20])
+	// 		key.SetOffset(offset)
 
-		for {
-			index := buff[start:start+IndexSize]
+	// 		// fmt.Println(key)
 
-			key := Key{}
-			key.Set(index[:20])
-			key.SetOffset(offset)
+	// 		offset += IndexSize
+	// 		start  += IndexSize
 
-			// fmt.Println(key)
+	// 		if count < int(totalCount) {
+	// 			count++
+	// 		}
 
-			offset += IndexSize
-			start  += IndexSize
+	// 		// Break and start reading collision keys.
+	// 		if count == int(f.indexesPerFile) {
+	// 			break;
+	// 		}
 
-			if count < int(totalCount) {
-				count++
-			}
-
-			// Break and start reading collision keys.
-			if count == int(f.indexesPerFile) {
-				break;
-			}
-
-			if start == size {
-				break
-			}
-		}
-	}
+	// 		if start == size {
+	// 			break
+	// 		}
+	// 	}
+	// }
 
 	fmt.Println(count)
-}
-
-func readKeys(count int32) {
-
 }
