@@ -10,14 +10,8 @@ import (
 	"sync/atomic"
 )
 
-const (
-  TypeKv   = 0
-	TypeHash = 1 
-)
-
 // Index size in bytes.
-const IndexSize = 37 
-const BlockSize = IndexSize * 6
+const IndexSize = 25
 
 // Index will represent key in our database.
 type Index struct {
@@ -109,7 +103,7 @@ func (f *File) findKey(name []byte) *Key {
 
 	// Find key in collisions table.
 	for key.HasCollision() {
-		key = &f.Collisions[key.Slot()]
+		key = &f.Collisions[key.Position()]
 
 		if key.Equal(name) {
 			return key
@@ -122,7 +116,7 @@ func (f *File) findKey(name []byte) *Key {
 
 func (f *File) lastCollision(key *Key) *Key {
 	for key.HasCollision() {
-		key = &f.Collisions[key.Slot()]
+		key = &f.Collisions[key.Position()]
 	}
 
 	return key
@@ -130,7 +124,7 @@ func (f *File) lastCollision(key *Key) *Key {
 
 func (f *File) newCollision(key *Key, collisionKey []byte) *Key {
 	index := f.NextCollision()
-	key.SetSlot(index)
+	key.SetPosition(index)
 
 
 	// New collision key.
