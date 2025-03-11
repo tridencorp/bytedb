@@ -20,11 +20,11 @@ func TestIndexSet(t *testing.T) {
 		key  := fmt.Sprintf("key_%d", i)
 		i, _ := file.Get([]byte(key))
 
-		expected := HashKey([]byte(key))
-		got    	 := i.Hash
+		want := HashKey([]byte(key))
+		got  := i.Hash
 
-		if expected != got { 
-			t.Errorf("Expected %d, got %d", expected, got) 
+		if want != got { 
+			t.Errorf("Expected %d, got %d", want, got) 
 		}
 	}
 }
@@ -48,11 +48,11 @@ func TestLoader(t *testing.T) {
 		key := fmt.Sprintf("key_%d", i)
 		i, _ := file.Get([]byte(key))
 
-		expected := HashKey([]byte(key))
-		got      := i.Hash
+		want := HashKey([]byte(key))
+		got  := i.Hash
 
-		if expected != got { 
-			t.Errorf("Expected %s: %d, got %d", key, expected, got) 
+		if want != got { 
+			t.Errorf("Expected %s: %d, got %d", key, want, got) 
 		}
 	}
 }

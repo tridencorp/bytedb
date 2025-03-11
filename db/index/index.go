@@ -71,20 +71,18 @@ func (f *File) Set(name []byte, size int, keyOffset uint64, bucketID uint32) err
 
 	if key.Empty() {
 		f.setKey(key, name)
-	} else {
-		key = f.newCollision(key, name)
-	}
+		return f.Write(key, bucketID, uint32(size), keyOffset)
+	} 
 
-	err := f.Write(key, bucketID, uint32(size), keyOffset)
-	return err
+	key = f.newCollision(key, name)
+	return f.Write(key, bucketID, uint32(size), keyOffset)
 }
 
 // Find the last key with given hash.
 // Because of collisions we can have the same hash for
 // different keys. This function finds the last one.
 func (f *File) Last(hash uint64) *Key {
-	offset := hash % f.capacity
-	key := &f.Keys[offset]
+	key := &f.Keys[hash % f.capacity]
 
 	// No key found or key doesn't have any collisions yet.
 	if key.Empty() || !key.HasCollision() {
@@ -100,23 +98,18 @@ func (f *File) Last(hash uint64) *Key {
 	return key
 }
 
-// Find index for given key.
+// Find key for given hash.
 func (f *File) Find(hash uint64) *Key {
-	offset := hash % f.capacity
-	key 	 := &f.Keys[offset]
+	key := &f.Keys[hash % f.capacity]
 
-	// No key or we have match for the first time.
+	// No key found, without collision or we have our match.
 	if key.Empty() || key.Equal(hash) {
 		return key
 	}
 
 	// Find key in collisions table.
-	for key.HasCollision() {
+	for !key.Equal(hash) && key.HasCollision() {
 		key = &f.Collisions[key.Position()]
-
-		if key.Equal(hash) {
-			return key
-		}
 	}
 
 	return key
@@ -200,12 +193,13 @@ func (f *File) Get(name []byte) (*Index, error) {
 		return nil, fmt.Errorf("Key not found")
 	}
 
-	// TODO: Optimize this.
 	data := make([]byte, IndexSize)
 	_, err := f.fd.ReadAt(data, key.Offset())
+	if err != nil {
+		return nil, err
+	}
 
 	index := Index{}
-
 	buf := bytes.NewBuffer(data)
 	err  = binary.Read(buf, binary.BigEndian, &index)
 	if err != nil {
