@@ -1,6 +1,7 @@
 package index
 
 import (
+	"encoding/binary"
 	"fmt"
 	"os"
 )
@@ -64,17 +65,31 @@ func (f *File) LoadIndexes(num int) {
 	for i:=0; i < len(f.Keys); i++ {
 		data := it.Next(IndexSize)
 
+		hash     := binary.BigEndian.Uint64(data[0:]) 
+		position := binary.BigEndian.Uint32(data[16:])
+
 		key := Key{}
-		key.SetHash(HashKey(data[:20]))
+		key.SetHash(hash)
+		key.SetPosition(position)
+
+		if key.Position() > 0 {
+			fmt.Println(key.Position())
+		}
+
 		f.Keys[i] = key
 	}
 
 	// Read collisions.
 	for i:=0; i < len(f.Collisions); i++ {
 		data := it.Next(IndexSize)
-	
+
+		hash     := binary.BigEndian.Uint64(data[0:]) 
+		position := binary.BigEndian.Uint32(data[17:])
+
 		key := Key{}
-		key.SetHash(HashKey(data[:20]))
+		key.SetHash(hash)
+		key.SetPosition(position)
+
 		f.Collisions[i] = key
 	}
 }

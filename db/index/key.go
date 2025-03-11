@@ -36,8 +36,8 @@ func (k *Key) HasCollision() bool {
 }
 
 // Set key position.
-func (k *Key) SetPosition(index uint32) {
-	binary.BigEndian.PutUint32(k[8:12], index)
+func (k *Key) SetPosition(pos uint32) {
+	binary.BigEndian.PutUint32(k[8:], pos)
 }
 
 // Set key offset.

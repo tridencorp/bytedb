@@ -11,15 +11,16 @@ import (
 )
 
 // Index size in bytes.
-const IndexSize = 25
+const IndexSize = 29
 
 // Index will represent key in our database.
 type Index struct {
 	Hash 		 uint64  // 8 bytes
-	Deleted  bool    // 1 byte
-	BucketId uint32  // 4 bytes
-	Size     uint32  // 4 bytes
 	Offset   uint64  // 8 bytes
+	Position uint32  // 4 bytes
+	Bucket   uint32  // 4 bytes
+	Size     uint32  // 4 bytes
+	Deleted  bool    // 1 byte
 }
 
 type File struct {
@@ -28,8 +29,6 @@ type File struct {
 	// Keeping keys/collisions in memory.
 	Keys       []Key
 	Collisions []Key
-	
-	Hashes map[uint64]int
 	
 	nextCollision   atomic.Uint32 // Index in Collisions table.
 	collisionOffset atomic.Uint64 // Offset in index file.
@@ -48,13 +47,14 @@ func Load(dir string, capacity uint64) (*File, error) {
 		return nil, nil
 	}
 
-	f := &File{fd: file, capacity: capacity, Hashes: map[uint64]int{}}
+	f := &File{fd: file, capacity: capacity}
 	f.Keys = make([]Key, f.capacity)
 
 	f.nextCollision.Store(0)
 	f.collisionOffset.Store(f.capacity * IndexSize)
 
-	size := uint64(math.Ceil(float64(40.0*float64(f.capacity)/100))) 
+	// Collisions are ~40% of file capacity. 
+	size := uint64(math.Ceil(float64(40.0*float64(f.capacity)/100)))
 	f.Collisions = make([]Key, size)
 
 	return f, nil
@@ -62,21 +62,52 @@ func Load(dir string, capacity uint64) (*File, error) {
 
 // Create an index for the given key/value and store it in the index file.
 // This will allow us for faster lookups.
-func (f *File) Set(keyName []byte, size int, keyOffset uint64, bucketID uint32) error {	
+func (f *File) Set(name []byte, size int, keyOffset uint64, bucketID uint32) error {	
 	if f.nextCollision.Load() + 100 >= uint32(len(f.Collisions)) {
 		f.Collisions = append(f.Collisions, make([]Key, 1000)...)
 	}
 
-	key := f.findKey(keyName)
-	key  = f.lastCollision(key)
+	key := f.Last(HashKey(name))
 
 	if key.Empty() {
-		f.setKey(key, keyName)
+		f.setKey(key, name)
 	} else {
-		key = f.newCollision(key, keyName)
+		key = f.newCollision(key, name)
 	}
 
-	idx := Index{Hash: key.Hash(), BucketId: bucketID, Size: uint32(size), Offset: keyOffset}
+	err := f.Write(key, bucketID, uint32(size), keyOffset)
+	return err
+}
+
+// Find the last key with given hash.
+// Because of collisions we can have the same hash for
+// different keys. This function finds the last one.
+func (f *File) Last(hash uint64) *Key {
+	offset := hash % f.capacity
+	key := &f.Keys[offset]
+
+	// No key found or key doesn't have any collisions yet.
+	if key.Empty() || !key.HasCollision() {
+		return key
+	}
+
+	// At this point key has minimum one collision. Let's iterate
+	// and get the last one. 
+	for key.HasCollision() {
+		key = &f.Collisions[key.Position()]
+	}
+
+	return key
+}
+
+func (f *File) Write(key *Key, bucket, size uint32, offset uint64) error {
+	idx := Index{
+		Hash: 		key.Hash(), 
+		Position: key.Position(), 
+		Bucket: 	bucket, 
+		Size: 		uint32(size), 
+		Offset: 	offset,
+	}
 
 	buf := new(bytes.Buffer)
 	err := binary.Write(buf, binary.BigEndian, idx)
@@ -85,11 +116,7 @@ func (f *File) Set(keyName []byte, size int, keyOffset uint64, bucketID uint32) 
 	}
 
 	_, err = f.fd.WriteAt(buf.Bytes(), key.Offset())
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func (f *File) findKey(name []byte) *Key {
@@ -113,19 +140,9 @@ func (f *File) findKey(name []byte) *Key {
 	return key
 }
 
-
-func (f *File) lastCollision(key *Key) *Key {
-	for key.HasCollision() {
-		key = &f.Collisions[key.Position()]
-	}
-
-	return key
-}
-
 func (f *File) newCollision(key *Key, collisionKey []byte) *Key {
 	index := f.NextCollision()
 	key.SetPosition(index)
-
 
 	// New collision key.
 	key = new(Key)

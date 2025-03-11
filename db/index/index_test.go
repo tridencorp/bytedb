@@ -49,7 +49,7 @@ func TestLoader(t *testing.T) {
 		i, _ := file.Get([]byte(key))
 
 		expected := HashKey([]byte(key))
-		got    	 := i.Hash
+		got      := i.Hash
 
 		if expected != got { 
 			t.Errorf("Expected %s: %d, got %d", key, expected, got) 
