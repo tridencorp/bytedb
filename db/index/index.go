@@ -63,19 +63,28 @@ func Load(dir string, capacity uint64) (*File, error) {
 // Create an index for the given key/value and store it in the index file.
 // This will allow us for faster lookups.
 func (f *File) Set(name []byte, size int, keyOffset uint64, bucketID uint32) error {	
+	// if f.nextCollision.Load() + 100 >= uint32(len(f.Collisions)) {
+	// 	f.Collisions = append(f.Collisions, make([]Key, 1000)...)
+	// }
+
+	key := f.set(HashKey(name))
+	return f.Write(key, bucketID, uint32(size), keyOffset)
+}
+
+// Set new key.
+func (f *File) set(hash uint64) *Key {
 	if f.nextCollision.Load() + 100 >= uint32(len(f.Collisions)) {
 		f.Collisions = append(f.Collisions, make([]Key, 1000)...)
 	}
 
-	key := f.Last(HashKey(name))
+	key := f.Last(hash)
 
 	if key.Empty() {
-		f.setKey(key, name)
-		return f.Write(key, bucketID, uint32(size), keyOffset)
-	} 
+		f.setKey(key, hash)
+		return key
+	}
 
-	key = f.newCollision(key, name)
-	return f.Write(key, bucketID, uint32(size), keyOffset)
+	return f.newCollision(key, hash)
 }
 
 // Find the last key with given hash.
@@ -117,9 +126,9 @@ func (f *File) Find(hash uint64) *Key {
 
 func (f *File) Write(key *Key, bucket, size uint32, offset uint64) error {
 	idx := Index{
-		Hash: 		key.Hash(), 
+		Hash: 		key.Hash(),
 		Position: key.Position(), 
-		Bucket: 	bucket, 
+		Bucket: 	bucket,
 		Size: 		uint32(size), 
 		Offset: 	offset,
 	}
@@ -134,18 +143,17 @@ func (f *File) Write(key *Key, bucket, size uint32, offset uint64) error {
 	return err
 }
 
-func (f *File) newCollision(key *Key, collisionKey []byte) *Key {
-	index := f.NextCollision()
-	key.SetPosition(index)
+func (f *File) newCollision(key *Key, hash uint64) *Key {
+	position := f.NextCollision()
+	key.SetPosition(position)
 
-	// New collision key.
 	key = new(Key)
-	key.SetHash(HashKey(collisionKey))
+	key.SetHash(hash)
 
 	offset := f.collisionOff()
 	key.SetOffset(offset - IndexSize)
 
-	f.Collisions[index] = *key
+	f.Collisions[position] = *key
 	return key
 }
 
@@ -156,8 +164,7 @@ func (f *File) NextCollision() uint32 {
 }
 
 // Set key.
-func (f *File) setKey(key *Key, name []byte) {
-	hash   := HashKey(name)
+func (f *File) setKey(key *Key, hash uint64) {
 	offset := f.offset(hash)
 
 	key.SetHash(hash)

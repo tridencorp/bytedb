@@ -61,35 +61,18 @@ func (f *File) LoadIndexes(num int) {
 	f.Keys			 = make([]Key, f.capacity)
 	f.Collisions = make([]Key, collisions)
 
-	// Read keys.
-	for i:=0; i < len(f.Keys); i++ {
-		data := it.Next(IndexSize)
+	f.nextCollision.Store(0)
+	f.collisionOffset.Store(f.capacity * IndexSize)
 
-		hash     := binary.BigEndian.Uint64(data[0:]) 
-		position := binary.BigEndian.Uint32(data[16:])
+	for i:=0; i < int(total); i++ {
+		data := it.Next(IndexSize)
+		hash := binary.BigEndian.Uint64(data[0:]) 
 
 		key := Key{}
 		key.SetHash(hash)
-		key.SetPosition(position)
 
-		if key.Position() > 0 {
-			fmt.Println(key.Position())
+		if !key.Empty() {
+			f.set(hash)
 		}
-
-		f.Keys[i] = key
-	}
-
-	// Read collisions.
-	for i:=0; i < len(f.Collisions); i++ {
-		data := it.Next(IndexSize)
-
-		hash     := binary.BigEndian.Uint64(data[0:]) 
-		position := binary.BigEndian.Uint32(data[17:])
-
-		key := Key{}
-		key.SetHash(hash)
-		key.SetPosition(position)
-
-		f.Collisions[i] = key
 	}
 }
