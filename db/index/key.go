@@ -56,6 +56,6 @@ func (k *Key) Position() uint32 {
 }
 
 // Check if hashes match key name.
-func (k *Key) Equal(name []byte) bool {
-	return k.Hash() == HashKey(name)
+func (k *Key) Equal(hash uint64) bool {
+	return k.Hash() == hash
 }

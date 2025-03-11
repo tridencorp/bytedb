@@ -101,12 +101,12 @@ func (f *File) Last(hash uint64) *Key {
 }
 
 // Find index for given key.
-func (f *File) Find(name []byte) *Key {
-	offset := HashKey(name) % f.capacity
+func (f *File) Find(hash uint64) *Key {
+	offset := hash % f.capacity
 	key 	 := &f.Keys[offset]
 
 	// No key or we have match for the first time.
-	if key.Empty() || key.Equal(name) {
+	if key.Empty() || key.Equal(hash) {
 		return key
 	}
 
@@ -114,7 +114,7 @@ func (f *File) Find(name []byte) *Key {
 	for key.HasCollision() {
 		key = &f.Collisions[key.Position()]
 
-		if key.Equal(name) {
+		if key.Equal(hash) {
 			return key
 		}
 	}
@@ -195,7 +195,7 @@ func (f *File) collisionOff() uint64 {
 
 // Read index for given key.
 func (f *File) Get(name []byte) (*Index, error) {
-	key := f.Find(name)
+	key := f.Find(HashKey(name))
 	if key.Empty() {
 		return nil, fmt.Errorf("Key not found")
 	}
