@@ -100,6 +100,28 @@ func (f *File) Last(hash uint64) *Key {
 	return key
 }
 
+// Find index for given key.
+func (f *File) Find(name []byte) *Key {
+	offset := HashKey(name) % f.capacity
+	key 	 := &f.Keys[offset]
+
+	// No key or we have match for the first time.
+	if key.Empty() || key.Equal(name) {
+		return key
+	}
+
+	// Find key in collisions table.
+	for key.HasCollision() {
+		key = &f.Collisions[key.Position()]
+
+		if key.Equal(name) {
+			return key
+		}
+	}
+
+	return key
+}
+
 func (f *File) Write(key *Key, bucket, size uint32, offset uint64) error {
 	idx := Index{
 		Hash: 		key.Hash(), 
@@ -117,27 +139,6 @@ func (f *File) Write(key *Key, bucket, size uint32, offset uint64) error {
 
 	_, err = f.fd.WriteAt(buf.Bytes(), key.Offset())
 	return err
-}
-
-func (f *File) findKey(name []byte) *Key {
-	offset := HashKey(name) % f.capacity
-	key := &f.Keys[offset]
-
-	// No key or we have match for the first time.
-	if key.Empty() || key.Equal(name) {
-		return key
-	}
-
-	// Find key in collisions table.
-	for key.HasCollision() {
-		key = &f.Collisions[key.Position()]
-
-		if key.Equal(name) {
-			return key
-		}
-	}
-
-	return key
 }
 
 func (f *File) newCollision(key *Key, collisionKey []byte) *Key {
@@ -194,7 +195,7 @@ func (f *File) collisionOff() uint64 {
 
 // Read index for given key.
 func (f *File) Get(name []byte) (*Index, error) {
-	key := f.findKey(name)
+	key := f.Find(name)
 	if key.Empty() {
 		return nil, fmt.Errorf("Key not found")
 	}
