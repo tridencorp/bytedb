@@ -11,7 +11,7 @@ import (
 
 type Collection struct {
 	bucket  *Bucket
-	indexes *index.IndexFile
+	indexes *index.File
 	config  Config
 
 	// Collection root directory.
@@ -28,6 +28,15 @@ type Collection struct {
 type Key struct {
 	data []byte
 	size uint32
+}
+
+type KV struct {
+	key []byte
+	val []byte
+}
+
+func NewKV(key string, val []byte) *KV {
+	return &KV{[]byte(key), val}
 }
 
 type Config struct {
@@ -94,12 +103,12 @@ func newCollection(path string, conf Config) (*Collection, error) {
 		return nil, err
 	}
 
-	indexes, err := index.LoadIndexFile(dir, 5_000)
+	indexes, err := index.Load(dir, 100_000)
 	if err != nil {
 		return nil, err
 	}
 
-	coll := &Collection{
+	coll := &Collection {
 		bucket:  bucket, 
 		root:    path,
 		indexes: indexes,
@@ -132,8 +141,8 @@ func (coll *Collection) Set(key string, val []byte) (int64, int64, error) {
 	}
 
 	off, size, id, err := coll.bucket.Write(data)
-
-	// Index new key. 
+	
+	// Index new key.
 	err = coll.indexes.Set([]byte(key), len(data), uint64(off), id)
 	if err != nil {
 		return 0, 0, err
@@ -149,6 +158,7 @@ func (coll *Collection) Get(key string) ([]byte, error) {
 		return nil, err
 	}
 
+	// TODO: Based on index we need to pick proper bucket.
 	val, err := coll.bucket.Read(int64(idx.Offset), int64(idx.Size))
 	if err != nil {
 		return nil, err
