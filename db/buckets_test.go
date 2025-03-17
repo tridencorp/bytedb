@@ -5,8 +5,8 @@ import (
 )
 
 func TestOpenBuckets(t *testing.T) {
-	conf := Config{MaxKeys: 2, MaxSize: 1_000_000, MaxPerDir: 2}
-	_, err := OpenBuckets("./test", 100, conf)
+	conf := Config{2, 1_000_000, 2, 100}
+	_, err := OpenBuckets("./test", conf)
 	if err != nil {
 		t.Errorf("Error when opening buckets: %s", err)
 	}

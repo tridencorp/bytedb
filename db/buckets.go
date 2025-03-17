@@ -25,13 +25,13 @@ type Buckets struct {
 }
 
 // Open latest bucket.
-func OpenBuckets(root string, maxFiles int16, conf Config) (*Buckets, error) {
+func OpenBuckets(root string, conf Config) (*Buckets, error) {
 	bucket, err := OpenBucket(root, conf)
 	if err != nil {
 		return nil, err
 	}
 
-	buckets := &Buckets{ MaxOpened: maxFiles, items: map[uint32]*item{} }
+	buckets := &Buckets{ MaxOpened: conf.MaxOpened, items: map[uint32]*item{} }
 	item := Item(bucket)
 
 	buckets.last.Store(item)
@@ -41,8 +41,8 @@ func OpenBuckets(root string, maxFiles int16, conf Config) (*Buckets, error) {
 }
 
 func (b *Buckets) Last() *Bucket {
-	latest := b.last.Load()
-	latest.refCount.Add(1)
+	last := b.last.Load()
+	last.refCount.Add(1)
 
-	return latest.bucket
+	return last.bucket
 }

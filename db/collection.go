@@ -27,6 +27,7 @@ type Config struct {
 	MaxKeys   uint32
 	MaxSize   int64
 	MaxPerDir int32
+	MaxOpened int16
 }
 
 // Open the collection. If it doesn't exist,
@@ -48,7 +49,7 @@ func newCollection(path string, conf Config) (*Collection, error) {
 	}
 
 	// Open buckets.	
-	buckets, err := OpenBuckets(path, 100, conf)
+	buckets, err := OpenBuckets(path, conf)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +60,7 @@ func newCollection(path string, conf Config) (*Collection, error) {
 	}
 
 	coll := &Collection {
-		buckets:  buckets, 
+		buckets: buckets, 
 		root:    path,
 		indexes: indexes,
 		config:  conf,
@@ -89,9 +90,6 @@ func (c *Collection) Set(key string, val []byte) (int64, int64, error) {
 
 	bucket := c.buckets.Last()
 	off, size, id, err := bucket.Write(data)
-
-	// bucket := c.buckets.Get(id)
-	// c.buckets.Puy(bucket)
 
 	// Index new key.
 	err = c.indexes.Set([]byte(key), len(data), uint64(off), id)

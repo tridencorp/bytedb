@@ -49,7 +49,7 @@ func TestSet(t *testing.T) {
 	db, _ := Open("./db")
 	defer db.Delete()
 
-	conf := Config{10, 100_000, 10}
+	conf := Config{10, 100_000, 10, 100}
 	coll, _ := db.Collection("test", conf)
 
 	for i:=0;i < 100; i++ {
@@ -164,7 +164,7 @@ func TestUpdate(t *testing.T) {
 
 // Test if we are creating new buckets if keys limit is reached.
 func TestBucketCreate(t *testing.T) {
-	conf := Config{2, 10, 2}
+	conf := Config{2, 10, 2, 100}
 
 	testdb, coll := CreateCollection("test", conf)
 	defer testdb.Delete()
@@ -183,7 +183,7 @@ func TestBucketCreate(t *testing.T) {
 
 // Test if we are truncating file properly.
 func TestBucketTruncate(t *testing.T) {
-	conf := Config{100, 30, 2}
+	conf := Config{100, 30, 2, 100}
 
 	testdb, coll := CreateCollection("test", conf)
 	defer testdb.Delete()
@@ -218,7 +218,7 @@ func TestBucketTruncate(t *testing.T) {
 
 func TestSetGet2(t *testing.T) {
 	// !!! TEST ONLY ON ONE BUCKET FOR NOW !!!
-	conf := Config{100_001, 5_00_000, 1}
+	conf := Config{100_001, 5_00_000, 1, 100}
 
 	db, c := CreateCollection("test", conf)
 	defer db.Delete()
