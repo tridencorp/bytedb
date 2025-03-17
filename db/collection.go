@@ -2,8 +2,6 @@ package db
 
 import (
 	"bucketdb/db/index"
-	"bytes"
-	"encoding/binary"
 	"os"
 	"path/filepath"
 	"sync/atomic"
@@ -11,6 +9,8 @@ import (
 
 type Collection struct {
 	bucket  *Bucket
+	buckets *Buckets
+
 	indexes *index.File
 	config  Config
 
@@ -23,60 +23,10 @@ type Collection struct {
 	offset atomic.Int64
 }
 
-// Key structure that represents each key stored in collection.
-// TODO: Maybe better naming will be Record?
-type Key struct {
-	data []byte
-	size uint32
-}
-
-type KV struct {
-	key []byte
-	val []byte
-}
-
-func NewKV(key string, val []byte) *KV {
-	return &KV{[]byte(key), val}
-}
-
 type Config struct {
 	KeysLimit     uint32
 	SizeLimit     int64
 	BucketsPerDir int32
-}
-
-func NewKey(val []byte) *Key {
-	return &Key{val, uint32(len(val))}
-}
-
-func KeyFromBytes(data []byte) *Key {
-	key := &Key{}
-	buf := bytes.NewBuffer(data)
-
-	// Decode size and data.
-	binary.Read(buf, binary.BigEndian, &key.size)
-	key.data = buf.Bytes()
-
-	return key
-}
-
-// Encode key to bytes.
-func (key *Key) Bytes() ([]byte, error) {
-	buf := new(bytes.Buffer)
-
-	// Encode size.
-	err := binary.Write(buf, binary.BigEndian, key.size)
-	if err != nil {
-		return nil, err
-	}
-
-	// Add key data.
-	_, err = buf.Write(key.data)
-	if err != nil {
-		return nil, err
-	}
-
-	return buf.Bytes(), nil
 }
 
 // Open the collection. If it doesn't exist,
@@ -89,7 +39,7 @@ func (db *DB) Collection(name string, conf Config) (*Collection, error) {
 
 func newCollection(path string, conf Config) (*Collection, error) {
 	// Build collection path.
-	dir  := filepath.Dir(path)
+	dir := filepath.Dir(path)
 
 	// Create directory structure. Do nothing if it already exist.
 	err := os.MkdirAll(dir, 0755)
@@ -97,8 +47,8 @@ func newCollection(path string, conf Config) (*Collection, error) {
 		return nil, err
 	}
 
-	// Open most recent bucket.
-	bucket, err := OpenBucket(path, conf.KeysLimit, conf.SizeLimit, conf.BucketsPerDir)
+	// Open buckets.	
+	buckets, err := OpenBuckets(path, 100, conf)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +59,7 @@ func newCollection(path string, conf Config) (*Collection, error) {
 	}
 
 	coll := &Collection {
-		bucket:  bucket, 
+		buckets:  buckets, 
 		root:    path,
 		indexes: indexes,
 		config:  conf,
@@ -134,16 +84,17 @@ func (coll *Collection) Hash(name string) (*Hash, error) {
 }
 
 // Store key in collection.
-func (coll *Collection) Set(key string, val []byte) (int64, int64, error) {
-	data, err := NewKey(val).Bytes()
-	if err != nil {
-		return 0, 0, err
-	}
+func (c *Collection) Set(key string, val []byte) (int64, int64, error) {
+	data, err := NewKV(key, val).Bytes()
 
-	off, size, id, err := coll.bucket.Write(data)
-	
+	bucket := c.buckets.Latest()
+	off, size, id, err := bucket.Write(data)
+
+	// bucket := c.buckets.Get(id)
+	// c.buckets.Puy(bucket)
+
 	// Index new key.
-	err = coll.indexes.Set([]byte(key), len(data), uint64(off), id)
+	err = c.indexes.Set([]byte(key), len(data), uint64(off), id)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -159,13 +110,14 @@ func (coll *Collection) Get(key string) ([]byte, error) {
 	}
 
 	// TODO: Based on index we need to pick proper bucket.
-	val, err := coll.bucket.Read(int64(idx.Offset), int64(idx.Size))
+	raw, err := coll.bucket.Read(int64(idx.Offset), int64(idx.Size))
 	if err != nil {
 		return nil, err
 	}
 
-	kv := KeyFromBytes(val)
-	return kv.data, err
+	kv := new(KV)
+	kv.FromBytes(raw)
+	return kv.val, err
 }
 
 // Delete key from collection.
