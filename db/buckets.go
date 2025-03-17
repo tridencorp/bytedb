@@ -1,6 +1,8 @@
 package db
 
-import "sync/atomic"
+import (
+	"sync/atomic"
+)
 
 type item struct {
 	bucket   *Bucket
@@ -8,7 +10,7 @@ type item struct {
 }
 
 func Item(b *Bucket) *item {
-	item := &item{bucket: b}
+	item := &item{ bucket: b }
 	item.refCount.Store(1)
 
 	return item
@@ -45,4 +47,12 @@ func (b *Buckets) Last() *Bucket {
 	last.refCount.Add(1)
 
 	return last.bucket
+}
+
+// Put bucket back so it can be reused by other routines.
+// In reality we just decrease the refCount so we would know if
+// it's safe to close.
+func (b *Buckets) Put(bucket *Bucket) {
+	item := b.items[bucket.ID]
+	item.refCount.Add(-1)
 }
