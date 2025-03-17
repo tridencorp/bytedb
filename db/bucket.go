@@ -1,6 +1,7 @@
 package db
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -10,6 +11,8 @@ import (
 	"sync"
 	"sync/atomic"
 )
+
+var ErrKeyLimitReached = errors.New("Bucket key limit reached")
 
 // Keeping file related data in one place. It will be easier
 // to use this in concurrent world.
@@ -32,6 +35,8 @@ type Bucket struct {
 	ID  uint32
 	Dir string
 
+	TestOffset atomic.Int64
+
 	// Keeping track how many times we resize bucket.
 	ResizeCount uint32
 
@@ -52,7 +57,7 @@ type Bucket struct {
 	mux sync.RWMutex
 }
 
-func OpenBucket(root string, keysLimit uint32, sizeLimit int64, bucketsPerDir int32) (*Bucket, error) {
+func OpenBucket(root string, conf Config) (*Bucket, error) {
 	f, err := getLastBucket(root)
 	if err != nil {
 		return nil, err
@@ -62,15 +67,16 @@ func OpenBucket(root string, keysLimit uint32, sizeLimit int64, bucketsPerDir in
 	bucket := &Bucket{
 		ID:1, 
 		Dir: root,
-		keysLimit: uint64(keysLimit),
+		keysLimit: uint64(conf.MaxKeys),
 		ResizeCount: 0,
-		bucketsPerDir: int16(bucketsPerDir),
+		bucketsPerDir: int16(conf.MaxPerDir),
 	}
 
-	file := &File{fd: f, bucketID: bucket.ID, sizeLimit: uint64(sizeLimit)}
+	file := &File{fd: f, bucketID: bucket.ID, sizeLimit: uint64(conf.MaxSize)}
 
 	bucket.file.Store(file)
 	file.offset.Store(getOffset(bucket))
+	bucket.TestOffset.Store(0)
 
 	return bucket, nil;
 }
@@ -130,7 +136,7 @@ func (bucket *Bucket) nextBucket() (*os.File, error) {
 	// Based on buckets per dir we can calculate folder ID in which
 	// bucket should be.
 	folderId := int(math.Ceil(float64(id) / float64(bucket.bucketsPerDir)))
-
+	
 	path := filepath.Join(bucket.Dir, fmt.Sprintf("%d", folderId))
 	err  := os.MkdirAll(path, 0755)
 	if err != nil {
@@ -167,14 +173,14 @@ func (bucket *Bucket) Write(data []byte) (int64, int64, uint32, error) {
 	count := bucket.keysCount.Add(1)
 	limit := int64(bucket.keysLimit)
 
-	// TODO: File, offset and keysCount must be in the same struct
-	// and we will use atomics to load them.
+	if count >= limit {
+		return 0, 0, 0, ErrKeyLimitReached
+	}
 
 	// We are adding len to atomic value and then deducting it
 	// from the result, this should give us space for our data.
 	offset    := file.offset.Add(int64(len(data)))
 	keyOffset := offset - int64(len(data))
-
 
 	off  := int64(0)
 	size := int64(0)
@@ -195,16 +201,16 @@ func (bucket *Bucket) Write(data []byte) (int64, int64, uint32, error) {
 
 	// We reached keys limit, we must create next bucket.
 	// TODO: check if some other goroutine didn't created new bucket in meantime.
-	if count >= limit {
-		bucket.mux.Lock()
-		_, err := bucket.nextBucket()
-		if err != nil {
-			return 0, 0, 0, err
-		}
-		// TODO: Test this.
-		// file = bucket.file.Load()
-		bucket.mux.Unlock()
-	}
+	// if count >= limit {
+	// 	bucket.mux.Lock()
+	// 	_, err := bucket.nextBucket()
+	// 	if err != nil {
+	// 		return 0, 0, 0, err
+	// 	}
+
+	// 	file = bucket.file.Load()
+	// 	bucket.mux.Unlock()
+	// }
 
 	if count <= limit {
 		bucket.mux.RLock()

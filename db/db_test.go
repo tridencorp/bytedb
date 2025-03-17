@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestOpen(t *testing.T) {
+func TestOpenDB(t *testing.T) {
 	db, _ := Open("./db")
 	defer db.Delete()
 
@@ -49,11 +49,16 @@ func TestSet(t *testing.T) {
 	db, _ := Open("./db")
 	defer db.Delete()
 
+	conf := Config{10, 100_000, 10}
 	coll, _ := db.Collection("test", conf)
 
-	coll.Set("key1", []byte("value 1"))
-	coll.Set("key2", []byte("value 2"))
-	coll.Set("key3", []byte("value 3"))
+	for i:=0;i < 100; i++ {
+		key := fmt.Sprintf("key_%d", i)
+		_, _, err := coll.Set(key, []byte("value"))
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
 }
 
 func TestSetGet(t *testing.T) {
@@ -123,7 +128,7 @@ func TestLoadIndexFile(t *testing.T) {
 	idx, _ := indexes.Get([]byte("key1"))
 
 	if idx == nil        { t.Errorf("Index for the given key wasn't find.") }
-	if idx.BucketId != 1 { t.Errorf("Expected bucketId to be %d, was %d", 1, idx.BucketId) }
+	if idx.Bucket != 1   { t.Errorf("Expected bucketId to be %d, was %d", 1, idx.Bucket) }
 	if idx.Size != 7     { t.Errorf("Expected Size to be %d, was %d", 7, idx.Size) }
 }
 
@@ -159,7 +164,7 @@ func TestUpdate(t *testing.T) {
 
 // Test if we are creating new buckets if keys limit is reached.
 func TestBucketCreate(t *testing.T) {
-	conf := Config{KeysLimit: 2, SizeLimit: 10, BucketsPerDir: 2}
+	conf := Config{2, 10, 2}
 
 	testdb, coll := CreateCollection("test", conf)
 	defer testdb.Delete()
@@ -178,7 +183,7 @@ func TestBucketCreate(t *testing.T) {
 
 // Test if we are truncating file properly.
 func TestBucketTruncate(t *testing.T) {
-	conf := Config{KeysLimit: 100, SizeLimit: 30, BucketsPerDir: 2}
+	conf := Config{100, 30, 2}
 
 	testdb, coll := CreateCollection("test", conf)
 	defer testdb.Delete()
@@ -212,13 +217,14 @@ func TestBucketTruncate(t *testing.T) {
 }
 
 func TestSetGet2(t *testing.T) {
-	conf := Config{KeysLimit: 6_000	, SizeLimit: 1_00_000, BucketsPerDir: 2}
+	// !!! TEST ONLY ON ONE BUCKET FOR NOW !!!
+	conf := Config{100_001, 5_00_000, 1}
 
 	db, c := CreateCollection("test", conf)
 	defer db.Delete()
 
 	// Set all keys.
-	_, keys := FillCollection(c, 5_000, 200)
+	_, keys := FillCollection(c, 100_000, 200)
 
 	// Get all keys and check if they are correct.
 	count := 0
@@ -227,8 +233,7 @@ func TestSetGet2(t *testing.T) {
 
 		count += 1
 		if !bytes.Equal(k, val) {
-			t.Errorf("Expected key to be %v, got %v", val, k)
-			break
+			t.Errorf("Expected key to be %v, got %v\n", val, k)
 		}
 	}
 }

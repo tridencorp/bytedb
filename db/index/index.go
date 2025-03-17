@@ -25,14 +25,14 @@ type Index struct {
 
 type File struct {
 	fd *os.File
-	
+
 	// Keeping keys/collisions in memory.
 	Keys       []Key
 	Collisions []Key
-	
+
 	nextCollision   atomic.Uint32 // Index in Collisions table.
 	collisionOffset atomic.Uint64 // Offset in index file.
-	
+
 	// Max number of indexes file can have.
 	capacity uint64	
 }

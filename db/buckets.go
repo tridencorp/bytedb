@@ -8,9 +8,10 @@ type item struct {
 }
 
 func Item(b *Bucket) *item {
-	i := &item{bucket: b}
-	i.refCount.Store(1)
-	return i
+	item := &item{bucket: b}
+	item.refCount.Store(1)
+
+	return item
 }
 
 type Buckets struct {

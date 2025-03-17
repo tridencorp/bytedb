@@ -42,7 +42,8 @@ func TestLoader(t *testing.T) {
 	file.Keys       = make([]Key, 0)
 	file.Collisions = make([]Key, 0)
 
-	file.LoadIndexes(1024*1024*1)
+	oneMB := 1024*1024*1
+	file.LoadIndexes(oneMB)
 
 	for i:=0; i < num; i++ {
 		key := fmt.Sprintf("key_%d", i)

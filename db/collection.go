@@ -24,9 +24,9 @@ type Collection struct {
 }
 
 type Config struct {
-	KeysLimit     uint32
-	SizeLimit     int64
-	BucketsPerDir int32
+	MaxKeys   uint32
+	MaxSize   int64
+	MaxPerDir int32
 }
 
 // Open the collection. If it doesn't exist,

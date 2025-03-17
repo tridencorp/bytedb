@@ -11,7 +11,7 @@ type Iterator struct {
 	bucket *Bucket
 }
 
-func (it *Iterator) Iterate() ([]*Key, int64, error) {
+func (it *Iterator) Iterate() ([]*KV, int64, error) {
 	// Read the whole file.
 	// TODO: Read it in chunks.
 	file := it.bucket.file.Load()
@@ -21,13 +21,13 @@ func (it *Iterator) Iterate() ([]*Key, int64, error) {
 		return nil, 0, err
 	}
 
-	keys := []*Key{}
+	keys := []*KV{}
 	buf  := bytes.NewReader(data)
 
 	totalSize := int64(0)
 
 	for {
-		key := new(Key)
+		key := new(KV)
 
 		// Read key size.
 		size := uint32(0)
@@ -49,11 +49,10 @@ func (it *Iterator) Iterate() ([]*Key, int64, error) {
 		// We are adding 4 for size itself (uint32 - 4 bytes).
 		totalSize += int64(size + 4)
 
-		// Read key data based on size that we got.
-		key.data = make([]byte, size)
-		key.size = size
+		// Read key value based on size that we got.
+		key.val = make([]byte, size)
 
-		err = binary.Read(buf, binary.BigEndian, &key.data)
+		err = binary.Read(buf, binary.BigEndian, &key.val)
 		if err != nil {
 			return nil, totalSize, err
 		}
