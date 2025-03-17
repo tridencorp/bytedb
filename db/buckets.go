@@ -20,8 +20,8 @@ type Buckets struct {
 	// Max opened buckets at a time.
 	MaxOpened int16
 
-	// The latest bucket is special, all new keys go into it.
-	latest atomic.Pointer[item]
+	// Last bucket is special, all new keys go into it.
+	last atomic.Pointer[item]
 }
 
 // Open latest bucket.
@@ -34,14 +34,14 @@ func OpenBuckets(root string, maxFiles int16, conf Config) (*Buckets, error) {
 	buckets := &Buckets{ MaxOpened: maxFiles, items: map[uint32]*item{} }
 	item := Item(bucket)
 
-	buckets.latest.Store(item)
+	buckets.last.Store(item)
 	buckets.items[bucket.ID] = item
 
 	return buckets, nil
 }
 
-func (b *Buckets) Latest() *Bucket {
-	latest := b.latest.Load()
+func (b *Buckets) Last() *Bucket {
+	latest := b.last.Load()
 	latest.refCount.Add(1)
 
 	return latest.bucket

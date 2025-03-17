@@ -87,7 +87,7 @@ func (coll *Collection) Hash(name string) (*Hash, error) {
 func (c *Collection) Set(key string, val []byte) (int64, int64, error) {
 	data, err := NewKV(key, val).Bytes()
 
-	bucket := c.buckets.Latest()
+	bucket := c.buckets.Last()
 	off, size, id, err := bucket.Write(data)
 
 	// bucket := c.buckets.Get(id)
