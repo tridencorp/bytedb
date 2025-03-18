@@ -121,30 +121,30 @@ func GetLastBucket(root string) (*os.File, error) {
 }
 
 // Create next bucket.
-func (bucket *Bucket) nextBucket() (*os.File, error) {
-	id := bucket.ID + 1
+func (b *Bucket) nextBucket() (*os.File, error) {
+	id := b.ID + 1
 
 	// Based on buckets per dir we can calculate folder ID in which
 	// bucket should be.
-	folderId := int(math.Ceil(float64(id) / float64(bucket.bucketsPerDir)))
+	folderId := int(math.Ceil(float64(id) / float64(b.bucketsPerDir)))
 	
-	path := filepath.Join(bucket.Dir, fmt.Sprintf("%d", folderId))
+	path := filepath.Join(b.Dir, fmt.Sprintf("%d", folderId))
 	err  := os.MkdirAll(path, 0755)
 	if err != nil {
 		return nil, err
 	}
 
-	path = filepath.Join(bucket.Dir, fmt.Sprintf("%d", folderId), fmt.Sprintf("%d.bucket", id))
+	path = filepath.Join(b.Dir, fmt.Sprintf("%d", folderId), fmt.Sprintf("%d.bucket", id))
 	fd, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
 
-	bucket.ID = id
-	bucket.file = fd
+	b.ID = id
+	b.file = fd
 
 	// We created new bucket file, there are no keys yet so we must restart counters, 
 	// offsets, ...
-	bucket.offset.Store(0)
-	bucket.keysCount.Store(0)
-	bucket.ResizeCount = 0
+	b.offset.Store(0)
+	b.keysCount.Store(0)
+	b.ResizeCount = 0
 
 	return fd, err
 }
@@ -155,9 +155,9 @@ func (bucket *Bucket) nextBucket() (*os.File, error) {
 // types ? Should they operate only on raw bytes ?
 // 
 // TODO: We could return Offset{} here.
-func (bucket *Bucket) Write(data []byte) (int64, int64, uint32, error) {
-	count := bucket.keysCount.Add(1)
-	limit := int64(bucket.keysLimit)
+func (b *Bucket) Write(data []byte) (int64, int64, uint32, error) {
+	count := b.keysCount.Add(1)
+	limit := int64(b.keysLimit)
 
 	if count >= limit {
 		return 0, 0, 0, ErrKeyLimitReached
@@ -165,24 +165,24 @@ func (bucket *Bucket) Write(data []byte) (int64, int64, uint32, error) {
 
 	// We are adding len to atomic value and then deducting it
 	// from the result, this should give us space for our data.
-	offset    := bucket.offset.Add(int64(len(data)))
+	offset    := b.offset.Add(int64(len(data)))
 	keyOffset := offset - int64(len(data))
 
 	off  := int64(0)
 	size := int64(0)
 
 	// Resize the file when we reach size limit.
-	if offset >= int64(bucket.sizeLimit) {
-		bucket.mux.Lock()
+	if offset >= int64(b.sizeLimit) {
+		b.mux.Lock()
 		// Check if our condition is still valid - some other goroutine 
 		// could changed the size limit in the time we was waiting for lock.
-		if offset >= int64(bucket.sizeLimit) {
-			err := bucket.resize()
+		if offset >= int64(b.sizeLimit) {
+			err := b.resize()
 			if err != nil {
 				return 0, 0, 0, err
 			}
 		}
-		bucket.mux.Unlock()
+		b.mux.Unlock()
 	}
 
 	// We reached keys limit, we must create next bucket.
@@ -199,12 +199,12 @@ func (bucket *Bucket) Write(data []byte) (int64, int64, uint32, error) {
 	// }
 
 	if count <= limit {
-		bucket.mux.RLock()
-		off, size, _ = bucket.write(bucket.file, keyOffset, data)
-		bucket.mux.RUnlock()
+		b.mux.RLock()
+		off, size, _ = b.write(b.file, keyOffset, data)
+		b.mux.RUnlock()
 	}
 
-	return off, size, bucket.ID, nil
+	return off, size, b.ID, nil
 }
 
 func (bucket *Bucket) resize() error {
@@ -225,7 +225,7 @@ func getOffset(bucket *Bucket) int64 {
 	return size
 }
 
-func (bucket *Bucket) write(file *os.File, off int64, data []byte) (int64, int64, error) {
+func (b *Bucket) write(file *os.File, off int64, data []byte) (int64, int64, error) {
 	// We are using WriteAt because, when carefully
 	// handled, it's concurrent-friendly.
 	size, err := file.WriteAt(data, off)
@@ -237,10 +237,10 @@ func (bucket *Bucket) write(file *os.File, off int64, data []byte) (int64, int64
 }
 
 // Read data from bucket.
-func (bucket *Bucket) Read(offset int64, size int64) ([]byte, error) {
+func (b *Bucket) Read(offset int64, size int64) ([]byte, error) {
 	data := make([]byte, size)
 
-	_, err := bucket.file.ReadAt(data, offset)
+	_, err := b.file.ReadAt(data, offset)
 	if err != nil {
 		return nil, err
 	}
