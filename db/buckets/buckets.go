@@ -90,9 +90,21 @@ func (b *Buckets) Open(id uint32) (*Bucket, error) {
 }
 
 // Add bucket to items - keep it in memory.
-func (b *Buckets) Add(bucket *Bucket) {
-	fmt.Println("add: ", bucket.ID)
+func (b *Buckets) Add(id uint32) *item {
+	b.mux.Lock()
+	defer b.mux.Unlock()
+
+	// Check if some other goroutine didn't already add our bucket.
+	item, exists := b.items[id]
+	if exists {
+		item.refCount.Add(1)
+		return item
+	} 
+
+	bucket, _ := b.Open(id)
 	b.items[bucket.ID] = Item(bucket)
+
+	return b.items[bucket.ID]
 }
 
 // Get a bucket by ID. If a bucket with the given ID
@@ -107,20 +119,9 @@ func (b *Buckets) Get(id uint32) *Bucket {
 		return item.bucket
 	}
 
-	b.mux.Lock()
-	var bucket *Bucket
-
-	item, exists = b.items[id]
-	if exists {
-		bucket = item.bucket
-		item.refCount.Add(1)
-	} else {
-		bucket, _ = b.Open(id)
-		b.Add(bucket)
-	}
-	b.mux.Unlock()
-
-	return bucket 
+	// Bucket is not opened yet, add it.
+	item = b.Add(id)
+	return item.bucket 
 }
 
 // Put bucket back so it can be reused by other routines.

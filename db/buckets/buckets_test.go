@@ -44,7 +44,6 @@ func TestGet(t *testing.T) {
 
 	tests.RunConcurrently(100_000, func(){
 		id := uint32(rand.Intn(5) + 1)
-
 		bucket := buckets.Get(id)
 		buckets.Put(bucket)
 	})
