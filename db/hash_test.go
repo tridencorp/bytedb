@@ -1,6 +1,7 @@
 package db
 
 import (
+	"bucketdb/db/buckets"
 	"bytes"
 	"testing"
 )
@@ -9,6 +10,7 @@ func TestHash(t *testing.T) {
 	db, _ := Open("./db")
 	defer db.Delete()
 
+	conf := buckets.Config{100, 30, 2, 100}
 	col, _  := db.Collection("test", conf)
 	hash, _ := col.Hash("test_hash")
 

@@ -1,6 +1,7 @@
 package db
 
 import (
+	"bucketdb/db/buckets"
 	"bucketdb/db/index"
 	"bytes"
 	"fmt"
@@ -8,6 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 )
+
+var conf = buckets.Config{MaxKeys: 10, MaxSize: 100_000, MaxPerDir:  10, MaxOpened: 100}
 
 func TestOpenDB(t *testing.T) {
 	db, _ := Open("./db")
@@ -49,7 +52,6 @@ func TestSet(t *testing.T) {
 	db, _ := Open("./db")
 	defer db.Delete()
 
-	conf := Config{10, 100_000, 10, 100}
 	coll, _ := db.Collection("test", conf)
 
 	for i:=0;i < 100; i++ {
@@ -86,7 +88,7 @@ func TestSetGet(t *testing.T) {
 
 func TestIterate(t *testing.T) {
 	db, _ := Open("./db")
-	// defer db.Delete()
+	defer db.Delete()
 
 	coll, _ := db.Collection("test", conf)
 
@@ -94,7 +96,7 @@ func TestIterate(t *testing.T) {
 	coll.Set("key2", []byte("value 2"))
 	coll.Set("key3", []byte("value 3"))
 
-	it := Iterator{bucket: coll.bucket}
+	it := buckets.Iterator{Bucket: coll.bucket}
 	keys, size, _ := it.Iterate()
 
 
@@ -164,14 +166,12 @@ func TestUpdate(t *testing.T) {
 
 // Test if we are creating new buckets if keys limit is reached.
 func TestBucketCreate(t *testing.T) {
-	conf := Config{2, 10, 2, 100}
-
 	testdb, coll := CreateCollection("test", conf)
 	defer testdb.Delete()
 
 	// 10 keys, 10 Bytes each.
 	FillCollection(coll, 10, 10)
-	file, _ := getLastBucket(coll.root)
+	file, _ := buckets.GetLastBucket(coll.root)
 
 	expected := "3/6.bucket"
 	got, _   := filepath.Rel(coll.root, file.Name())
@@ -183,8 +183,6 @@ func TestBucketCreate(t *testing.T) {
 
 // Test if we are truncating file properly.
 func TestBucketTruncate(t *testing.T) {
-	conf := Config{100, 30, 2, 100}
-
 	testdb, coll := CreateCollection("test", conf)
 	defer testdb.Delete()
 
@@ -218,8 +216,6 @@ func TestBucketTruncate(t *testing.T) {
 
 func TestSetGet2(t *testing.T) {
 	// !!! TEST ONLY ON ONE BUCKET FOR NOW !!!
-	conf := Config{100_001, 5_00_000, 1, 100}
-
 	db, c := CreateCollection("test", conf)
 	defer db.Delete()
 

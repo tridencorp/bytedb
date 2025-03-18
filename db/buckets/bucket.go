@@ -1,4 +1,4 @@
-package db
+package buckets
 
 import (
 	"errors"
@@ -58,7 +58,7 @@ type Bucket struct {
 }
 
 func OpenBucket(root string, conf Config) (*Bucket, error) {
-	f, err := getLastBucket(root)
+	f, err := GetLastBucket(root)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func OpenBucket(root string, conf Config) (*Bucket, error) {
 
 // Find the last bucket ID for given root.
 // Empty string in response mesteans that there is no bucket yet.
-func getLastBucket(root string) (*os.File, error) {
+func GetLastBucket(root string) (*os.File, error) {
 	// Get all folders.
 	folders, _ := os.ReadDir(root)
 	max := 0
@@ -234,7 +234,7 @@ func (bucket *Bucket) resize(file *File) error {
 // It would basically be done only for last block - the one we are currently writing to. 
 // Other blocks will be immutable (so no offset needed).
 func getOffset(bucket *Bucket) int64 {
-	it := Iterator{bucket: bucket}
+	it := Iterator{Bucket: bucket}
 	_, size, _ := it.Iterate()
 	return size
 }

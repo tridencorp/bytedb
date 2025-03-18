@@ -1,6 +1,7 @@
 package db
 
 import (
+	"bucketdb/db/buckets"
 	"bucketdb/db/index"
 	"os"
 	"path/filepath"
@@ -8,11 +9,11 @@ import (
 )
 
 type Collection struct {
-	bucket  *Bucket
-	buckets *Buckets
+	bucket  *buckets.Bucket
+	buckets *buckets.Buckets
 
 	indexes *index.File
-	config  Config
+	config  buckets.Config
 
 	// Collection root directory.
 	root string
@@ -23,22 +24,15 @@ type Collection struct {
 	offset atomic.Int64
 }
 
-type Config struct {
-	MaxKeys   uint32
-	MaxSize   int64
-	MaxPerDir int32
-	MaxOpened int16
-}
-
 // Open the collection. If it doesn't exist,
 // create it with default values.
-func (db *DB) Collection(name string, conf Config) (*Collection, error) {
+func (db *DB) Collection(name string, conf buckets.Config) (*Collection, error) {
 	// Build collection path.
 	path := db.root + CollectionsPath + name
 	return newCollection(path, conf)
 }
 
-func newCollection(path string, conf Config) (*Collection, error) {
+func newCollection(path string, conf buckets.Config) (*Collection, error) {
 	// Build collection path.
 	dir := filepath.Dir(path)
 
@@ -48,8 +42,8 @@ func newCollection(path string, conf Config) (*Collection, error) {
 		return nil, err
 	}
 
-	// Open buckets.	
-	buckets, err := OpenBuckets(path, conf)
+	// Open buckets.
+	buckets, err := buckets.Open(path, conf)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +80,7 @@ func (coll *Collection) Hash(name string) (*Hash, error) {
 
 // Store key in collection.
 func (c *Collection) Set(key string, val []byte) (int64, int64, error) {
-	data, err := NewKV(key, val).Bytes()
+	data, err := buckets.NewKV(key, val).Bytes()
 
 	bucket := c.buckets.Last()
 	off, size, id, err := bucket.Write(data)
@@ -113,9 +107,9 @@ func (coll *Collection) Get(key string) ([]byte, error) {
 		return nil, err
 	}
 
-	kv := new(KV)
+	kv := new(buckets.KV)
 	kv.FromBytes(raw)
-	return kv.val, err
+	return kv.Val, err
 }
 
 // Delete key from collection.

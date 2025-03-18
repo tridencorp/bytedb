@@ -1,8 +1,15 @@
-package db
+package buckets
 
 import (
 	"sync/atomic"
 )
+
+type Config struct {
+	MaxKeys   uint32
+	MaxSize   int64
+	MaxPerDir int32
+	MaxOpened int16
+}
 
 type item struct {
 	bucket   *Bucket
@@ -27,7 +34,7 @@ type Buckets struct {
 }
 
 // Open latest bucket.
-func OpenBuckets(root string, conf Config) (*Buckets, error) {
+func Open(root string, conf Config) (*Buckets, error) {
 	bucket, err := OpenBucket(root, conf)
 	if err != nil {
 		return nil, err

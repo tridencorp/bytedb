@@ -1,12 +1,13 @@
 package db
 
 import (
+	"bucketdb/db/buckets"
 	"fmt"
 
 	"golang.org/x/exp/rand"
 )
 
-func CreateCollection(name string, conf Config) (*DB, *Collection) {
+func CreateCollection(name string, conf buckets.Config) (*DB, *Collection) {
 	database, _ := Open("./testdb")
 	coll, _ := database.Collection("test", conf)
 

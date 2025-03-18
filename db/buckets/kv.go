@@ -1,4 +1,4 @@
-package db
+package buckets
 
 import (
 	"bytes"
@@ -8,8 +8,8 @@ import (
 // KV structure that represents each key/value stored in collection.
 // TODO: Key will be hashed key, uint64.
 type KV struct {
-	key  []byte
-	val  []byte
+	Key  []byte
+	Val  []byte
 }
 
 func NewKV(key string, val []byte) *KV {
@@ -24,7 +24,7 @@ func (kv *KV) FromBytes(raw []byte) {
 	// so we can just skip next 4 bytes (since size is uint32)
 	buf.Next(4)
 
-	kv.val = buf.Bytes()
+	kv.Val = buf.Bytes()
 }
 
 // Encode kv to bytes.
@@ -33,13 +33,13 @@ func (kv *KV) Bytes() ([]byte, error) {
 
 	// Encode size. We need this in case we will have to re-create
 	// keys without indexes.
-	err := binary.Write(buf, binary.BigEndian, uint32(len(kv.val)))
+	err := binary.Write(buf, binary.BigEndian, uint32(len(kv.Val)))
 	if err != nil {
 		return nil, err
 	}
 
 	// Write value.
-	_, err = buf.Write(kv.val)
+	_, err = buf.Write(kv.Val)
 	if err != nil {
 		return nil, err
 	}

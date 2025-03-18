@@ -1,4 +1,4 @@
-package db
+package buckets
 
 import (
 	"bytes"
@@ -8,13 +8,13 @@ import (
 
 // Iterator is iterating all keys in collection.
 type Iterator struct {
-	bucket *Bucket
+	Bucket *Bucket
 }
 
 func (it *Iterator) Iterate() ([]*KV, int64, error) {
 	// Read the whole file.
 	// TODO: Read it in chunks.
-	file := it.bucket.file.Load()
+	file := it.Bucket.file.Load()
 
 	data, err := io.ReadAll(file.fd)
 	if err != nil {
@@ -50,9 +50,9 @@ func (it *Iterator) Iterate() ([]*KV, int64, error) {
 		totalSize += int64(size + 4)
 
 		// Read key value based on size that we got.
-		key.val = make([]byte, size)
+		key.Val = make([]byte, size)
 
-		err = binary.Read(buf, binary.BigEndian, &key.val)
+		err = binary.Read(buf, binary.BigEndian, &key.Val)
 		if err != nil {
 			return nil, totalSize, err
 		}
