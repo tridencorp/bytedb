@@ -4,6 +4,7 @@ import (
 	"bucketdb/db/utils"
 	"fmt"
 	"math"
+	"sync"
 	"sync/atomic"
 )
 
@@ -27,6 +28,7 @@ func Item(b *Bucket) *item {
 }
 
 type Buckets struct {
+	mux   sync.RWMutex
 	items map[uint32]*item
 	Root  string
 
@@ -89,29 +91,45 @@ func (b *Buckets) Open(id uint32) (*Bucket, error) {
 
 // Add bucket to items - keep it in memory.
 func (b *Buckets) Add(bucket *Bucket) {
-	item := Item(bucket)
-	item.refCount.Add(1)
-
-	b.items[bucket.ID] = item
+	fmt.Println("add: ", bucket.ID)
+	b.items[bucket.ID] = Item(bucket)
 }
 
 // Get a bucket by ID. If a bucket with the given ID
 // is not already opened, we will try to open it.
 func (b *Buckets) Get(id uint32) *Bucket {
-	item, exist := b.items[id]
-	if !exist {
-		bucket, _ := b.Open(id)
+	b.mux.RLock()
+	item, exists := b.items[id]
+	b.mux.RUnlock()
+
+	if exists {
+		item.refCount.Add(1)
+		return item.bucket
+	}
+
+	b.mux.Lock()
+	var bucket *Bucket
+
+	item, exists = b.items[id]
+	if exists {
+		bucket = item.bucket
+		item.refCount.Add(1)
+	} else {
+		bucket, _ = b.Open(id)
 		b.Add(bucket)
 	}
-	
-	item.refCount.Add(1)
-	return item.bucket
+	b.mux.Unlock()
+
+	return bucket 
 }
 
 // Put bucket back so it can be reused by other routines.
 // In reality we just decrease the refCount so we would know if
 // it's safe to close.
 func (b *Buckets) Put(bucket *Bucket) {
+	b.mux.RLock()
+	defer b.mux.RUnlock()
+
 	item := b.items[bucket.ID]
 	item.refCount.Add(-1)
 }

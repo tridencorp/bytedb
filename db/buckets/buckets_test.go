@@ -39,11 +39,19 @@ func TestGet(t *testing.T) {
 	buckets.Open(2)
 	buckets.Open(3)
 	buckets.Open(4)
+	buckets.Open(5)
+	buckets.Open(6)
 
-	tests.RunConcurrently(50_000, func(){
-		id := rand.Intn(3) + 1
+	tests.RunConcurrently(100_000, func(){
+		id := uint32(rand.Intn(5) + 1)
 
 		bucket := buckets.Get(id)
 		buckets.Put(bucket)
 	})
+
+	tests.Assert(t, 1, buckets.items[1].refCount.Load())
+	tests.Assert(t, 0, buckets.items[2].refCount.Load())
+	tests.Assert(t, 0, buckets.items[3].refCount.Load())
+	tests.Assert(t, 0, buckets.items[4].refCount.Load())
+	tests.Assert(t, 0, buckets.items[5].refCount.Load())
 }
