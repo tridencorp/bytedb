@@ -9,7 +9,7 @@ import (
 func TestOpenBuckets(t *testing.T) {
 	conf := Config{2, 1_000_000, 2, 100}
 
-	_, err := OpenBuckets("./test", conf)
+	_, err := Open("./test", conf)
 	tests.Assert(t, err, nil)
 }
 
@@ -17,7 +17,7 @@ func TestRefCount(t *testing.T) {
 	var wg sync.WaitGroup
 
 	conf := Config{2, 1_000_000, 2, 100}
-	buckets, _ := OpenBuckets("./test", conf)
+	buckets, _ := Open("./test", conf)
 
 	for i:=0;i < 50_000; i++ {
 		wg.Add(1)
