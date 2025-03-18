@@ -1,6 +1,7 @@
 package buckets
 
 import (
+	"bucketdb/db/utils"
 	"fmt"
 	"math"
 	"sync/atomic"
@@ -36,7 +37,7 @@ type Buckets struct {
 	last atomic.Pointer[item]
 }
 
-// Open last bucket - create one if there isn't any.
+// Open buckets directory and initialize it with last bucket - create one if we don't have any.
 func Open(root string, conf Config) (*Buckets, error) {
 	bucket, err := OpenBucket(root, conf)
 	if err != nil {
@@ -68,29 +69,43 @@ func (b *Buckets) Last() *Bucket {
 // Return path for bucket id.
 func (b *Buckets) Path(id uint32) string {
 	folder := int(math.Ceil(float64(id) / float64(b.MaxPerDir)))
-	return fmt.Sprintf("%d/%d.bucket", folder, id)
+	return fmt.Sprintf("%s/%d/%d.bucket", b.Root, folder, id)
 }
 
-// Create bucket with given id.
-func (b *Buckets) Create(id int32) (*Bucket, error) {
+// Open/Create bucket with given id.
+func (b *Buckets) Open(id uint32) (*Bucket, error) {
+	file, err := utils.OpenPath(b.Path(id))
+	if err != nil {
+		return nil, err
+	}
 
-	// path := filepath.Join(b.Root, fmt.Sprintf("%d", folder))
-	// err  := os.MkdirAll(path, 0755)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	bucket := &Bucket{ ID: id, file: file }
+	bucket.offset.Store(0)
+	bucket.keysCount.Store(0)
+	bucket.ResizeCount = 0
 
-	// path = filepath.Join(b.Root, fmt.Sprintf("%d", folderId), fmt.Sprintf("%d.bucket", id))
-	// fd, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
+	return bucket, nil
+}
 
+// Add bucket to items - keep it in memory.
+func (b *Buckets) Add(bucket *Bucket) {
+	item := Item(bucket)
+	item.refCount.Add(1)
 
-	return nil, nil
+	b.items[bucket.ID] = item
 }
 
 // Get a bucket by ID. If a bucket with the given ID
-// is not already open, we will find and open it.
-func (b *Buckets) Get(id int) *Bucket {
-	return nil
+// is not already opened, we will try to open it.
+func (b *Buckets) Get(id uint32) *Bucket {
+	item, exist := b.items[id]
+	if !exist {
+		bucket, _ := b.Open(id)
+		b.Add(bucket)
+	}
+	
+	item.refCount.Add(1)
+	return item.bucket
 }
 
 // Put bucket back so it can be reused by other routines.

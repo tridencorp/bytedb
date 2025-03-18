@@ -25,7 +25,7 @@ type Collection struct {
 }
 
 // Open the collection. If it doesn't exist,
-// create it with default values.
+// create one with default values.
 func (db *DB) Collection(name string, conf buckets.Config) (*Collection, error) {
 	// Build collection path.
 	path := db.root + CollectionsPath + name
@@ -72,7 +72,7 @@ func (coll *Collection) Hash(name string) (*Hash, error) {
 	root := coll.root + "/hashes/"
 	keys, err := newCollection(root, coll.config)
 	if err != nil {
-		return nil, err
+		return nil, err 
 	}
 
 	return &Hash{root: root, keys: keys}, nil
