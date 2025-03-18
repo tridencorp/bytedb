@@ -2,7 +2,7 @@ package buckets
 
 import (
 	"bucketdb/tests"
-	"sync"
+	"os"
 	"testing"
 )
 
@@ -10,25 +10,20 @@ func TestOpenBuckets(t *testing.T) {
 	conf := Config{2, 1_000_000, 2, 100}
 
 	_, err := Open("./test", conf)
+	defer os.RemoveAll("./test")
+
 	tests.Assert(t, err, nil)
 }
 
 func TestRefCount(t *testing.T) {
-	var wg sync.WaitGroup
-
 	conf := Config{2, 1_000_000, 2, 100}
 	buckets, _ := Open("./test", conf)
+	defer os.RemoveAll("./test")
 
-	for i:=0;i < 50_000; i++ {
-		wg.Add(1)
+	tests.RunConcurrently(50_000, func(){
+		b := buckets.Last()
+		buckets.Put(b)	
+	})
 
-		go func() {
-			defer wg.Done()
-			b := buckets.Last()
-			buckets.Put(b)
-		}()
-	}
-
-	wg.Wait()
-	tests.Assert(t, buckets.items[1].refCount.Load(), 1)
+	tests.Assert(t, 1, buckets.items[1].refCount.Load())
 }
