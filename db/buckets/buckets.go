@@ -5,10 +5,10 @@ import (
 )
 
 type Config struct {
-	MaxKeys   uint32
-	MaxSize   int64
-	MaxPerDir int32
-	MaxOpened int16
+	MaxKeys   uint32 // Max keys per bucket
+	MaxSize   int64  // Max bucket size after which we will resize
+	MaxPerDir int32  // Max buckets per directory
+	MaxOpened int16  // Max opened buckets at a time
 }
 
 type item struct {
