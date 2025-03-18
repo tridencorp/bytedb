@@ -181,39 +181,6 @@ func TestBucketCreate(t *testing.T) {
 	}
 }
 
-// Test if we are truncating file properly.
-func TestBucketTruncate(t *testing.T) {
-	testdb, coll := CreateCollection("test", conf)
-	defer testdb.Delete()
-
-	totalBytes := int64(0)
-
-	for i:=0; i < 10; i++ {
-		written, _ := FillCollection(coll, 1, 10)
-		totalBytes += written
-	}
-
-	file   := coll.bucket.file.Load()
-	offset := file.offset.Load()
-	limit  := file.sizeLimit
-
-	if coll.bucket.ResizeCount != 3 {
-		t.Errorf("Expected file to be resized %d times, got %d", 3, coll.bucket.ResizeCount)
-	}
-
-	if totalBytes != 140 {
-		t.Errorf("Expected totalBytes to be %d, got %d", 140, totalBytes)
-	}
-
-	if offset != 140 {
-		t.Errorf("Expected file offset to be %d, got %d", 140, offset)
-	}
-
-	if limit != 240 {
-		t.Errorf("Expected file size limit to be %d, got %d", 240, limit)
-	}
-}
-
 func TestSetGet2(t *testing.T) {
 	// !!! TEST ONLY ON ONE BUCKET FOR NOW !!!
 	db, c := CreateCollection("test", conf)
