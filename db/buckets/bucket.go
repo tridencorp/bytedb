@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 )
 
-var ErrKeyLimitReached = errors.New("Bucket key limit reached")
+var ErrMaxKeys = errors.New("Bucket key limit reached")
 
 type Bucket struct {
 	file *os.File
@@ -78,7 +78,7 @@ func (b *Bucket) Write(data []byte) (int64, int64, uint32, error) {
 	limit := int64(b.keysLimit)
 
 	if count >= limit {
-		return 0, 0, 0, ErrKeyLimitReached
+		return 0, 0, 0, ErrMaxKeys
 	}
 
 	// We are adding len to atomic value and then deducting it
@@ -103,23 +103,10 @@ func (b *Bucket) Write(data []byte) (int64, int64, uint32, error) {
 		b.mux.Unlock()
 	}
 
-	// We reached keys limit, we must create next bucket.
-	// TODO: check if some other goroutine didn't created new bucket in meantime.
-	// if count >= limit {
-	// 	bucket.mux.Lock()
-	// 	_, err := bucket.nextBucket()
-	// 	if err != nil {
-	// 		return 0, 0, 0, err
-	// 	}
-
-	// 	file = bucket.file.Load()
-	// 	bucket.mux.Unlock()
-	// }
-
 	if count <= limit {
-		b.mux.RLock()
+		// b.mux.RLock()
 		off, size, _ = b.write(b.file, keyOffset, data)
-		b.mux.RUnlock()
+		// b.mux.RUnlock()
 	}
 
 	return off, size, b.ID, nil

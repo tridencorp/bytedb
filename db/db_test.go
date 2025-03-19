@@ -171,7 +171,7 @@ func TestBucketCreate(t *testing.T) {
 
 	// 10 keys, 10 Bytes each.
 	FillCollection(coll, 10, 10)
-	file, _ := buckets.GetLastBucket(coll.root)
+	file, _ := buckets.Last(coll.root)
 
 	expected := "3/6.bucket"
 	got, _   := filepath.Rel(coll.root, file.Name())

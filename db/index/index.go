@@ -7,6 +7,7 @@ import (
 	"hash/fnv"
 	"math"
 	"os"
+	"sync"
 	"sync/atomic"
 )
 
@@ -28,6 +29,8 @@ type File struct {
 
 	// Keeping keys/collisions in memory.
 	Keys       []Key
+
+	mux sync.RWMutex
 	Collisions []Key
 
 	nextCollision   atomic.Uint32 // Index in Collisions table.
@@ -73,9 +76,11 @@ func (f *File) Set(name []byte, size int, keyOffset uint64, bucketID uint32) err
 
 // Set new key.
 func (f *File) set(hash uint64) *Key {
+	f.mux.Lock()
 	if f.nextCollision.Load() + 100 >= uint32(len(f.Collisions)) {
 		f.Collisions = append(f.Collisions, make([]Key, 1000)...)
 	}
+	f.mux.Unlock()
 
 	key := f.Last(hash)
 
@@ -91,6 +96,9 @@ func (f *File) set(hash uint64) *Key {
 // Because of collisions we can have the same hash for
 // different keys. This function finds the last one.
 func (f *File) Last(hash uint64) *Key {
+	f.mux.Lock()
+	defer f.mux.Unlock()
+
 	key := &f.Keys[hash % f.capacity]
 
 	// No key found or key doesn't have any collisions yet.
@@ -125,6 +133,8 @@ func (f *File) Find(hash uint64) *Key {
 }
 
 func (f *File) Write(key *Key, bucket, size uint32, offset uint64) error {
+	f.mux.Lock()
+	defer f.mux.Unlock()
 	idx := Index{
 		Hash: 		key.Hash(),
 		Position: key.Position(), 
@@ -144,6 +154,9 @@ func (f *File) Write(key *Key, bucket, size uint32, offset uint64) error {
 }
 
 func (f *File) newCollision(key *Key, hash uint64) *Key {
+	f.mux.Lock()
+	defer f.mux.Unlock()
+
 	position := f.NextCollision()
 	key.SetPosition(position)
 

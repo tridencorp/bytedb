@@ -1,6 +1,7 @@
 package index
 
 import (
+	"bucketdb/tests"
 	"fmt"
 	"os"
 	"testing"
@@ -56,4 +57,16 @@ func TestLoader(t *testing.T) {
 			t.Errorf("Expected %s: %d, got %d", key, want, got) 
 		}
 	}
+}
+
+
+func TestWrites(t *testing.T) {
+	num := 10_000
+	file, _ := Load(".", uint64(num))
+	defer os.Remove("./index.idx")
+
+	tests.RunConcurrently(num, func() {
+		key := fmt.Sprintf("key_%d", 1)
+		file.Set([]byte(key), 10, 10, 1)			
+	})
 }
