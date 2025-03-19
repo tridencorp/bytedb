@@ -1,13 +1,11 @@
 package buckets
 
 import (
-	"bucketdb/db/utils"
 	"errors"
 	"fmt"
 	"math"
 	"os"
 	"path/filepath"
-	"strconv"
 	"sync"
 	"sync/atomic"
 )
@@ -50,7 +48,7 @@ type Bucket struct {
 }
 
 func OpenBucket(root string, conf Config) (*Bucket, error) {
-	file, err := GetLastBucket(root)
+	file, err := Last(root)
 	if err != nil {
 		return nil, err
 	}
@@ -72,53 +70,14 @@ func OpenBucket(root string, conf Config) (*Bucket, error) {
 	return bucket, nil;
 }
 
-// Find the last bucket ID for given root.
-// Empty string in response mesteans that there is no bucket yet.
-func GetLastBucket(root string) (*os.File, error) {
-	// Get folder with highest id.
-	folder := utils.MaxEntry(root, func(i, j os.DirEntry) bool {
-		id1, _ := strconv.Atoi(i.Name())
-		id2, _ := strconv.Atoi(j.Name())
-		return id1 < id2
-	})
-	
-	// Directory is empty, no buckets yet, so we have to create one.
-	if folder == nil {
-		root = filepath.Join(root, "1")
-		os.MkdirAll(root, 0755)
-
-		root = filepath.Join(root, "1.bucket")
-		file, err := os.OpenFile(root, os.O_RDWR|os.O_CREATE, 0644)
-
-		return file, err
-	}
-
-	path := filepath.Join(root, folder.Name()) 
-
-	// Get file (bucket) with highest id.
-	bucket := utils.MaxEntry(path, func(i, j os.DirEntry) bool {
-		id1, _ := strconv.Atoi(filepath.Base(i.Name())) 
-		id2, _ := strconv.Atoi(filepath.Base(j.Name())) 
-		return id1 < id2
-	})
-
-	path = filepath.Join(path, bucket.Name())
-	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
-	if err != nil {
-		return nil, err
-	}
-
-	return file, nil
-}
-
 // Create next bucket.
 func (b *Bucket) nextBucket() (*os.File, error) {
 	id := b.ID + 1
 
-	// Based on buckets per dir we can calculate folder ID in which
+	// Based on buckets per dir  	we can calculate folder ID in which
 	// bucket should be.
 	folderId := int(math.Ceil(float64(id) / float64(b.bucketsPerDir)))
-	
+
 	path := filepath.Join(b.Dir, fmt.Sprintf("%d", folderId))
 	err  := os.MkdirAll(path, 0755)
 	if err != nil {

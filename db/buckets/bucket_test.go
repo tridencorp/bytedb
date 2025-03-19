@@ -104,7 +104,7 @@ func TestGetLastBucket(t *testing.T) {
 	defer os.RemoveAll("./db")
 
 	expected := "db/collections/test/12/100.bucket"
-	file, _ := GetLastBucket("./db/collections/test")
+	file, _ := Last("./db/collections/test")
 
 	if file.Name() != expected {
 		t.Errorf("Expected path to be %s, got %s.", expected, file.Name())

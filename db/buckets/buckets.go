@@ -4,6 +4,9 @@ import (
 	"bucketdb/db/utils"
 	"fmt"
 	"math"
+	"os"
+	"path/filepath"
+	"strconv"
 	"sync"
 	"sync/atomic"
 )
@@ -66,6 +69,45 @@ func (b *Buckets) Last() *Bucket {
 	last.refCount.Add(1)
 
 	return last.bucket
+}
+
+// Find the last bucket for given root.
+// Empty string in response mesteans that there is no bucket yet.
+func Last(root string) (*os.File, error) {
+	// Get folder with highest id.
+	folder := utils.MaxEntry(root, func(i, j os.DirEntry) bool {
+		id1, _ := strconv.Atoi(i.Name())
+		id2, _ := strconv.Atoi(j.Name())
+		return id1 < id2
+	})
+
+	// Directory is empty, no buckets yet, so we have to create one.
+	if folder == nil {
+		root = filepath.Join(root, "1")
+		os.MkdirAll(root, 0755)
+
+		root = filepath.Join(root, "1.bucket")
+		file, err := os.OpenFile(root, os.O_RDWR|os.O_CREATE, 0644)
+
+		return file, err
+	}
+
+	path := filepath.Join(root, folder.Name()) 
+
+	// Get file (bucket) with highest id.
+	bucket := utils.MaxEntry(path, func(i, j os.DirEntry) bool {
+		id1, _ := strconv.Atoi(filepath.Base(i.Name())) 
+		id2, _ := strconv.Atoi(filepath.Base(j.Name())) 
+		return id1 < id2
+	})
+
+	path = filepath.Join(path, bucket.Name())
+	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		return nil, err
+	}
+
+	return file, nil
 }
 
 // Return path for bucket id.

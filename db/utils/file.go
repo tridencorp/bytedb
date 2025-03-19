@@ -23,7 +23,7 @@ func OpenPath(path string) (*os.File, error) {
 	return file, nil
 }
 
-// Sort given directory and return max file/dir.
+// Sort given directory and return max entry.
 func MaxEntry(path string, fn func(i, j os.DirEntry) bool) os.DirEntry {
 	entries, _ := os.ReadDir(path)
 	if len(entries) == 0 {
