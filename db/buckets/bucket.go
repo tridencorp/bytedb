@@ -2,10 +2,7 @@ package buckets
 
 import (
 	"errors"
-	"fmt"
-	"math"
 	"os"
-	"path/filepath"
 	"sync"
 	"sync/atomic"
 )
@@ -68,35 +65,6 @@ func OpenBucket(root string, conf Config) (*Bucket, error) {
 	bucket.TestOffset.Store(0)
 
 	return bucket, nil;
-}
-
-// Create next bucket.
-func (b *Bucket) nextBucket() (*os.File, error) {
-	id := b.ID + 1
-
-	// Based on buckets per dir  	we can calculate folder ID in which
-	// bucket should be.
-	folderId := int(math.Ceil(float64(id) / float64(b.bucketsPerDir)))
-
-	path := filepath.Join(b.Dir, fmt.Sprintf("%d", folderId))
-	err  := os.MkdirAll(path, 0755)
-	if err != nil {
-		return nil, err
-	}
-
-	path = filepath.Join(b.Dir, fmt.Sprintf("%d", folderId), fmt.Sprintf("%d.bucket", id))
-	fd, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
-
-	b.ID = id
-	b.file = fd
-
-	// We created new bucket file, there are no keys yet so we must restart counters, 
-	// offsets, ...
-	b.offset.Store(0)
-	b.keysCount.Store(0)
-	b.ResizeCount = 0
-
-	return fd, err
 }
 
 // Write data to bucket.

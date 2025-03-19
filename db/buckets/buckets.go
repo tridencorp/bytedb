@@ -71,6 +71,32 @@ func (b *Buckets) Last() *Bucket {
 	return last.bucket
 }
 
+// Create next bucket.
+func (b *Buckets) Next(prev uint32) (*Bucket, error) {
+	b.mux.Lock()
+	last := b.last.Load().bucket
+
+	// Some other goroutine already set next bucket.
+	if last.ID > prev {
+		b.mux.Unlock()
+		return last, nil
+	}
+	b.mux.Unlock()
+
+	next, err := b.Open(last.ID + 1)
+	if err != nil {
+		return nil, err
+	}
+
+	item := Item(next)
+	b.last.Store(item)
+
+	b.mux.Lock()
+	b.items[next.ID] = item
+	b.mux.Unlock()
+
+	return next, nil
+}
 // Find the last bucket for given root.
 // Empty string in response mesteans that there is no bucket yet.
 func Last(root string) (*os.File, error) {
