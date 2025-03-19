@@ -99,7 +99,7 @@ func (b *Buckets) Add(id uint32) *item {
 	if exists {
 		item.refCount.Add(1)
 		return item
-	} 
+	}
 
 	bucket, _ := b.Open(id)
 	b.items[bucket.ID] = Item(bucket)

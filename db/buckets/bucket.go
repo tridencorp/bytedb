@@ -1,13 +1,13 @@
 package buckets
 
 import (
+	"bucketdb/db/utils"
 	"errors"
 	"fmt"
 	"math"
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 )
@@ -75,19 +75,15 @@ func OpenBucket(root string, conf Config) (*Bucket, error) {
 // Find the last bucket ID for given root.
 // Empty string in response mesteans that there is no bucket yet.
 func GetLastBucket(root string) (*os.File, error) {
-	// Get all folders.
-	folders, _ := os.ReadDir(root)
-	max := 0
-
-	// Sort all folders based on their number.
-	// All folders have name like: 1/ 2/ 3/ ...
-	for _, folder := range folders {
-		id, _ := strconv.Atoi(folder.Name())
-		if id > max { max = id }
-	}
-
+	// Get folder with highest id.
+	folder := utils.MaxEntry(root, func(i, j os.DirEntry) bool {
+		id1, _ := strconv.Atoi(i.Name())
+		id2, _ := strconv.Atoi(j.Name())
+		return id1 < id2
+	})
+	
 	// Directory is empty, no buckets yet, so we have to create one.
-	if len(folders) == 0 {
+	if folder == nil {
 		root = filepath.Join(root, "1")
 		os.MkdirAll(root, 0755)
 
@@ -97,22 +93,17 @@ func GetLastBucket(root string) (*os.File, error) {
 		return file, err
 	}
 
-	// Get the last folder (with highest number so it's the last one) and list all bucket 
-	// files that are there.
-	root += fmt.Sprintf("/%d", max)
-	files, _ := os.ReadDir(root)
+	path := filepath.Join(root, folder.Name()) 
 
-	for _, file := range files {
-		// Bucket file names are in format 1.bucket, 2.bucket, ... 
-		// We can just split them on '.' and have their id.
-		name  := strings.Split(file.Name(), ".")
-		id, _ := strconv.Atoi(name[0]) 
+	// Get file (bucket) with highest id.
+	bucket := utils.MaxEntry(path, func(i, j os.DirEntry) bool {
+		id1, _ := strconv.Atoi(filepath.Base(i.Name())) 
+		id2, _ := strconv.Atoi(filepath.Base(j.Name())) 
+		return id1 < id2
+	})
 
-		if id > max { max = id }
-	}
-
-	root = filepath.Join(root, fmt.Sprintf("%d.bucket", max))
-	file, err := os.OpenFile(root, os.O_RDWR|os.O_CREATE, 0644)
+	path = filepath.Join(path, bucket.Name())
+	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		return nil, err
 	}
