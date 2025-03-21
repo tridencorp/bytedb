@@ -28,9 +28,8 @@ type File struct {
 	fd *os.File
 
 	// Keeping keys/collisions in memory.
+	mux        sync.RWMutex
 	Keys       []Key
-
-	mux sync.RWMutex
 	Collisions []Key
 
 	nextCollision   atomic.Uint32 // Index in Collisions table.
@@ -43,9 +42,7 @@ type File struct {
 // Load index file from given directory. 
 func Load(dir string, capacity uint64) (*File, error) {
 	// TODO: Only temporary and will be replaced by proper index file.
-	dir += "/index.idx"
-
-	file, err := os.OpenFile(dir, os.O_RDWR|os.O_CREATE, 0644)
+	file, err := os.OpenFile(dir, os.O_RDWR | os.O_CREATE, 0644)
 	if err != nil {
 		return nil, nil
 	}
@@ -58,34 +55,49 @@ func Load(dir string, capacity uint64) (*File, error) {
 
 	// Collisions are ~40% of file capacity. 
 	size := uint64(math.Ceil(float64(40.0*float64(f.capacity)/100)))
-	f.Collisions = make([]Key, size)
+	f.Collisions = make([]Key, size*3)
 
 	return f, nil
+}
+
+func (f *File) position(key *Key) uint32 {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	return key.Position()
+}
+
+func (f *File) HasCollision(key *Key) bool {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
+	return key.HasCollision()
 }
 
 // Create an index for the given key/value and store it in the index file.
 // This will allow us for faster lookups.
 func (f *File) Set(name []byte, size int, keyOffset uint64, bucketID uint32) error {	
-	// if f.nextCollision.Load() + 100 >= uint32(len(f.Collisions)) {
-	// 	f.Collisions = append(f.Collisions, make([]Key, 1000)...)
-	// }
-
 	key := f.set(HashKey(name))
 	return f.Write(key, bucketID, uint32(size), keyOffset)
 }
 
 // Set new key.
 func (f *File) set(hash uint64) *Key {
-	f.mux.Lock()
 	if f.nextCollision.Load() + 100 >= uint32(len(f.Collisions)) {
 		f.Collisions = append(f.Collisions, make([]Key, 1000)...)
 	}
-	f.mux.Unlock()
 
 	key := f.Last(hash)
 
 	if key.Empty() {
-		f.setKey(key, hash)
+		success := f.setKey(key, hash)
+
+		// We couldn't set the key because some other goroutine 
+		// already done that. We can try to set it again.
+ 		if !success {  
+			f.set(hash)
+		}
+
 		return key
 	}
 
@@ -96,20 +108,12 @@ func (f *File) set(hash uint64) *Key {
 // Because of collisions we can have the same hash for
 // different keys. This function finds the last one.
 func (f *File) Last(hash uint64) *Key {
-	f.mux.Lock()
-	defer f.mux.Unlock()
-
 	key := &f.Keys[hash % f.capacity]
 
-	// No key found or key doesn't have any collisions yet.
-	if key.Empty() || !key.HasCollision() {
-		return key
-	}
-
-	// At this point key has minimum one collision. Let's iterate
-	// and get the last one. 
-	for key.HasCollision() {
-		key = &f.Collisions[key.Position()]
+	// At this point has minimum one collision. Let's iterate
+	// and get the last one.
+	for f.HasCollision(key) {
+		key = &f.Collisions[f.position(key)]
 	}
 
 	return key
@@ -125,25 +129,24 @@ func (f *File) Find(hash uint64) *Key {
 	}
 
 	// Find key in collisions table.
-	for !key.Equal(hash) && key.HasCollision() {
-		key = &f.Collisions[key.Position()]
+	for !key.Equal(hash) && f.HasCollision(key) {
+		key = &f.Collisions[f.position(key)]
 	}
 
 	return key
 }
 
 func (f *File) Write(key *Key, bucket, size uint32, offset uint64) error {
-	f.mux.Lock()
-	defer f.mux.Unlock()
 	idx := Index{
 		Hash: 		key.Hash(),
-		Position: key.Position(), 
+		Position: f.position(key),
 		Bucket: 	bucket,
 		Size: 		uint32(size), 
 		Offset: 	offset,
 	}
 
 	buf := new(bytes.Buffer)
+
 	err := binary.Write(buf, binary.BigEndian, idx)
 	if err != nil {
 		return err
@@ -177,11 +180,20 @@ func (f *File) NextCollision() uint32 {
 }
 
 // Set key.
-func (f *File) setKey(key *Key, hash uint64) {
-	offset := f.offset(hash)
 
-	key.SetHash(hash)
-	key.SetOffset(offset)
+func (f *File) setKey(key *Key, hash uint64) bool {
+	f.mux.Lock()
+	defer f.mux.Unlock()
+
+	// Check if key is still empty - some other goroutine could changed it already.
+	if key.Empty() {
+		offset := f.offset(hash)
+		key.SetHash(hash)
+		key.SetOffset(offset)
+		return true
+	}
+	
+	return false
 }
 
 // Load index file.
