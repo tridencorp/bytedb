@@ -8,7 +8,7 @@ import (
 // Key
 //
 // Why not struct or slice? Because each one of them
-// has 24 bytes of overhead.
+// has 20 bytes of overhead.
 //
 // [0:8]   - first 8 bytes are key hash.
 // [8:12]  - next 4 bytes are index to next position in collision table.

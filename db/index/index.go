@@ -1,18 +1,17 @@
 package index
 
 import (
-	"bytes"
-	"encoding/binary"
 	"fmt"
 	"hash/fnv"
 	"math"
 	"os"
 	"sync"
 	"sync/atomic"
+	"unsafe"
 )
 
 // Index size in bytes.
-const IndexSize = 29
+const IndexSize = 32
 
 // Index will represent key in our database.
 type Index struct {
@@ -22,6 +21,7 @@ type Index struct {
 	Bucket   uint32  // 4 bytes
 	Size     uint32  // 4 bytes
 	Deleted  bool    // 1 byte
+	_        [3]byte // 3 bytes for memory alignment
 }
 
 type File struct {
@@ -61,16 +61,10 @@ func Load(dir string, capacity uint64) (*File, error) {
 }
 
 func (f *File) position(key *Key) uint32 {
-	f.mux.RLock()
-	defer f.mux.RUnlock()
-
 	return key.Position()
 }
 
 func (f *File) HasCollision(key *Key) bool {
-	f.mux.RLock()
-	defer f.mux.RUnlock()
-
 	return key.HasCollision()
 }
 
@@ -83,25 +77,34 @@ func (f *File) Set(name []byte, size int, keyOffset uint64, bucketID uint32) err
 
 // Set new key.
 func (f *File) set(hash uint64) *Key {
+	f.mux.Lock()
+	defer f.mux.Unlock()
+
 	if f.nextCollision.Load() + 100 >= uint32(len(f.Collisions)) {
 		f.Collisions = append(f.Collisions, make([]Key, 1000)...)
 	}
 
 	key := f.Last(hash)
 
+	// Set new key.
 	if key.Empty() {
-		success := f.setKey(key, hash)
-
-		// We couldn't set the key because some other goroutine 
-		// already done that. We can try to set it again.
- 		if !success {  
-			f.set(hash)
-		}
-
+		key.SetHash(hash)
+		key.SetOffset(f.offset(hash))
+		
 		return key
 	}
 
-	return f.newCollision(key, hash)
+	// Set collision key.
+	collision := new(Key)
+	collision.SetHash(hash)
+	collision.SetOffset(f.collisionOff() - IndexSize)
+
+	// Set position and put new collision to collisions table.
+	position := f.NextCollision()
+	key.SetPosition(position)
+	f.Collisions[position] = *collision
+
+	return collision
 }
 
 // Find the last key with given hash.
@@ -121,9 +124,12 @@ func (f *File) Last(hash uint64) *Key {
 
 // Find key for given hash.
 func (f *File) Find(hash uint64) *Key {
+	f.mux.RLock()
+	defer f.mux.RUnlock()
+
 	key := &f.Keys[hash % f.capacity]
 
-	// No key found, without collision or we have our match.
+	// No key found or we have our match.
 	if key.Empty() || key.Equal(hash) {
 		return key
 	}
@@ -137,63 +143,23 @@ func (f *File) Find(hash uint64) *Key {
 }
 
 func (f *File) Write(key *Key, bucket, size uint32, offset uint64) error {
-	idx := Index{
+	index := Index{
 		Hash: 		key.Hash(),
 		Position: f.position(key),
 		Bucket: 	bucket,
-		Size: 		uint32(size), 
+		Size: 		uint32(size),
 		Offset: 	offset,
 	}
 
-	buf := new(bytes.Buffer)
-
-	err := binary.Write(buf, binary.BigEndian, idx)
-	if err != nil {
-		return err
-	}
-
-	_, err = f.fd.WriteAt(buf.Bytes(), key.Offset())
+	b := unsafe.Slice((*byte)(unsafe.Pointer(&index)), IndexSize)
+	_, err := f.fd.WriteAt(b, key.Offset())
 	return err
-}
-
-func (f *File) newCollision(key *Key, hash uint64) *Key {
-	f.mux.Lock()
-	defer f.mux.Unlock()
-
-	position := f.NextCollision()
-	key.SetPosition(position)
-
-	key = new(Key)
-	key.SetHash(hash)
-
-	offset := f.collisionOff()
-	key.SetOffset(offset - IndexSize)
-
-	f.Collisions[position] = *key
-	return key
 }
 
 // Return next collision index. If index exceed collisions table length,
 // it will resize it. 
 func (f *File) NextCollision() uint32 {
 	return f.nextCollision.Add(1)
-}
-
-// Set key.
-
-func (f *File) setKey(key *Key, hash uint64) bool {
-	f.mux.Lock()
-	defer f.mux.Unlock()
-
-	// Check if key is still empty - some other goroutine could changed it already.
-	if key.Empty() {
-		offset := f.offset(hash)
-		key.SetHash(hash)
-		key.SetOffset(offset)
-		return true
-	}
-	
-	return false
 }
 
 // Load index file.
@@ -225,18 +191,20 @@ func (f *File) Get(name []byte) (*Index, error) {
 		return nil, fmt.Errorf("Key not found")
 	}
 
-	data := make([]byte, IndexSize)
-	_, err := f.fd.ReadAt(data, key.Offset())
+	index := Index{}
+	b := unsafe.Slice((*byte)(unsafe.Pointer(&index)), 32)
+
+	// data := make([]byte, IndexSize)
+	_, err := f.fd.ReadAt(b, key.Offset())
 	if err != nil {
 		return nil, err
 	}
 
-	index := Index{}
-	buf := bytes.NewBuffer(data)
-	err  = binary.Read(buf, binary.BigEndian, &index)
-	if err != nil {
-		return nil, err
-	}
+	// buf := bytes.NewBuffer(data)
+	// err  = binary.Read(buf, binary.BigEndian, &index)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	if index.Deleted {
 		return nil, fmt.Errorf("Key was %s deleted", key)
