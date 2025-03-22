@@ -113,8 +113,7 @@ func (f *File) set(hash uint64) *Key {
 func (f *File) Last(hash uint64) *Key {
 	key := &f.Keys[hash % f.capacity]
 
-	// At this point has minimum one collision. Let's iterate
-	// and get the last one.
+	// Iterate until there are no collisions.
 	for f.HasCollision(key) {
 		key = &f.Collisions[f.position(key)]
 	}
@@ -124,9 +123,6 @@ func (f *File) Last(hash uint64) *Key {
 
 // Find key for given hash.
 func (f *File) Find(hash uint64) *Key {
-	f.mux.RLock()
-	defer f.mux.RUnlock()
-
 	key := &f.Keys[hash % f.capacity]
 
 	// No key found or we have our match.
@@ -151,8 +147,10 @@ func (f *File) Write(key *Key, bucket, size uint32, offset uint64) error {
 		Offset: 	offset,
 	}
 
-	b := unsafe.Slice((*byte)(unsafe.Pointer(&index)), IndexSize)
-	_, err := f.fd.WriteAt(b, key.Offset())
+	s   := unsafe.Sizeof(index)
+	buf := unsafe.Slice((*byte)(unsafe.Pointer(&index)), s)
+
+	_, err := f.fd.WriteAt(buf, key.Offset())
 	return err
 }
 
@@ -186,25 +184,22 @@ func (f *File) collisionOff() uint64 {
 
 // Read index for given key.
 func (f *File) Get(name []byte) (*Index, error) {
+	f.mux.RLock()
 	key := f.Find(HashKey(name))
+	f.mux.RUnlock()
+
 	if key.Empty() {
 		return nil, fmt.Errorf("Key not found")
 	}
 
 	index := Index{}
-	b := unsafe.Slice((*byte)(unsafe.Pointer(&index)), 32)
+	size  := unsafe.Sizeof(index)
+	buf   := unsafe.Slice((*byte)(unsafe.Pointer(&index)), size)
 
-	// data := make([]byte, IndexSize)
-	_, err := f.fd.ReadAt(b, key.Offset())
+	_, err := f.fd.ReadAt(buf, key.Offset())
 	if err != nil {
 		return nil, err
 	}
-
-	// buf := bytes.NewBuffer(data)
-	// err  = binary.Read(buf, binary.BigEndian, &index)
-	// if err != nil {
-	// 	return nil, err
-	// }
 
 	if index.Deleted {
 		return nil, fmt.Errorf("Key was %s deleted", key)
@@ -213,15 +208,14 @@ func (f *File) Get(name []byte) (*Index, error) {
 	return &index, nil
 }
 
-// Delete index for given key.
+// Delete key.
 func (f *File) Del(key []byte) error {
 	// Find index offset.
 	offset := f.offset(HashKey(key))
 
 	// If we know the position of index, we can just
-	// set it's second byte to 1.
-	// TODO: struct changed, this won't work anymore.
-	_, err := f.fd.WriteAt([]byte{1}, int64(offset + 1))
+	// set it's Deleted field to 1.
+	_, err := f.fd.WriteAt([]byte{1}, int64(offset + 29))
 	return err
 }
 
