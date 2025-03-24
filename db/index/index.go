@@ -54,45 +54,38 @@ func Load(dir string, capacity uint64) (*File, error) {
 	f.collisionOffset.Store(f.capacity * IndexSize)
 
 	// Collisions are ~40% of file capacity. 
-	size := uint64(math.Ceil(float64(40.0*float64(f.capacity)/100)))
-	f.Collisions = make([]Key, size*3)
+	size := uint64(math.Ceil(float64(40.0 * float64(f.capacity) / 100)))
+	f.Collisions = make([]Key, size)
 
 	return f, nil
-}
-
-func (f *File) position(key *Key) uint32 {
-	return key.Position()
-}
-
-func (f *File) HasCollision(key *Key) bool {
-	return key.HasCollision()
 }
 
 // Create an index for the given key/value and store it in the index file.
 // This will allow us for faster lookups.
 func (f *File) Set(name []byte, size int, keyOffset uint64, bucketID uint32) error {	
-	key := f.set(HashKey(name))
-	return f.Write(key, bucketID, uint32(size), keyOffset)
+	key, offset := f.set(HashKey(name))
+	return f.Write(key, offset, bucketID, uint32(size), keyOffset)
 }
 
 // Set new key.
-func (f *File) set(hash uint64) *Key {
-	f.mux.Lock()
-	defer f.mux.Unlock()
-
+func (f *File) set(hash uint64) (*Key, int64) {
 	if f.nextCollision.Load() + 100 >= uint32(len(f.Collisions)) {
 		f.Collisions = append(f.Collisions, make([]Key, 1000)...)
 	}
 
-	key := f.Last(hash)
+	key := &f.Keys[hash % f.capacity]
 
 	// Set new key.
 	if key.Empty() {
+		offset := f.offset(hash)
+	
 		key.SetHash(hash)
-		key.SetOffset(f.offset(hash))
-		
-		return key
+		key.SetOffset(offset)
+
+		return key, int64(offset)
 	}
+
+	key = f.Last(key)
 
 	// Set collision key.
 	collision := new(Key)
@@ -101,21 +94,20 @@ func (f *File) set(hash uint64) *Key {
 
 	// Set position and put new collision to collisions table.
 	position := f.NextCollision()
+
 	key.SetPosition(position)
 	f.Collisions[position] = *collision
-
-	return collision
+	
+	return collision, int64(position)
 }
 
 // Find the last key with given hash.
 // Because of collisions we can have the same hash for
 // different keys. This function finds the last one.
-func (f *File) Last(hash uint64) *Key {
-	key := &f.Keys[hash % f.capacity]
-
+func (f *File) Last(key *Key) *Key {
 	// Iterate until there are no collisions.
-	for f.HasCollision(key) {
-		key = &f.Collisions[f.position(key)]
+	for key.HasCollision() {
+		key = &f.Collisions[key.Position()]
 	}
 
 	return key
@@ -131,20 +123,20 @@ func (f *File) Find(hash uint64) *Key {
 	}
 
 	// Find key in collisions table.
-	for !key.Equal(hash) && f.HasCollision(key) {
-		key = &f.Collisions[f.position(key)]
+	for !key.Equal(hash) && key.HasCollision() {
+		key = &f.Collisions[key.Position()]
 	}
 
 	return key
 }
 
-func (f *File) Write(key *Key, bucket, size uint32, offset uint64) error {
+func (f *File) Write(key *Key, offset int64, bucket, size uint32, keyOffset uint64) error {
 	index := Index{
 		Hash: 		key.Hash(),
-		Position: f.position(key),
+		Position: uint32(offset),
 		Bucket: 	bucket,
 		Size: 		uint32(size),
-		Offset: 	offset,
+		Offset: 	keyOffset,
 	}
 
 	s   := unsafe.Sizeof(index)
@@ -158,18 +150,6 @@ func (f *File) Write(key *Key, bucket, size uint32, offset uint64) error {
 // it will resize it. 
 func (f *File) NextCollision() uint32 {
 	return f.nextCollision.Add(1)
-}
-
-// Load index file.
-func LoadIndexFile(path string, capacity uint64) (*File, error) {
-	path += "/index.idx"
-	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
-	if err != nil {
-		return nil, nil
-	}
-	
-	f := &File{fd: file, capacity: capacity}
-	return f, nil
 }
 
 // Calculate index offset for new key.

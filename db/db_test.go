@@ -2,7 +2,6 @@ package db
 
 import (
 	"bucketdb/db/buckets"
-	"bucketdb/db/index"
 	"bytes"
 	"fmt"
 	"os"
@@ -107,31 +106,6 @@ func TestIterate(t *testing.T) {
 	if size != 33 {
 		t.Errorf("Expected size to be %d keys, got %d", 33, size)
 	}
-}
-
-func TestLoadIndexFile(t *testing.T) {
-	db, _ := Open("./db")
-	defer db.Delete()
-
-	coll, _ := db.Collection("test", conf)
-
-	indexes, err := index.LoadIndexFile(coll.root, 5_000)
-	if err != nil {
-		fmt.Printf("%v\n", err)
-	}
-
-	offset, _, _ := coll.Set("key1", []byte("value 1"))
-
-	err = indexes.Set([]byte("key1"), len([]byte("value 1")), uint64(offset), coll.bucket.ID)
-	if err != nil {
-		fmt.Printf("%v\n", err)
-	}
-
-	idx, _ := indexes.Get([]byte("key1"))
-
-	if idx == nil        { t.Errorf("Index for the given key wasn't find.") }
-	if idx.Bucket != 1   { t.Errorf("Expected bucketId to be %d, was %d", 1, idx.Bucket) }
-	if idx.Size != 7     { t.Errorf("Expected Size to be %d, was %d", 7, idx.Size) }
 }
 
 func TestDel(t *testing.T) {
