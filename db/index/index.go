@@ -8,6 +8,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"unsafe"
+
+	"golang.org/x/sys/unix"
 )
 
 // Index size in bytes.
@@ -26,6 +28,7 @@ type Index struct {
 
 type File struct {
 	fd *os.File
+	data []byte
 
 	// Keeping keys/collisions in memory.
 	mux        sync.RWMutex
@@ -57,6 +60,15 @@ func Load(dir string, capacity uint64) (*File, error) {
 	size := uint64(math.Ceil(float64(40.0 * float64(f.capacity) / 100)))
 	f.Collisions = make([]Key, size)
 
+	total := len(f.Keys) * IndexSize + len(f.Collisions) * IndexSize
+	f.fd.Truncate(int64(total))
+
+	data, err := unix.Mmap(int(file.Fd()), 0, int(total), unix.PROT_READ | unix.PROT_WRITE, unix.MAP_SHARED)
+	if err != nil {
+		panic(err)
+	}
+
+	f.data = data
 	return f, nil
 }
 
@@ -142,8 +154,10 @@ func (f *File) Write(key *Key, offset int64, bucket, size uint32, keyOffset uint
 	s   := unsafe.Sizeof(index)
 	buf := unsafe.Slice((*byte)(unsafe.Pointer(&index)), s)
 
-	_, err := f.fd.WriteAt(buf, key.Offset())
-	return err
+	// _, err := f.fd.WriteAt(buf, key.Offset())
+	// _, err := f.data.WriteAt(buf, key.Offset())
+	copy(f.data[key.Offset():], buf)
+	return nil
 }
 
 // Return next collision index. If index exceed collisions table length,
@@ -176,9 +190,9 @@ func (f *File) Get(name []byte) (*Index, error) {
 	size  := unsafe.Sizeof(index)
 	buf   := unsafe.Slice((*byte)(unsafe.Pointer(&index)), size)
 
-	_, err := f.fd.ReadAt(buf, key.Offset())
-	if err != nil {
-		return nil, err
+	n := copy(buf, f.data[key.Offset():])
+	if n == 0 {
+		return nil, fmt.Errorf("Cannot read from index")
 	}
 
 	if index.Deleted {
