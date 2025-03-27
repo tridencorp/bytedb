@@ -1,6 +1,7 @@
 package wal
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -41,7 +42,7 @@ func Open(path string, size int64) (*Wal, error) {
 
 // Start main loop responsible for writing data to wal file.
 func (w *Wal) Start(timeout int) {
-	ticker := time.NewTicker(time.Duration(timeout) * time.Microsecond)
+	ticker := time.NewTicker(time.Duration(timeout) * time.Millisecond)
 	defer ticker.Stop()
 
 	for {
@@ -53,6 +54,10 @@ func (w *Wal) Start(timeout int) {
 
 		// Periodically call msync.
 		case _ = <-ticker.C:
+			err := unix.Msync(w.data, unix.MS_SYNC)
+			if err != nil {
+				fmt.Println(err)
+			}
 		}
 	}	
 }
