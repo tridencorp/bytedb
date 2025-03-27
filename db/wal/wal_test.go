@@ -7,14 +7,14 @@ import (
 )
 
 func TestWrite(t *testing.T) {
-	wal, _ := Open("test.wal")
+	wal, _ := Open("test.wal", 1)
 	defer os.Remove("test.wal")
 
 	go func() {
 		wal.Log <- []byte("incomming data")
-		time.Sleep(50 * time.Microsecond)
+		time.Sleep(40 * time.Microsecond)
 		close(wal.Log)
 	}()
 
-	wal.Start(50)
+	wal.Start(20)
 }

@@ -4,21 +4,38 @@ import (
 	"fmt"
 	"os"
 	"time"
+
+	"golang.org/x/sys/unix"
 )
 
 type Wal struct {
 	file *os.File
+	data []byte
+
 	Log chan []byte
 }
 
-// Open wal file that we will be writing to.
-func Open(path string) (*Wal, error) {
+// Open the wal file that we will be writing to.
+// Each wal file will be truncated to given size in MB.
+func Open(path string, size int64) (*Wal, error) {
 	file, err := os.OpenFile(path, os.O_RDWR | os.O_CREATE, 0644)
 	if err != nil {
 		return nil, err
 	}
 
-	w := &Wal{ file: file, Log: make(chan []byte, 1000)}
+	// Truncate in MB.
+	size = 1024 * 1024 * size
+	err = file.Truncate(size)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := unix.Mmap(int(file.Fd()), 0, int(size), unix.PROT_READ | unix.PROT_WRITE, unix.MAP_SHARED)
+	if err != nil {
+		panic(err)
+	}
+
+	w := &Wal{file: file, data: data, Log: make(chan []byte, 1000)}
 	return w, nil
 }
 
@@ -38,5 +55,5 @@ func (w *Wal) Start(timeout int) {
 		case _ = <-ticker.C:
 			fmt.Println("--- doing msync ---")
 		}
-	}
+	}	
 }
