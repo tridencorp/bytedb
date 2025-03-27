@@ -11,7 +11,7 @@ import (
 type Wal struct {
 	file   *os.File
 	data   []byte
-	offset uint64
+	Offset uint64
 
 	Log chan []byte
 }
@@ -49,7 +49,7 @@ func (w *Wal) Start(timeout int) {
 		select {
 		// Got new data, write it to wal file.
 		case data, open := <- w.Log:
-			if !open { 
+			if !open {
 				unix.Msync(w.data, unix.MS_SYNC)
 				return 
 			}
@@ -65,7 +65,12 @@ func (w *Wal) Start(timeout int) {
 	}	
 }
 
-func (w *Wal) write(bytes []byte) {
-	copy(w.data[w.offset:], bytes)
-	w.offset += uint64(len(bytes))
+func (w *Wal) write(bytes []byte) error {
+	n := copy(w.data[w.Offset:], bytes)
+	if n != len(bytes) {
+		return fmt.Errorf("Mmap: expected to write %d bytes, only %d were written", len(bytes), n)
+	}
+
+	w.Offset += uint64(len(bytes))
+	return nil
 }
