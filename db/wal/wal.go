@@ -49,7 +49,10 @@ func (w *Wal) Start(timeout int) {
 		select {
 		// Got new data, write it to wal file.
 		case data, open := <- w.Log:
-			if !open { return }
+			if !open { 
+				unix.Msync(w.data, unix.MS_SYNC)
+				return 
+			}
 			w.write(data)
 
 		// Periodically call msync.
