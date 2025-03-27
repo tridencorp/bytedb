@@ -1,7 +1,6 @@
 package wal
 
 import (
-	"fmt"
 	"os"
 	"time"
 
@@ -9,8 +8,9 @@ import (
 )
 
 type Wal struct {
-	file *os.File
-	data []byte
+	file   *os.File
+	data   []byte
+	offset uint64
 
 	Log chan []byte
 }
@@ -49,11 +49,15 @@ func (w *Wal) Start(timeout int) {
 		// Got new data, write it to wal file.
 		case data, open := <- w.Log:
 			if !open { return }
-			fmt.Println(data)
+			w.write(data)
 
 		// Periodically call msync.
 		case _ = <-ticker.C:
-			fmt.Println("--- doing msync ---")
 		}
 	}	
+}
+
+func (w *Wal) write(bytes []byte) {
+	copy(w.data[w.offset:], bytes)
+	w.offset += uint64(len(bytes))
 }
