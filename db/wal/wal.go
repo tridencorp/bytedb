@@ -1,10 +1,14 @@
 package wal
 
-import "os"
+import (
+	"fmt"
+	"os"
+	"time"
+)
 
 type Wal struct {
 	file *os.File
-	log chan []byte
+	Log chan []byte
 }
 
 // Open wal file that we will be writing to.
@@ -14,6 +18,25 @@ func Open(path string) (*Wal, error) {
 		return nil, err
 	}
 
-	w := &Wal{ file: file, log: make(chan []byte, 1000)}
+	w := &Wal{ file: file, Log: make(chan []byte, 1000)}
 	return w, nil
+}
+
+// Start main loop responsible for writing data to wal file.
+func (w *Wal) Start(timeout int) {
+	ticker := time.NewTicker(time.Duration(timeout) * time.Microsecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		// Got new data, write it to wal file.
+		case data, open := <- w.Log:
+			if !open { return }
+			fmt.Println(data)
+
+		// Periodically call msync.
+		case _ = <-ticker.C:
+			fmt.Println("--- doing msync ---")
+		}
+	}
 }
