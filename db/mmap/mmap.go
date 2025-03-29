@@ -26,3 +26,7 @@ func Open(file *os.File, size, flags int) (*Mmap, error) {
 	mmap := &Mmap{file: file, data: data, offset: 0}
 	return mmap, nil
 }
+
+func (m *Mmap) Sync() error {
+	return unix.Msync(m.data, unix.MS_SYNC)
+}

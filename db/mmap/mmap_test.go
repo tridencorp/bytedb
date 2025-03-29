@@ -8,8 +8,8 @@ import (
 
 func TestOpen(t *testing.T) {
 	file, _ := os.OpenFile("./test.wal", os.O_RDWR | os.O_CREATE, 0644)
-	
-	// Truncate in MB.
+	defer os.Remove("./test.wal")
+
 	size := int64(1024 * 1024 * 1)
 	file.Truncate(size)
 
