@@ -9,7 +9,7 @@ import (
 type Mmap struct {
 	file   *os.File
 	data   []byte
-	offset uint64
+	Offset uint64
 }
 
 // Mmap file.
@@ -29,7 +29,7 @@ func Open(file *os.File, size, flags int) (*Mmap, error) {
 		return nil, err
 	}
 
-	mmap := &Mmap{file: file, data: data, offset: 0}
+	mmap := &Mmap{file: file, data: data, Offset: 0}
 	return mmap, nil
 }
 
@@ -40,8 +40,8 @@ func (m *Mmap) Sync() error {
 
 // Write to mmaped file.
 func (m *Mmap) Write(bytes []byte) int {
-	n := copy(m.data[m.offset:], bytes)
-	m.offset += uint64(len(bytes))
+	n := copy(m.data[m.Offset:], bytes)
+	m.Offset += uint64(len(bytes))
 
 	return n
 }
@@ -60,7 +60,7 @@ func (m *Mmap) Resize(size int64) error {
 		return err
 	}
 
-	// Resize file
+	// Resize the file.
 	err = m.file.Truncate(size)
 	if err != nil {
 		return err

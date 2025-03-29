@@ -1,19 +1,18 @@
 package wal
 
 import (
+	"bucketdb/db/mmap"
 	"fmt"
 	"os"
 	"time"
-
-	"golang.org/x/sys/unix"
 )
 
 type Wal struct {
 	file   *os.File
-	data   []byte
-	Offset uint64
+	data   *mmap.Mmap
 
-	Log chan []byte
+
+	Logs chan []byte
 }
 
 // Open the wal file that we will be writing to.
@@ -24,19 +23,10 @@ func Open(path string, size int64) (*Wal, error) {
 		return nil, err
 	}
 
-	// Truncate in MB.
-	size = 1024 * 1024 * size
-	err = file.Truncate(size)
-	if err != nil {
-		return nil, err
-	}
+	mmap, err := mmap.Open(file, int(size), 0)
+	mmap.Resize(1024 * 1024 * size)
 
-	data, err := unix.Mmap(int(file.Fd()), 0, int(size), unix.PROT_READ | unix.PROT_WRITE, unix.MAP_SHARED)
-	if err != nil {
-		panic(err)
-	}
-
-	w := &Wal{file: file, data: data, Log: make(chan []byte, 1000)}
+	w := &Wal{file: file, data: mmap, Logs: make(chan []byte, 1000)}
 	return w, nil
 }
 
@@ -48,16 +38,16 @@ func (w *Wal) Start(timeout int) {
 	for {
 		select {
 		// Got new data, write it to wal file.
-		case data, open := <- w.Log:
+		case data, open := <-w.Logs:
 			if !open {
-				unix.Msync(w.data, unix.MS_SYNC)
+				w.data.Sync()
 				return 
 			}
 			w.write(data)
 
 		// Periodically call msync.
 		case _ = <-ticker.C:
-			err := unix.Msync(w.data, unix.MS_SYNC)
+			err := w.data.Sync()
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -66,11 +56,10 @@ func (w *Wal) Start(timeout int) {
 }
 
 func (w *Wal) write(bytes []byte) error {
-	n := copy(w.data[w.Offset:], bytes)
+	n := w.data.Write(bytes)
 	if n != len(bytes) {
-		return fmt.Errorf("Mmap: expected to write %d bytes, only %d were written", len(bytes), n)
+		return fmt.Errorf("Mmap write error, expected %d bytes, %d were written", len(bytes), n)
 	}
 
-	w.Offset += uint64(len(bytes))
 	return nil
 }
