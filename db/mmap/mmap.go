@@ -27,6 +27,15 @@ func Open(file *os.File, size, flags int) (*Mmap, error) {
 	return mmap, nil
 }
 
+// Sync data.
 func (m *Mmap) Sync() error {
 	return unix.Msync(m.data, unix.MS_SYNC)
+}
+
+// Write to mmaped file.
+func (m *Mmap) Write(bytes []byte) int {
+	n := copy(m.data[m.offset:], bytes)
+
+	m.offset += uint64(len(bytes))
+	return n
 }
