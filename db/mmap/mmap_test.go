@@ -1,6 +1,7 @@
 package mmap
 
 import (
+	"bucketdb/tests"
 	"fmt"
 	"os"
 	"testing"
@@ -13,8 +14,11 @@ func TestOpen(t *testing.T) {
 	size := int64(1024 * 1024 * 1)
 	file.Truncate(size)
 
-	_, err := Open(file, int(size), 0)
+	mmap, err := Open(file, int(size), 0)
 	if err != nil {
 		fmt.Println(err)
 	}
+
+	mmap.Resize(1_000)
+	tests.Assert(t, len(mmap.data), 1_000)
 }
