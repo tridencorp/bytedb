@@ -15,10 +15,10 @@ func TestWrite(t *testing.T) {
 		for i:=0; i < 1_000_000; i++ {
 			wal.Logs <-data 
 		}
-
+		
 		close(wal.Logs)
 	}()
 
 	wal.Start(50)
-	tests.Assert(t, wal.file.Offset, 10_000_000)
+	tests.Assert(t, 10_000_000, wal.file.Offset)
 }

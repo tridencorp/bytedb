@@ -23,7 +23,7 @@ func Open(path string, size int64) (*Wal, error) {
 	mmap, err := mmap.Open(file, int(size), 0)
 	mmap.Resize(1024 * 1024 * size)
 
-	w := &Wal{file: mmap, Logs: make(chan []byte, 1000)}
+	w := &Wal{ file: mmap, Logs: make(chan []byte, 1000) }
 	return w, nil
 }
 
@@ -34,29 +34,16 @@ func (w *Wal) Start(timeout int) {
 
 	for {
 		select {
-		// Got new data, write it to wal file.
 		case data, open := <-w.Logs:
-			if !open {
-				w.file.Sync()
-				return 
-			}
-			w.write(data)
+			// Got new data, write it to the wal file.
+			// If channel was closed, sync data and return.
+			if !open { w.file.Sync(); return }
+			w.file.Write(data)
 
-		// Periodically call msync.
 		case _ = <-ticker.C:
+			// Periodically call msync and flush data to file.
 			err := w.file.Sync()
-			if err != nil {
-				fmt.Println(err)
-			}
+			if err != nil { fmt.Println(err) }
 		}
 	}	
-}
-
-func (w *Wal) write(bytes []byte) error {
-	n := w.file.Write(bytes)
-	if n != len(bytes) {
-		return fmt.Errorf("Mmap write error, expected %d bytes, %d were written", len(bytes), n)
-	}
-
-	return nil
 }

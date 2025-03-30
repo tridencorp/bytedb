@@ -47,6 +47,7 @@ func (m *Mmap) Write(bytes []byte) int {
 }
 
 // Resize the underlying file.
+// TODO: Set offset properly.
 func (m *Mmap) Resize(size int64) error {
 	// Let's sync data before unmapping the file.
 	err := m.Sync()
@@ -54,7 +55,7 @@ func (m *Mmap) Resize(size int64) error {
 		return err
 	}
 
-	// To be safe we must unmap file before resize.
+	// To be safe we must unmap file before resizing.
 	err = unix.Munmap(m.data)
 	if err != nil {
 		return err
