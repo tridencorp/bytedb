@@ -51,21 +51,26 @@ func (m *Mmap) Write(bytes []byte) int {
 	return n
 }
 
-// Read n bytes from mmaped file.
-func (m *Mmap) Read(n int) ([]byte, error) {
-	data := make([]byte, n)
-
-	if m.ReadOffset + n > len(m.data) {
-		return nil, EOF
+// Read bytes to des.
+func (m *Mmap) ReadTo(dst []byte) error {
+	if m.ReadOffset + len(dst) > len(m.data) {
+		return EOF
 	}
 
-	n = copy(data, m.data[m.ReadOffset:])
-	if n != len(data) {
-		err := fmt.Errorf("%w: Expected %d || Got %d", ErrMissingBytes, len(data), n)
-		return data, err
+	n := copy(dst, m.data[m.ReadOffset:])
+	if n != len(dst) {
+		err := fmt.Errorf("%w: Expected %d || Got %d", ErrMissingBytes, len(dst), n)
+		return err
 	}
 
 	m.ReadOffset += n
+	return nil
+}
+
+// Read n bytes from mmaped file.
+func (m *Mmap) Read(n int) ([]byte, error) {
+	data := make([]byte, n)
+	m.ReadTo(data)
 	return data, nil
 }
 
