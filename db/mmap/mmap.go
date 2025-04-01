@@ -7,6 +7,9 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+var ErrMissingBytes = fmt.Errorf("Missing bytes")
+var EOF = fmt.Errorf("EOF")
+
 type Mmap struct {
 	file   *os.File
 	data   []byte
@@ -52,10 +55,15 @@ func (m *Mmap) Write(bytes []byte) int {
 func (m *Mmap) Read(n int) ([]byte, error) {
 	data := make([]byte, n)
 
+	if m.ReadOffset + n > len(m.data) {
+		return nil, EOF
+	}
+
 	n = copy(data, m.data[m.ReadOffset:])
 	if n != len(data) {
-		return data, fmt.Errorf("Mmap should read %d bytes, got only %d", len(data), n)
-	} 
+		err := fmt.Errorf("%w: Expected %d || Got %d", ErrMissingBytes, len(data), n)
+		return data, err
+	}
 
 	m.ReadOffset += n
 	return data, nil
