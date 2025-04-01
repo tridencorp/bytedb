@@ -83,7 +83,7 @@ func (w *Wal) Map(fn func(log []byte)) error {
 			return nil
 		}
 
-		log, _ := w.file.Read(int(num))
+		log, _ := w.file.Read(int(len))
 		fn(log)
 	}
 }
