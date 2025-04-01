@@ -1,6 +1,7 @@
 package mmap
 
 import (
+	"fmt"
 	"os"
 
 	"golang.org/x/sys/unix"
@@ -9,7 +10,7 @@ import (
 type Mmap struct {
 	file   *os.File
 	data   []byte
-	Offset uint64
+	Offset int
 }
 
 // Mmap file.
@@ -41,9 +42,20 @@ func (m *Mmap) Sync() error {
 // Write to mmaped file.
 func (m *Mmap) Write(bytes []byte) int {
 	n := copy(m.data[m.Offset:], bytes)
-	m.Offset += uint64(len(bytes))
-
+	m.Offset += len(bytes)
 	return n
+}
+
+// Read n bytes from mmaped file.
+func (m *Mmap) Read(n int) ([]byte, error) {
+	data := make([]byte, n)
+
+	n = copy(data, m.data)
+	if n != len(data) {
+		return data, fmt.Errorf("Mmap should read %d bytes, got only %d", len(data), n)
+	} 
+
+	return data, nil
 }
 
 // Resize the underlying file.
@@ -75,5 +87,5 @@ func (m *Mmap) Resize(size int64) error {
 
 	// Assign new mapping.
 	*m = *mmap
-	return nil 
+	return nil
 }
