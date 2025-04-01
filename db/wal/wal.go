@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"time"
+	"unsafe"
 )
 
 type Wal struct {
@@ -13,7 +14,7 @@ type Wal struct {
 }
 
 // Open the wal file that we will be writing to.
-// Each wal file will be truncated to given size in MB.
+// Each wal file will be truncated to given size (in bytes).
 func Open(path string, size int64) (*Wal, error) {
 	file, err := os.OpenFile(path, os.O_RDWR | os.O_CREATE, 0644)
 	if err != nil {
@@ -21,9 +22,9 @@ func Open(path string, size int64) (*Wal, error) {
 	}
 
 	mmap, err := mmap.Open(file, int(size), 0)
-	mmap.Resize(1024 * 1024 * size)
+	mmap.Resize(size)
 
-	w := &Wal{ file: mmap, Logs: make(chan []byte, 1000) }
+	w := &Wal{file: mmap, Logs: make(chan []byte, 1000)}
 	return w, nil
 }
 
@@ -37,13 +38,35 @@ func (w *Wal) Start(timeout int) {
 		case data, open := <-w.Logs:
 			// Got new data, write it to the wal file.
 			// If channel was closed, sync data and return.
-			if !open { w.file.Sync(); return }
-			w.file.Write(data)
+			if !open { 
+				w.file.Sync()
+				return
+			}
+			w.write(data)
 
 		case _ = <-ticker.C:
 			// Periodically call msync and flush data to file.
 			err := w.file.Sync()
-			if err != nil { fmt.Println(err) }
+			if err != nil { 
+				fmt.Println(err) 
+			}
 		}
-	}	
+	}
+}
+
+// Write log to wal file.
+func (w *Wal) write(data []byte) {
+	// We need a length prefix for each log so we will
+	// be able to iterate them.
+	size := uint32(len(data))
+	ptr  := (*[4]byte)(unsafe.Pointer(&size))
+	log  := make([]byte, 4 + len(data))
+
+	copy(log, ptr[:])  
+	copy(log[4:], data)
+
+	n := w.file.Write(log)
+	if(n != len(log)) {
+		fmt.Printf("Wal should write %d bytes, wrote only %d\n", len(log), n)
+	}
 }
