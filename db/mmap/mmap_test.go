@@ -35,9 +35,15 @@ func TestWriteRead(t *testing.T) {
 		fmt.Println(err)
 	}
 
-	data := []byte("Hello Wal ❤️")
-	mmap.Write(data)
+	data1 := []byte("Hello Wal ❤️")
+	mmap.Write(data1)
 
-	res, _ := mmap.Read(len(data))
-	tests.AssertEqual(t, data, res)
+	data2 := []byte("Hello Wal 😱")
+	mmap.Write(data2)
+
+	res1, _ := mmap.Read(len(data1))
+	res2, _ := mmap.Read(len(data2))
+
+	tests.AssertEqual(t, string(data1), string(res1))
+	tests.AssertEqual(t, string(data2), string(res2))
 }

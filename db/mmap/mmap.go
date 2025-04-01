@@ -10,7 +10,9 @@ import (
 type Mmap struct {
 	file   *os.File
 	data   []byte
-	Offset int
+
+	WriteOffset int
+	ReadOffset  int
 }
 
 // Mmap file.
@@ -30,7 +32,7 @@ func Open(file *os.File, size, flags int) (*Mmap, error) {
 		return nil, err
 	}
 
-	mmap := &Mmap{file: file, data: data, Offset: 0}
+	mmap := &Mmap{file: file, data: data, WriteOffset: 0, ReadOffset: 0}
 	return mmap, nil
 }
 
@@ -41,8 +43,8 @@ func (m *Mmap) Sync() error {
 
 // Write to mmaped file.
 func (m *Mmap) Write(bytes []byte) int {
-	n := copy(m.data[m.Offset:], bytes)
-	m.Offset += len(bytes)
+	n := copy(m.data[m.WriteOffset:], bytes)
+	m.WriteOffset += len(bytes)
 	return n
 }
 
@@ -50,11 +52,12 @@ func (m *Mmap) Write(bytes []byte) int {
 func (m *Mmap) Read(n int) ([]byte, error) {
 	data := make([]byte, n)
 
-	n = copy(data, m.data)
+	n = copy(data, m.data[m.ReadOffset:])
 	if n != len(data) {
 		return data, fmt.Errorf("Mmap should read %d bytes, got only %d", len(data), n)
 	} 
 
+	m.ReadOffset += n
 	return data, nil
 }
 
