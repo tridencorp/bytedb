@@ -74,16 +74,12 @@ func (w *Wal) write(data []byte) {
 // Read all logs and pass them to the user defined map function.
 func (w *Wal) Map(fn func(log []byte)) error {
 	for {
-		bytes, err := w.file.Read(4)
-		if err != nil {
-			return err
-		}
-
-		num := uint32(0)
-		copy((*[4]byte)(unsafe.Pointer(&num))[:], bytes)
+		len := uint32(0)
+		ptr := (*[4]byte)(unsafe.Pointer(&len))
+		w.file.ReadTo(ptr[:])
 
 		// No more logs to read.
-		if num == 0 { 
+		if len == 0 {
 			return nil
 		}
 
