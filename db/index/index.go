@@ -40,6 +40,8 @@ type File struct {
 
 	// Max number of indexes file can have.
 	capacity uint64	
+	
+	
 }
 
 // Load index file from given directory. 
@@ -178,9 +180,7 @@ func (f *File) collisionOff() uint64 {
 
 // Read index for given key.
 func (f *File) Get(name []byte) (*Index, error) {
-	f.mux.RLock()
 	key := f.Find(HashKey(name))
-	f.mux.RUnlock()
 
 	if key.Empty() {
 		return nil, fmt.Errorf("Key not found")

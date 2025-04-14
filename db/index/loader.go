@@ -53,6 +53,7 @@ func (i *Iterator) Next(num int) []byte {
 func (f *File) LoadIndexes(num int) {
 	it := NewIterator(f.fd, num)
 
+	// Number of indexes
 	stat, _ := f.fd.Stat()
 	total   := stat.Size() / IndexSize
 
