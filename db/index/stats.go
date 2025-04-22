@@ -14,6 +14,7 @@ type Profiler struct {
 	tmp *os.File
 }
 
+// Start cpu profile.
 func (p *Profiler) Start() {
 	tmp, err := os.CreateTemp("", "cpu.pprof")
 	if err != nil {
@@ -39,7 +40,7 @@ func (p *Profiler) Info() {
 
 	cmd := exec.Command("go", "tool", "pprof", p.tmp.Name())
 
-	cmd.Stdin = bytes.NewBufferString("top")
+	cmd.Stdin = bytes.NewBufferString("top\nquit\n")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
