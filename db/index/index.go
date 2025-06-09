@@ -1,15 +1,13 @@
 package index
 
 import (
+	"bucketdb/db/file"
 	"fmt"
 	"hash/fnv"
-	"math"
 	"os"
 	"sync"
 	"sync/atomic"
 	"unsafe"
-
-	"golang.org/x/sys/unix"
 )
 
 // Index size in bytes
@@ -32,7 +30,7 @@ type key struct {
 }
 
 type Index struct {
-	file *os.File
+	file *file.File
 	keys []key
 }
 
@@ -52,10 +50,10 @@ type File struct {
 	capacity uint64
 }
 
-// Open and loads indexes. It creates a new index file
+// Open and load indexes. It creates a new index file
 // if it doesn't already exist.
 func Open(dir string, capacity uint64) (*Index, error) {
-	file, err := os.OpenFile(dir, os.O_RDWR|os.O_CREATE, 0644)
+	file, err := file.Open(dir)
 	if err != nil {
 		return nil, nil
 	}
@@ -63,76 +61,10 @@ func Open(dir string, capacity uint64) (*Index, error) {
 	return &Index{file: file}, nil
 }
 
-// Load index file from given directory.
-func Load(dir string, capacity uint64) (*File, error) {
-	// TODO: Only temporary and will be replaced by proper index file.
-	file, err := os.OpenFile(dir, os.O_RDWR|os.O_CREATE, 0644)
-	if err != nil {
-		return nil, nil
-	}
+// Set index for the given kv and stores it in the index file.
+func (i *Index) Set(kv []byte) error {
 
-	f := &File{fd: file, capacity: capacity}
-	f.Keys = make([]Key, f.capacity)
-
-	f.nextCollision.Store(0)
-	f.collisionOffset.Store(f.capacity * IndexSize)
-
-	// Collisions are ~40% of file capacity.
-	size := uint64(math.Ceil(float64(40.0 * float64(f.capacity) / 100)))
-	f.Collisions = make([]Key, size)
-
-	total := len(f.Keys)*IndexSize + len(f.Collisions)*IndexSize
-	f.fd.Truncate(int64(total))
-
-	prot := unix.PROT_READ | unix.PROT_WRITE
-	data, err := unix.Mmap(int(file.Fd()), 0, int(total), prot, unix.MAP_SHARED)
-	if err != nil {
-		panic(err)
-	}
-
-	f.data = data
-	return f, nil
-}
-
-// Create an index for the given key/value and store it in the index file.
-// This will allow us for faster lookups.
-func (f *File) Set(name []byte, size int, keyOffset uint64, bucketID uint32) error {
-	key, offset := f.set(HashKey(name))
-	return f.Write(key, offset, bucketID, uint32(size), keyOffset)
-}
-
-// Set new key.
-func (f *File) set(hash uint64) (*Key, int64) {
-	if f.nextCollision.Load()+100 >= uint32(len(f.Collisions)) {
-		f.Collisions = append(f.Collisions, make([]Key, 1000)...)
-	}
-
-	key := &f.Keys[hash%f.capacity]
-
-	// Set new key.
-	if key.Empty() {
-		offset := f.offset(hash)
-
-		key.SetHash(hash)
-		key.SetOffset(offset)
-
-		return key, int64(offset)
-	}
-
-	key = f.Last(key)
-
-	// Set collision key.
-	collision := new(Key)
-	collision.SetHash(hash)
-	collision.SetOffset(f.collisionOff() - IndexSize)
-
-	// Set position and put new collision to collisions table.
-	position := f.NextCollision()
-
-	key.SetPosition(position)
-	f.Collisions[position] = *collision
-
-	return collision, int64(position)
+	return nil
 }
 
 // Find the last key with given hash.
@@ -165,20 +97,20 @@ func (f *File) Find(hash uint64) *Key {
 }
 
 func (f *File) Write(key *Key, offset int64, bucket, size uint32, keyOffset uint64) error {
-	index := Index{
-		Hash:     key.Hash(),
-		Position: uint32(offset),
-		Bucket:   bucket,
-		Size:     uint32(size),
-		Offset:   keyOffset,
-	}
+	// index := Index{
+	// 	Hash:     key.Hash(),
+	// 	Position: uint32(offset),
+	// 	Bucket:   bucket,
+	// 	Size:     uint32(size),
+	// 	Offset:   keyOffset,
+	// }
 
-	s := unsafe.Sizeof(index)
-	buf := unsafe.Slice((*byte)(unsafe.Pointer(&index)), s)
+	// s := unsafe.Sizeof(index)
+	// buf := unsafe.Slice((*byte)(unsafe.Pointer(&index)), s)
 
-	// _, err := f.fd.WriteAt(buf, key.Offset())
-	// _, err := f.data.WriteAt(buf, key.Offset())
-	copy(f.data[key.Offset():], buf)
+	// // _, err := f.fd.WriteAt(buf, key.Offset())
+	// // _, err := f.data.WriteAt(buf, key.Offset())
+	// copy(f.data[key.Offset():], buf)
 	return nil
 }
 
@@ -215,9 +147,9 @@ func (f *File) Get(name []byte) (*Index, error) {
 		return nil, fmt.Errorf("Cannot read from index")
 	}
 
-	if index.Deleted {
-		return nil, fmt.Errorf("Key was %s deleted", key)
-	}
+	// if index.Deleted {
+	// 	return nil, fmt.Errorf("Key was %s deleted", key)
+	// }
 
 	return &index, nil
 }
@@ -235,12 +167,6 @@ func (f *File) Del(key []byte) error {
 
 // Hash the key.
 func HashKey(key []byte) uint64 {
-	h := fnv.New64()
-	h.Write(key)
-	return h.Sum64()
-}
-
-func HashKey2(key []byte) uint64 {
 	h := fnv.New64a()
 	h.Write([]byte(key))
 	return h.Sum64()

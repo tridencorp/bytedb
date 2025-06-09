@@ -7,9 +7,9 @@ import (
 )
 
 type Iterator struct {
-	file 	  	*os.File
-	offset 		int 
-	buf 		  []byte
+	file      *os.File
+	offset    int
+	buf       []byte
 	batchSize int
 }
 
@@ -27,14 +27,14 @@ func (i *Iterator) Read() (int, error) {
 
 func (i *Iterator) Next(num int) []byte {
 	// We have enough data in buffer.
-	if i.offset + num <= len(i.buf) {
-		data := i.buf[i.offset:i.offset + num]
+	if i.offset+num <= len(i.buf) {
+		data := i.buf[i.offset : i.offset+num]
 
 		i.offset += num
 		return data
 	}
 
-	// We don't have enough data in buffer, read what's left 
+	// We don't have enough data in buffer, read what's left
 	// and then read next batch.
 	rest := i.buf[i.offset:]
 
@@ -55,25 +55,25 @@ func (f *File) LoadIndexes(num int) {
 
 	// Number of indexes
 	stat, _ := f.fd.Stat()
-	total   := stat.Size() / IndexSize
+	total := stat.Size() / IndexSize
 
 	collisions := uint64(total) - f.capacity
 
-	f.Keys			 = make([]Key, f.capacity)
+	f.Keys = make([]Key, f.capacity)
 	f.Collisions = make([]Key, collisions)
 
 	f.nextCollision.Store(0)
 	f.collisionOffset.Store(f.capacity * IndexSize)
 
-	for i:=0; i < int(total); i++ {
+	for i := 0; i < int(total); i++ {
 		data := it.Next(IndexSize)
-		hash := binary.BigEndian.Uint64(data[0:]) 
+		hash := binary.BigEndian.Uint64(data[0:])
 
 		key := Key{}
 		key.SetHash(hash)
 
-		if !key.Empty() {
-			f.set(hash)
-		}
+		// if !key.Empty() {
+		// 	f.set(hash)
+		// }
 	}
 }
