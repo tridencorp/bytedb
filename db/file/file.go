@@ -1,6 +1,8 @@
 package file
 
-import "os"
+import (
+	"os"
+)
 
 // File structure that manages data in blocks.
 type File struct {
@@ -25,6 +27,12 @@ func (f *File) Resize(size int64) error {
 	}
 
 	return nil
+}
+
+// Return file size in bytes.
+func (f *File) Size() int64 {
+	info, _ := os.Stat(f.file.Name())
+	return info.Size()
 }
 
 // Write data to given block number.
