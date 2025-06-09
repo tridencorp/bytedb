@@ -12,22 +12,32 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// Index size in bytes.
+// Index size in bytes
 const IndexSize = 32
 
-// Index will represent key in our database.
+// This will be dynamic
+const Size = 24
+
+// key stores information about KV position in database files.
+type key struct {
+	Hash   uint64 // 8 bytes
+	Offset uint32 // 4 bytes
+	Bucket uint32 // 4 bytes
+	Size   uint16 // 2 bytes
+	Flag   uint8  // 1 byte
+
+	// memory alignment
+	// TODO: Maybe we won't need this one
+	_ [5]byte
+}
+
 type Index struct {
-	Hash 		 uint64  // 8 bytes
-	Offset   uint64  // 8 bytes
-	Position uint32  // 4 bytes
-	Bucket   uint32  // 4 bytes
-	Size     uint32  // 4 bytes
-	Deleted  bool    // 1 byte
-	_        [3]byte // 3 bytes for memory alignment
+	file *os.File
+	keys []key
 }
 
 type File struct {
-	fd *os.File
+	fd   *os.File
 	data []byte
 
 	// Keeping keys/collisions in memory.
@@ -39,15 +49,24 @@ type File struct {
 	collisionOffset atomic.Uint64 // Offset in index file.
 
 	// Max number of indexes file can have.
-	capacity uint64	
-	
-	
+	capacity uint64
 }
 
-// Load index file from given directory. 
+// Open and loads indexes. It creates a new index file
+// if it doesn't already exist.
+func Open(dir string, capacity uint64) (*Index, error) {
+	file, err := os.OpenFile(dir, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		return nil, nil
+	}
+
+	return &Index{file: file}, nil
+}
+
+// Load index file from given directory.
 func Load(dir string, capacity uint64) (*File, error) {
 	// TODO: Only temporary and will be replaced by proper index file.
-	file, err := os.OpenFile(dir, os.O_RDWR | os.O_CREATE, 0644)
+	file, err := os.OpenFile(dir, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		return nil, nil
 	}
@@ -58,14 +77,15 @@ func Load(dir string, capacity uint64) (*File, error) {
 	f.nextCollision.Store(0)
 	f.collisionOffset.Store(f.capacity * IndexSize)
 
-	// Collisions are ~40% of file capacity. 
+	// Collisions are ~40% of file capacity.
 	size := uint64(math.Ceil(float64(40.0 * float64(f.capacity) / 100)))
 	f.Collisions = make([]Key, size)
 
-	total := len(f.Keys) * IndexSize + len(f.Collisions) * IndexSize
+	total := len(f.Keys)*IndexSize + len(f.Collisions)*IndexSize
 	f.fd.Truncate(int64(total))
 
-	data, err := unix.Mmap(int(file.Fd()), 0, int(total), unix.PROT_READ | unix.PROT_WRITE, unix.MAP_SHARED)
+	prot := unix.PROT_READ | unix.PROT_WRITE
+	data, err := unix.Mmap(int(file.Fd()), 0, int(total), prot, unix.MAP_SHARED)
 	if err != nil {
 		panic(err)
 	}
@@ -76,23 +96,23 @@ func Load(dir string, capacity uint64) (*File, error) {
 
 // Create an index for the given key/value and store it in the index file.
 // This will allow us for faster lookups.
-func (f *File) Set(name []byte, size int, keyOffset uint64, bucketID uint32) error {	
+func (f *File) Set(name []byte, size int, keyOffset uint64, bucketID uint32) error {
 	key, offset := f.set(HashKey(name))
 	return f.Write(key, offset, bucketID, uint32(size), keyOffset)
 }
 
 // Set new key.
 func (f *File) set(hash uint64) (*Key, int64) {
-	if f.nextCollision.Load() + 100 >= uint32(len(f.Collisions)) {
+	if f.nextCollision.Load()+100 >= uint32(len(f.Collisions)) {
 		f.Collisions = append(f.Collisions, make([]Key, 1000)...)
 	}
 
-	key := &f.Keys[hash % f.capacity]
+	key := &f.Keys[hash%f.capacity]
 
 	// Set new key.
 	if key.Empty() {
 		offset := f.offset(hash)
-	
+
 		key.SetHash(hash)
 		key.SetOffset(offset)
 
@@ -111,7 +131,7 @@ func (f *File) set(hash uint64) (*Key, int64) {
 
 	key.SetPosition(position)
 	f.Collisions[position] = *collision
-	
+
 	return collision, int64(position)
 }
 
@@ -129,7 +149,7 @@ func (f *File) Last(key *Key) *Key {
 
 // Find key for given hash.
 func (f *File) Find(hash uint64) *Key {
-	key := &f.Keys[hash % f.capacity]
+	key := &f.Keys[hash%f.capacity]
 
 	// No key found or we have our match.
 	if key.Empty() || key.Equal(hash) {
@@ -146,14 +166,14 @@ func (f *File) Find(hash uint64) *Key {
 
 func (f *File) Write(key *Key, offset int64, bucket, size uint32, keyOffset uint64) error {
 	index := Index{
-		Hash: 		key.Hash(),
+		Hash:     key.Hash(),
 		Position: uint32(offset),
-		Bucket: 	bucket,
-		Size: 		uint32(size),
-		Offset: 	keyOffset,
+		Bucket:   bucket,
+		Size:     uint32(size),
+		Offset:   keyOffset,
 	}
 
-	s   := unsafe.Sizeof(index)
+	s := unsafe.Sizeof(index)
 	buf := unsafe.Slice((*byte)(unsafe.Pointer(&index)), s)
 
 	// _, err := f.fd.WriteAt(buf, key.Offset())
@@ -163,7 +183,7 @@ func (f *File) Write(key *Key, offset int64, bucket, size uint32, keyOffset uint
 }
 
 // Return next collision index. If index exceed collisions table length,
-// it will resize it. 
+// it will resize it.
 func (f *File) NextCollision() uint32 {
 	return f.nextCollision.Add(1)
 }
@@ -187,8 +207,8 @@ func (f *File) Get(name []byte) (*Index, error) {
 	}
 
 	index := Index{}
-	size  := unsafe.Sizeof(index)
-	buf   := unsafe.Slice((*byte)(unsafe.Pointer(&index)), size)
+	size := unsafe.Sizeof(index)
+	buf := unsafe.Slice((*byte)(unsafe.Pointer(&index)), size)
 
 	n := copy(buf, f.data[key.Offset():])
 	if n == 0 {
@@ -209,7 +229,7 @@ func (f *File) Del(key []byte) error {
 
 	// If we know the position of index, we can just
 	// set it's Deleted field to 1.
-	_, err := f.fd.WriteAt([]byte{1}, int64(offset + 29))
+	_, err := f.fd.WriteAt([]byte{1}, int64(offset+29))
 	return err
 }
 
@@ -217,5 +237,11 @@ func (f *File) Del(key []byte) error {
 func HashKey(key []byte) uint64 {
 	h := fnv.New64()
 	h.Write(key)
+	return h.Sum64()
+}
+
+func HashKey2(key []byte) uint64 {
+	h := fnv.New64a()
+	h.Write([]byte(key))
 	return h.Sum64()
 }
