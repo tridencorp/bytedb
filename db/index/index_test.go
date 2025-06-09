@@ -18,10 +18,11 @@ func TestIndexPrealloc(t *testing.T) {
 	idx, _ := Open(".index.idx", *num)
 	defer os.Remove(".index.idx")
 
-	tests.AssertEqual(t, (*num * int64(unsafe.Sizeof(key{}))), idx.file.Size())
+	prealloc := *num * int64(unsafe.Sizeof(key{}))
+	tests.AssertEqual(t, prealloc, idx.file.Size())
 }
 
-func TestIndexSet(t *testing.T) {
+func TestIndexSetGet(t *testing.T) {
 	flag.Parse()
 
 	idx, _ := Open(".index.idx", *num)
@@ -31,24 +32,9 @@ func TestIndexSet(t *testing.T) {
 		key := fmt.Sprintf("key_%d", i)
 		idx.Set([]byte(key))
 	}
+
+	for i := 0; i < int(*num); i++ {
+		key := fmt.Sprintf("key_%d", i)
+		idx.Get([]byte(key))
+	}
 }
-
-// func TestWrites(t *testing.T) {
-// 	num := 2_000_000
-// 	file, _ := Load("index.idx", uint64(num))
-// 	defer os.Remove("./index.idx")
-
-// 	tests.RunConcurrently(1, func() {
-// 		for i := 0; i < 2_000_000; i++ {
-// 			key := fmt.Sprintf("key_%d_%d", i, time.Now().UnixMicro())
-// 			file.Set([]byte(key), 10, 10, 1)
-// 		}
-// 	})
-
-// 	err := unix.Msync(file.data, unix.MS_SYNC)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-
-// 	fmt.Println("collisions: ", file.nextCollision.Load())
-// }

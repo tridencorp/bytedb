@@ -2,6 +2,7 @@ package index
 
 import (
 	"bucketdb/db/file"
+	"bytes"
 	"fmt"
 	"hash/fnv"
 	"os"
@@ -66,8 +67,36 @@ func Open(dir string, keysPerFile int64) (*Index, error) {
 }
 
 // Set index for the given kv and stores it in the index file.
-func (i *Index) Set(kv []byte) error {
+func (i *Index) Set(key []byte) error {
+	h := Hash(key)
+
+	// Find proper block number for key.
+	n := int64(h % uint64(i.file.BlockCount()))
+
+	i.file.WriteBlock(n, key)
 	return nil
+}
+
+// Get index.
+func (i *Index) Get(key []byte) ([]byte, error) {
+	h := Hash(key)
+
+	// Find proper block number for key.
+	n := int64(h % uint64(i.file.BlockCount()))
+
+	// Read block.
+	b, err := i.file.ReadBlock(n)
+	if err != nil {
+		return nil, err
+	}
+
+	// Find our key.
+	index := bytes.Index(b, key)
+	if index == -1 {
+		return nil, nil
+	}
+
+	return b[index : index+len(key)], nil
 }
 
 // Find the last key with given hash.
@@ -135,7 +164,7 @@ func (f *File) collisionOff() uint64 {
 
 // Read index for given key.
 func (f *File) Get(name []byte) (*Index, error) {
-	key := f.Find(HashKey(name))
+	key := f.Find(Hash(name))
 
 	if key.Empty() {
 		return nil, fmt.Errorf("Key not found")
@@ -160,7 +189,7 @@ func (f *File) Get(name []byte) (*Index, error) {
 // Delete key.
 func (f *File) Del(key []byte) error {
 	// Find index offset.
-	offset := f.offset(HashKey(key))
+	offset := f.offset(Hash(key))
 
 	// If we know the position of index, we can just
 	// set it's Deleted field to 1.
@@ -169,7 +198,7 @@ func (f *File) Del(key []byte) error {
 }
 
 // Hash the key.
-func HashKey(key []byte) uint64 {
+func Hash(key []byte) uint64 {
 	h := fnv.New64a()
 	h.Write([]byte(key))
 	return h.Sum64()
