@@ -7,7 +7,7 @@ import (
 // File structure that manages data in blocks.
 type File struct {
 	file      *os.File
-	blockSize uint16
+	blockSize int64
 }
 
 func Open(path string) (*File, error) {
@@ -33,6 +33,11 @@ func (f *File) Resize(size int64) error {
 func (f *File) Size() int64 {
 	info, _ := os.Stat(f.file.Name())
 	return info.Size()
+}
+
+// Get number of blocks in file.
+func (f *File) BlocksCount() int64 {
+	return f.Size() / f.blockSize
 }
 
 // Write data to given block number.
