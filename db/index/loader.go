@@ -55,7 +55,7 @@ func (f *File) LoadIndexes(num int) {
 
 	// Number of indexes
 	stat, _ := f.fd.Stat()
-	total := stat.Size() / IndexSize
+	total := stat.Size() / 24
 
 	collisions := uint64(total) - f.capacity
 
@@ -63,10 +63,10 @@ func (f *File) LoadIndexes(num int) {
 	f.Collisions = make([]Key, collisions)
 
 	f.nextCollision.Store(0)
-	f.collisionOffset.Store(f.capacity * IndexSize)
+	f.collisionOffset.Store(f.capacity * 24)
 
 	for i := 0; i < int(total); i++ {
-		data := it.Next(IndexSize)
+		data := it.Next(24)
 		hash := binary.BigEndian.Uint64(data[0:])
 
 		key := Key{}

@@ -10,13 +10,7 @@ import (
 	"unsafe"
 )
 
-// Index size in bytes
-const IndexSize = 32
-
-// This will be dynamic
-const Size = 24
-
-// key stores information about KV position in database files.
+// key stores information about key-value position in database files.
 type key struct {
 	Hash   uint64 // 8 bytes
 	Offset uint32 // 4 bytes
@@ -32,6 +26,8 @@ type key struct {
 type Index struct {
 	file *file.File
 	keys []key
+
+	keysPerFile int64
 }
 
 type File struct {
@@ -52,18 +48,25 @@ type File struct {
 
 // Open and load indexes. It creates a new index file
 // if it doesn't already exist.
-func Open(dir string, capacity uint64) (*Index, error) {
-	file, err := file.Open(dir)
+func Open(dir string, keysPerFile int64) (*Index, error) {
+	f, err := file.Open(dir)
 	if err != nil {
 		return nil, nil
 	}
 
-	return &Index{file: file}, nil
+	idx := &Index{file: f, keysPerFile: keysPerFile}
+
+	// Preallocating space for max number of keys per index file.
+	prealloc := idx.keysPerFile * int64(unsafe.Sizeof(key{}))
+	if f.Size() < prealloc {
+		f.Resize(prealloc)
+	}
+
+	return idx, nil
 }
 
 // Set index for the given kv and stores it in the index file.
 func (i *Index) Set(kv []byte) error {
-
 	return nil
 }
 
@@ -122,12 +125,12 @@ func (f *File) NextCollision() uint32 {
 
 // Calculate index offset for new key.
 func (f *File) offset(hash uint64) uint64 {
-	return hash % f.capacity * IndexSize
+	return hash % f.capacity * 24
 }
 
 // Calculate collision offset in index file.
 func (f *File) collisionOff() uint64 {
-	return f.collisionOffset.Add(IndexSize)
+	return f.collisionOffset.Add(24)
 }
 
 // Read index for given key.
