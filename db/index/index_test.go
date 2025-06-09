@@ -30,11 +30,13 @@ func TestIndexSetGet(t *testing.T) {
 
 	for i := 0; i < int(*num); i++ {
 		key := fmt.Sprintf("key_%d", i)
-		idx.Set([]byte(key))
+		err := idx.Set([]byte(key))
+		tests.Assert(t, nil, err)
 	}
 
 	for i := 0; i < int(*num); i++ {
 		key := fmt.Sprintf("key_%d", i)
-		idx.Get([]byte(key))
+		val, _ := idx.Get([]byte(key))
+		tests.Assert(t, key, string(val))
 	}
 }
