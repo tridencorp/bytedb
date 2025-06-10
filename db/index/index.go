@@ -16,7 +16,7 @@ type key struct {
 	Offset uint32  // 4 bytes
 	Bucket uint32  // 4 bytes
 	Size   uint16  // 2 bytes
-	Hash   [6]byte // 8 bytes
+	Hash   [6]byte // 6 bytes
 }
 
 type Index struct {
@@ -50,15 +50,26 @@ func Open(dir string, keysPerFile int64) (*Index, error) {
 		return nil, nil
 	}
 
-	idx := &Index{file: f, keysPerFile: keysPerFile}
+	i := &Index{file: f, keysPerFile: keysPerFile}
+	i.PreallocateSpace()
 
-	// Preallocating space for max number of keys per index file.
-	prealloc := idx.keysPerFile * int64(unsafe.Sizeof(key{}))
-	if f.Size() < prealloc {
-		f.Resize(prealloc)
+	return i, nil
+}
+
+// Preallocate space for max number of keys in index file.
+// Also adding extra space for collisions.
+func (i *Index) PreallocateSpace() error {
+	// Calculate required space for all keys and additional 30% for collisions.
+	prealloc := i.keysPerFile * int64(unsafe.Sizeof(key{}))
+	prealloc = (prealloc * 130) / 100
+
+	if i.file.Size() < prealloc {
+		err := i.file.Resize(prealloc)
+		if err != nil {
+			return err
+		}
 	}
-
-	return idx, nil
+	return nil
 }
 
 // Set index for the given kv and stores it in the index file.
@@ -86,6 +97,7 @@ func (i *Index) Get(key []byte) ([]byte, error) {
 	}
 
 	// Find our key.
+	// TODO: We know the fixed  size, so we can make it quicker than Index - probably.
 	index := bytes.Index(b, key)
 	if index == -1 {
 		return nil, nil
