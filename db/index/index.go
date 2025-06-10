@@ -13,15 +13,10 @@ import (
 
 // key stores information about key-value position in database files.
 type key struct {
-	Hash   uint64 // 8 bytes
-	Offset uint32 // 4 bytes
-	Bucket uint32 // 4 bytes
-	Size   uint16 // 2 bytes
-	Flag   uint8  // 1 byte
-
-	// memory alignment
-	// TODO: Maybe we won't need this one
-	_ [5]byte
+	Offset uint32  // 4 bytes
+	Bucket uint32  // 4 bytes
+	Size   uint16  // 2 bytes
+	Hash   [6]byte // 8 bytes
 }
 
 type Index struct {
