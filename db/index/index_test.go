@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"testing"
-	"unsafe"
 )
 
 // TODO: Move this to test setup
@@ -15,11 +14,11 @@ var num = flag.Int64("num", 100_000, "number of iterations")
 func TestIndexPrealloc(t *testing.T) {
 	flag.Parse()
 
-	idx, _ := Open(".index.idx", *num)
+	i, _ := Open(".index.idx", *num)
 	defer os.Remove(".index.idx")
 
-	prealloc := *num * int64(unsafe.Sizeof(key{}))
-	tests.AssertEqual(t, prealloc, idx.file.Size())
+	prealloc := int64(2080000) // keys + collisions
+	tests.AssertEqual(t, prealloc, i.file.Size())
 }
 
 func TestIndexSetGet(t *testing.T) {
