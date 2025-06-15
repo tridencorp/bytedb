@@ -54,7 +54,7 @@ func (i *Index) Prealloc(keys int64) (int64, error) {
 }
 
 // Set index for the given kv and stores it in the index file.
-func (i *Index) Set(key []byte) error {
+func (i *Index) Set(key []byte, off *file.Offset) error {
 	h := Hash(key)
 
 	// Find proper block number for key.

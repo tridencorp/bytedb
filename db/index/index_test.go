@@ -1,6 +1,7 @@
 package index
 
 import (
+	"bucketdb/db/file"
 	"bucketdb/tests"
 	"flag"
 	"fmt"
@@ -29,7 +30,8 @@ func TestIndexSetGet(t *testing.T) {
 
 	for i := 0; i < int(*num); i++ {
 		key := fmt.Sprintf("key_%d", i)
-		err := idx.Set([]byte(key))
+		off := &file.Offset{Start: 0, Size: 10}
+		err := idx.Set([]byte(key), off)
 		tests.Assert(t, nil, err)
 	}
 
