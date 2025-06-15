@@ -8,7 +8,7 @@ import (
 
 // Container for key-value data.
 type KV struct {
-	File *file.File
+	file *file.File
 }
 
 func OpenKV(path string) (*KV, error) {
@@ -18,5 +18,17 @@ func OpenKV(path string) (*KV, error) {
 		return nil, err
 	}
 
-	return &KV{File: f}, nil
+	return &KV{file: f}, nil
+}
+
+func (kv *KV) Set(key, val []byte) (*file.Offset, error) {
+	data := append(key, val...)
+
+	// Write kv to data file.
+	off, err := kv.file.Write(data)
+	if err != nil {
+		return nil, err
+	}
+
+	return off, nil
 }

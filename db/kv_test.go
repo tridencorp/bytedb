@@ -6,9 +6,13 @@ import (
 	"testing"
 )
 
-func TestKVWriteRead(t *testing.T) {
+func TestKVSetGet(t *testing.T) {
 	kv, _ := OpenKV(".data.kv")
 	defer os.Remove(".data.kv")
 
-	fmt.Println(kv)
+	for i := 0; i < 10; i++ {
+		key := fmt.Sprintf("key_%d", i)
+		off, _ := kv.Set([]byte(key), []byte("value"))
+		fmt.Println(off)
+	}
 }
