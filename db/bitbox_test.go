@@ -241,7 +241,7 @@ func TestDecode2(t *testing.T) {
 	b[96] = 224
 
 	s := int(unsafe.Sizeof(*f))
-	Decode2(b[len(b)-s:], f)
+	Decode2(b[len(b)-s:], ToBytes(f))
 
 	fmt.Println("footer: ", f)
 }
