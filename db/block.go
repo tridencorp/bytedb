@@ -7,8 +7,11 @@ import (
 
 // Default file block.
 type Block struct {
-	data       []byte
-	offset     int64
+	data   []byte
+	offset int64
+	Len    int32
+	Cap    int32
+
 	ReadOffset int
 }
 
@@ -16,8 +19,13 @@ type BlockFooter struct {
 	Size int32
 }
 
-func NewBlock(size int64) *Block {
-	return &Block{data: make([]byte, size), ReadOffset: 0}
+func NewBlock(cap int32) *Block {
+	return &Block{
+		data:       make([]byte, cap),
+		Cap:        cap - int32(unsafe.Sizeof(BlockFooter{})),
+		Len:        0,
+		ReadOffset: 0,
+	}
 }
 
 // Write data to block.
@@ -25,7 +33,7 @@ func (b *Block) Write(src []byte) (int, error) {
 	f := b.ReadFooter()
 
 	// Check if we have enough space in block.
-	if int(f.Size)+len(src) > len(b.data)-int(unsafe.Sizeof(*f)) {
+	if int(f.Size)+len(src) > int(b.Cap) {
 		return 0, fmt.Errorf("not enough space in block")
 	}
 
@@ -34,6 +42,7 @@ func (b *Block) Write(src []byte) (int, error) {
 
 	// Update block size.
 	f.Size += int32(len(src))
+	b.Len += int32(len(src))
 	b.WriteFooter(f)
 
 	return 0, nil
@@ -41,7 +50,7 @@ func (b *Block) Write(src []byte) (int, error) {
 
 // Read data from block.
 func (b *Block) Read(dst []byte) (int, error) {
-	if b.ReadOffset+len(dst) > len(b.data)-int(unsafe.Sizeof(BlockFooter{})) {
+	if b.ReadOffset+len(dst) > int(b.Cap) {
 		return 0, fmt.Errorf("EOF")
 	}
 

@@ -118,10 +118,13 @@ func (f *File) ReadBlock(num int64) (*Block, error) {
 	// Get block offset.
 	offset := num * f.blockSize
 
-	b := NewBlock(f.blockSize)
+	b := NewBlock(int32(f.blockSize))
 	b.offset = offset
 
 	// Read block.
 	_, err := f.file.ReadAt(b.data, offset)
+	footer := b.ReadFooter()
+	b.Len = footer.Size
+
 	return b, err
 }
