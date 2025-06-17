@@ -113,7 +113,7 @@ func (f *File) WriteBlock(num int64, data []byte) (int, error) {
 
 	// Naive way to check it block has enough free space.
 	// We are checking if block has enough '0' bytes.
-	i := bytes.Index(block, make([]byte, len(data)))
+	i := bytes.Index(block.data, make([]byte, len(data)))
 	if i == -1 {
 		return i, nil
 	}
@@ -124,10 +124,10 @@ func (f *File) WriteBlock(num int64, data []byte) (int, error) {
 }
 
 // Read data from given block.
-func (f *File) ReadBlock(num int64) (Block, error) {
-	b := make(Block, f.blockSize)
+func (f *File) ReadBlock(num int64) (*Block, error) {
+	b := NewBlock(f.blockSize)
 	offset := num * f.blockSize
 
-	_, err := f.file.ReadAt(b, offset)
+	_, err := f.file.ReadAt(b.data, offset)
 	return b, err
 }

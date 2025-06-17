@@ -32,11 +32,10 @@ func OpenIndex(dir string, keysPerFile int64) (*Index, error) {
 }
 
 // Preallocate space for max number of keys per file.
-// Also adding extra space for collisions.
 func (i *Index) Prealloc(keys int64) (int64, error) {
 	// Calculate required space for all keys.
 	size := keys * int64(i.IndexSize)
-	size = (size * 130) / 100 // 30% space for collisions
+	size = (size * 130) / 100 // +30% for collisions
 
 	// Resize if file is smaller than expected.
 	if i.file.Size() < size {
@@ -75,12 +74,12 @@ func (i *Index) Get(key []byte) ([]byte, error) {
 
 	// Find our key.
 	// TODO: We know the fixed  size, so we can make it quicker than Index - probably 🤞
-	index := bytes.Index(b, key)
+	index := bytes.Index(b.data, key)
 	if index == -1 {
 		return nil, nil
 	}
 
-	return b[index : index+len(key)], nil
+	return b.data[index : index+len(key)], nil
 }
 
 // Compute hash for given key.

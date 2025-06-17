@@ -1,21 +1,29 @@
 package db
 
 import (
-	"fmt"
 	"unsafe"
 )
 
-type Block []byte
+type Block struct {
+	data []byte
+}
 
 type BlockFooter struct {
 	Offset uint32
 }
 
+func NewBlock(size int64) *Block {
+	return &Block{data: make([]byte, size)}
+}
+
+// Read block footer.
 func (b *Block) ReadFooter() *BlockFooter {
 	f := &BlockFooter{}
-	s := unsafe.Sizeof(f)
-	fmt.Println("size: ", s)
+	s := int(unsafe.Sizeof(*f))
 
-	Decode2(*b, f)
+	// Read footer from the end of block.
+	off := len(b.data) - s
+	Decode2(b.data[off:], ToBytes(f))
+
 	return f
 }
