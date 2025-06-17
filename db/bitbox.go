@@ -227,7 +227,19 @@ func write(buf *bytes.Buffer, elem any) error {
 // **************
 
 func Decode2(buf []byte, items ...any) error {
-	fmt.Println(buf)
+	for _, item := range items {
+		val := reflect.ValueOf(item)
+		val = reflect.Indirect(val)
+
+		if isStruct(val) {
+			p := unsafe.Pointer(val.Addr().Pointer())
+			s := val.Type().Size()
+
+			dst := unsafe.Slice((*byte)(p), s)
+			copy(dst, buf[:s])
+		}
+	}
+
 	return nil
 }
 

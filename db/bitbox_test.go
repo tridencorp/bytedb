@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"slices"
 	"testing"
+	"unsafe"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -234,5 +235,13 @@ func TestDecode2(t *testing.T) {
 	b := make(Block, 100)
 	f := &BlockFooter{}
 
-	Decode2(b, f)
+	b[99] = 221
+	b[98] = 222
+	b[97] = 223
+	b[96] = 224
+
+	s := int(unsafe.Sizeof(*f))
+	Decode2(b[len(b)-s:], f)
+
+	fmt.Println("footer: ", f)
 }
