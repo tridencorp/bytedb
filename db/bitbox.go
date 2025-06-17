@@ -222,32 +222,22 @@ func write(buf *bytes.Buffer, elem any) error {
 	return binary.Write(buf, binary.BigEndian, elem)
 }
 
-// **************
-//     Decode
-// **************
+// ********
+//  Decode
+// ********
 
 func Decode2(buf []byte, items ...any) error {
 	for _, item := range items {
 		switch val := item.(type) {
 		case []byte:
 			copy(val, buf)
-		default:
-			fmt.Println(":( :(")
 		}
-
-		val := reflect.ValueOf(item)
-
-		if !isPointer(val) {
-			continue
-		}
-
-		val = reflect.Indirect(val)
 	}
 
 	return nil
 }
 
-// Get pointer to any fixed value and cast it to []byte.
+// Get pointer to any fixed type and cast it to []byte.
 // After that we can copy bytes directly into it using copy().
 func ToBytes[T any](ptr *T) []byte {
 	size := unsafe.Sizeof(*ptr)

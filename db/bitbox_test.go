@@ -1,12 +1,12 @@
 package db
 
 import (
+	"bucketdb/tests"
 	"bytes"
 	"fmt"
 	"math/big"
 	"slices"
 	"testing"
-	"unsafe"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -231,17 +231,18 @@ func TestEncodeStructFields(t *testing.T) {
 	fmt.Println("Number: ", tx1.BlockNumber, " ", tx2.BlockNumber)
 }
 
-func TestDecode2(t *testing.T) {
-	b := make(Block, 100)
+func TestDecode2Struct(t *testing.T) {
+	b := []byte{255, 0, 0, 0}
 	f := &BlockFooter{}
 
-	b[99] = 221
-	b[98] = 222
-	b[97] = 223
-	b[96] = 224
+	Decode2(b, ToBytes(f))
+	tests.Assert(t, 255, f.Offset)
+}
 
-	s := int(unsafe.Sizeof(*f))
-	Decode2(b[len(b)-s:], ToBytes(f))
+func TestDecode2Uint(t *testing.T) {
+	a := uint32(123)
+	c := uint32(0)
 
-	fmt.Println("footer: ", f)
+	Decode2(ToBytes(&a), ToBytes(&c))
+	tests.Assert(t, a, c)
 }
