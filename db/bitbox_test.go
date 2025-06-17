@@ -236,7 +236,7 @@ func TestDecode2Struct(t *testing.T) {
 	f := &BlockFooter{}
 
 	Decode2(b, ToBytes(f))
-	tests.Assert(t, 255, f.Offset)
+	tests.Assert(t, 255, f.Size)
 }
 
 func TestDecode2Uint(t *testing.T) {

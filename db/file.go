@@ -1,7 +1,6 @@
 package db
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -96,7 +95,8 @@ func (f *File) Write(data []byte) (*Offset, error) {
 // Write data to given block number. If there won't be any space
 // left in the block, it will return -1.
 func (f *File) WriteBlock(num int64, data []byte) (int, error) {
-	// If block size is not set, we are dealing with normal file.
+	// If block size is not set, we are dealing with normal file
+	// which doesn't operate on our blocks.
 	if f.blockSize == 0 {
 		return 0, fmt.Errorf("wrong file type, cannot read blocks")
 	}
@@ -108,26 +108,20 @@ func (f *File) WriteBlock(num int64, data []byte) (int, error) {
 		return 0, err
 	}
 
-	// Get block offset from block footer.
-	// footer := block.ReadFooter()
-
-	// Naive way to check it block has enough free space.
-	// We are checking if block has enough '0' bytes.
-	i := bytes.Index(block.data, make([]byte, len(data)))
-	if i == -1 {
-		return i, nil
-	}
-
-	offset := (num * f.blockSize) + int64(i)
-	n, err := f.file.WriteAt(data, offset)
+	// Write entire block back to the file.
+	n, err := f.file.WriteAt(block.data, block.offset)
 	return n, err
 }
 
 // Read data from given block.
 func (f *File) ReadBlock(num int64) (*Block, error) {
-	b := NewBlock(f.blockSize)
+	// Get block offset.
 	offset := num * f.blockSize
 
+	b := NewBlock(f.blockSize)
+	b.offset = offset
+
+	// Read block.
 	_, err := f.file.ReadAt(b.data, offset)
 	return b, err
 }
