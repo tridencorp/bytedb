@@ -19,10 +19,10 @@ func NewBlock(size int64) *Block {
 // Read block footer.
 func (b *Block) ReadFooter() *BlockFooter {
 	f := &BlockFooter{}
-	s := int(unsafe.Sizeof(*f))
+	n := int(unsafe.Sizeof(*f))
 
 	// Read footer from the end of block.
-	i := len(b.data) - s
+	i := len(b.data) - n
 	Decode2(b.data[i:], ToBytes(f))
 
 	return f

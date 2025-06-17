@@ -5,14 +5,14 @@ import (
 	"testing"
 )
 
-func TestReadFooter(t *testing.T) {
+func TestFooterRead(t *testing.T) {
 	b := Block{data: []byte{7, 0, 0, 0}}
 	f := b.ReadFooter()
 
 	tests.Assert(t, 7, f.Offset)
 }
 
-func TestWriteFooter(t *testing.T) {
+func TestFooterWrite(t *testing.T) {
 	b := Block{data: []byte{0, 0, 0, 0}}
 	f := BlockFooter{Offset: 7}
 
