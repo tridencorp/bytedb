@@ -15,4 +15,10 @@ func TestKVSetGet(t *testing.T) {
 		off, _ := kv.Set([]byte(key), []byte("value"))
 		fmt.Println(off)
 	}
+
+	// for i := 0; i < 10; i++ {
+	// 	key := fmt.Sprintf("key_%d", i)
+	// 	val, _ := kv.Get([]byte(key))
+	// 	fmt.Println(val)
+	// }
 }

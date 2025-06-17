@@ -24,7 +24,7 @@ type item struct {
 }
 
 func Item(b *Bucket) *item {
-	item := &item{ bucket: b }
+	item := &item{bucket: b}
 	item.refCount.Store(1)
 
 	return item
@@ -50,8 +50,8 @@ func Open(root string, conf Config) (*Buckets, error) {
 	}
 
 	buckets := &Buckets{
-		items: 		 map[uint32]*item{},
-		Root: 		 root,
+		items:     map[uint32]*item{},
+		Root:      root,
 		MaxOpened: conf.MaxOpened,
 		MaxPerDir: conf.MaxPerDir,
 	}
@@ -97,6 +97,7 @@ func (b *Buckets) Next(prev uint32) (*Bucket, error) {
 
 	return next, nil
 }
+
 // Find the last bucket for given root.
 // Empty string in response mesteans that there is no bucket yet.
 func Last(root string) (*os.File, error) {
@@ -118,12 +119,12 @@ func Last(root string) (*os.File, error) {
 		return file, err
 	}
 
-	path := filepath.Join(root, folder.Name()) 
+	path := filepath.Join(root, folder.Name())
 
 	// Get file (bucket) with highest id.
 	bucket := utils.MaxEntry(path, func(i, j os.DirEntry) bool {
-		id1, _ := strconv.Atoi(filepath.Base(i.Name())) 
-		id2, _ := strconv.Atoi(filepath.Base(j.Name())) 
+		id1, _ := strconv.Atoi(filepath.Base(i.Name()))
+		id2, _ := strconv.Atoi(filepath.Base(j.Name()))
 		return id1 < id2
 	})
 
@@ -144,12 +145,13 @@ func (b *Buckets) Path(id uint32) string {
 
 // Open/Create bucket with given id.
 func (b *Buckets) Open(id uint32) (*Bucket, error) {
-	file, err := utils.OpenPath(b.Path(id))
-	if err != nil {
-		return nil, err
-	}
+	// file, err := utils.OpenPath(b.Path(id))
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	bucket := &Bucket{ ID: id, file: file }
+	// bucket := &Bucket{ID: id, file: file}
+	bucket := &Bucket{ID: id}
 	bucket.offset.Store(0)
 	bucket.keysCount.Store(0)
 	bucket.ResizeCount = 0
@@ -189,7 +191,7 @@ func (b *Buckets) Get(id uint32) *Bucket {
 
 	// Bucket is not opened yet, add it.
 	item = b.Add(id)
-	return item.bucket 
+	return item.bucket
 }
 
 // Put bucket back so it can be reused by other routines.

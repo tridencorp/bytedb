@@ -6,11 +6,11 @@ Small and fast kv store for blockchain.
 Running all tests
 
 ```go
-go test ./...
+go test -v -count=1 ./...
 ```
 
 Run only one specfic test
 
 ```go
-go test -run TestName ./...
+go test -v -count=1 -run TestName ./...
 ```

@@ -8,8 +8,8 @@ import (
 // KV structure that represents each key/value stored in collection.
 // TODO: Key will be hashed key, uint64.
 type KV struct {
-	Key  []byte
-	Val  []byte
+	Key []byte
+	Val []byte
 }
 
 func NewKV(key string, val []byte) *KV {

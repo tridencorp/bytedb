@@ -12,18 +12,18 @@ import (
 )
 
 type CustomByte []byte
-type CustomInt  []int64
+type CustomInt []int64
 
 type CustomArrByte [32]byte
-type CustomArrInt  [32]int32
+type CustomArrInt [32]int32
 
 // Helper for encoding/decoding slices.
 func EncodeDecodeSlice[T comparable](elem []T, result *[]T, t *testing.T) {
 	raw, _ := Encode(elem)
 	Decode(raw, result)
 
-	if !slices.Equal(elem, *result) { 
-		t.Errorf("Expected \n to get %v,\nbut got %v", elem, *result) 
+	if !slices.Equal(elem, *result) {
+		t.Errorf("Expected \n to get %v,\nbut got %v", elem, *result)
 	}
 }
 
@@ -32,7 +32,7 @@ func EncodeDecode[T comparable](elem, result *T, t *testing.T) {
 	Decode(raw, result)
 
 	if *elem != *result {
-		t.Errorf("Expected \n to get %v,\nbut got %v", *elem, *result) 
+		t.Errorf("Expected \n to get %v,\nbut got %v", *elem, *result)
 	}
 }
 
@@ -68,7 +68,7 @@ func TestEncodeDecode(t *testing.T) {
 
 	s3, s4 := []float64{11.11, 22.22, 33.33}, []float64{}
 	EncodeDecodeSlice(s3, &s4, t)
-	
+
 	s5, s6 := []float32{11.11, 22.22, 33.33}, []float32{}
 	EncodeDecodeSlice(s5, &s6, t)
 
@@ -103,13 +103,13 @@ func TestDecodeEncodeCustom(t *testing.T) {
 	Decode(raw, &c2)
 
 	c3, c4 := CustomByte{1, 2, 3, 4}, CustomByte{}
-	raw, _  = Encode(c3)
+	raw, _ = Encode(c3)
 	Decode(raw, &c4)
 
 	// Arrays.
-	c5, c6 := &CustomArrByte{1,2,3}, &CustomArrByte{}
+	c5, c6 := &CustomArrByte{1, 2, 3}, &CustomArrByte{}
 	EncodeDecode(c5, c6, t)
-	
+
 	c7, c8 := &CustomArrInt{3, 2, 1}, &CustomArrInt{}
 	EncodeDecode(c7, c8, t)
 
@@ -129,9 +129,10 @@ func TestDecodeEncodeAny(t *testing.T) {
 	EncodeDecode(&v1, &v2, t)
 }
 
-type TestStruct struct { Data []byte }
-func (t *TestStruct) Encode() []byte {return t.Data}
-func (t *TestStruct) Decode(raw []byte) error {t.Data = raw; return nil}
+type TestStruct struct{ Data []byte }
+
+func (t *TestStruct) Encode() []byte          { return t.Data }
+func (t *TestStruct) Decode(raw []byte) error { t.Data = raw; return nil }
 
 func TestDecodeEncodeStruct(t *testing.T) {
 	v1 := &TestStruct{[]byte{6, 6, 6}}
@@ -141,8 +142,8 @@ func TestDecodeEncodeStruct(t *testing.T) {
 	Decode(raw, v2)
 	fmt.Println(v2)
 
-	if !bytes.Equal([]byte{0,0,0,0,0,0,0,3,6,6,6}, v2.Data) {
-		t.Errorf("Expected \n to get %v,\nbut got %v", v1.Data, v2.Data) 
+	if !bytes.Equal([]byte{0, 0, 0, 0, 0, 0, 0, 3, 6, 6, 6}, v2.Data) {
+		t.Errorf("Expected \n to get %v,\nbut got %v", v1.Data, v2.Data)
 	}
 }
 
@@ -152,32 +153,32 @@ func TestDecodeEncodeArrayOfStructs(t *testing.T) {
 		&TestStruct{[]byte{4, 5, 6}},
 	}
 
-	v2 := []*TestStruct{}	
+	v2 := []*TestStruct{}
 
 	raw, _ := Encode(v1)
 	Decode(raw, &v2)
 
 	if !bytes.Equal(v2[0].Data, v1[0].Data) {
-		t.Errorf("Expected \n to get %v,\nbut got %v", v1[0].Data, v2[0].Data) 
+		t.Errorf("Expected \n to get %v,\nbut got %v", v1[0].Data, v2[0].Data)
 	}
 
 	if !bytes.Equal(v2[1].Data, v1[1].Data) {
-		t.Errorf("Expected \n to get %v,\nbut got %v", v1[1].Data, v2[1].Data) 
+		t.Errorf("Expected \n to get %v,\nbut got %v", v1[1].Data, v2[1].Data)
 	}
 }
 
 // For testing purpose only. Will be removed.
 type Tx struct {
-	Type              uint16
-	To                *common.Address
-	From              *common.Address
-	Ids               []int32
-	Value             *big.Int	
-	Nonce             uint64
-	Hash              common.Hash
-	ChainID           *big.Int
-	Status            uint64
-	BlockNumber       *big.Int
+	Type        uint16
+	To          *common.Address
+	From        *common.Address
+	Ids         []int32
+	Value       *big.Int
+	Nonce       uint64
+	Hash        common.Hash
+	ChainID     *big.Int
+	Status      uint64
+	BlockNumber *big.Int
 
 	GasUsed           uint64
 	GasPrice          *big.Int
@@ -191,19 +192,19 @@ type Tx struct {
 
 func TestEncodeStructFields(t *testing.T) {
 	tx1 := Tx{
-		Hash: common.Hash{1, 2, 3, 4},
-		Nonce: uint64(444), 
-		Ids: []int32{22, 33, 44},
-		ChainID: big.NewInt(666), 
-		Value: big.NewInt(333444), 
-		Type: uint16(22), 
-		From: &common.Address{6, 6, 6, 7, 7, 7},
-		Status: uint64(123),
+		Hash:        common.Hash{1, 2, 3, 4},
+		Nonce:       uint64(444),
+		Ids:         []int32{22, 33, 44},
+		ChainID:     big.NewInt(666),
+		Value:       big.NewInt(333444),
+		Type:        uint16(22),
+		From:        &common.Address{6, 6, 6, 7, 7, 7},
+		Status:      uint64(123),
 		BlockNumber: big.NewInt(666999),
-		Data: []byte{20, 30, 40, 50},
-		GasTipCap: big.NewInt(12345678910),
+		Data:        []byte{20, 30, 40, 50},
+		GasTipCap:   big.NewInt(12345678910),
 	}
-	
+
 	tx2 := Tx{}
 
 	buf, err := Encode(tx1)
@@ -215,16 +216,23 @@ func TestEncodeStructFields(t *testing.T) {
 	Decode(buf, &tx2)
 
 	fmt.Println(buf)
-	fmt.Println("Type: ",    tx1.Type,    " ", tx2.Type)
-	fmt.Println("To: ",      tx1.To,      " ", tx2.To)
-	fmt.Println("Ids: ",     tx1.Ids,     " ", tx2.Ids)
-	fmt.Println("Value: ",   tx1.Value,   " ", tx2.Value)
-	fmt.Println("Nonce: ",   tx1.Nonce,   " ", tx2.Nonce)
-	fmt.Println("Hash: ",    tx1.Hash,    " ", tx2.Hash)
+	fmt.Println("Type: ", tx1.Type, " ", tx2.Type)
+	fmt.Println("To: ", tx1.To, " ", tx2.To)
+	fmt.Println("Ids: ", tx1.Ids, " ", tx2.Ids)
+	fmt.Println("Value: ", tx1.Value, " ", tx2.Value)
+	fmt.Println("Nonce: ", tx1.Nonce, " ", tx2.Nonce)
+	fmt.Println("Hash: ", tx1.Hash, " ", tx2.Hash)
 	fmt.Println("ChainID: ", tx1.ChainID, " ", tx2.ChainID)
-	fmt.Println("Status: ",  tx1.Status,  " ", tx2.Status)
-	fmt.Println("Data: ",    tx1.Data,    " ", tx2.Data)
+	fmt.Println("Status: ", tx1.Status, " ", tx2.Status)
+	fmt.Println("Data: ", tx1.Data, " ", tx2.Data)
 
-	fmt.Println("GasTip: ",  tx1.GasTipCap,   " ", tx2.GasTipCap)
-	fmt.Println("Number: ",  tx1.BlockNumber, " ", tx2.BlockNumber)
+	fmt.Println("GasTip: ", tx1.GasTipCap, " ", tx2.GasTipCap)
+	fmt.Println("Number: ", tx1.BlockNumber, " ", tx2.BlockNumber)
+}
+
+func TestDecode2(t *testing.T) {
+	b := make(Block, 100)
+	f := &BlockFooter{}
+
+	Decode2(b, f)
 }

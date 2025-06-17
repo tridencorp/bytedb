@@ -1,4 +1,4 @@
-package file
+package db
 
 import (
 	"bucketdb/tests"
@@ -7,7 +7,7 @@ import (
 )
 
 func TestFileWriteReadBlock(t *testing.T) {
-	f, _ := Open(".index.idx")
+	f, _ := OpenFile(".index.idx", os.O_RDWR|os.O_CREATE)
 	defer os.Remove(".index.idx")
 
 	f.Resize(100_000)

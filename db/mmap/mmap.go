@@ -1,27 +1,27 @@
 package mmap
 
 import (
-	"fmt"
+	"errors"
+	"io"
 	"os"
 
 	"golang.org/x/sys/unix"
 )
 
-var ErrMissingBytes = fmt.Errorf("Missing bytes")
-var EOF = fmt.Errorf("EOF")
+var ErrRead = errors.New("missing bytes when reading")
 
 type Mmap struct {
-	file   *os.File
-	data   []byte
+	file *os.File
+	data []byte
 
 	WriteOffset int
 	ReadOffset  int
 }
 
 // Mmap file.
-func Open(file *os.File, size, flags int) (*Mmap, error) {
-	if flags == 0 {
-		flags = unix.PROT_READ | unix.PROT_WRITE
+func Open(file *os.File, size, prot int) (*Mmap, error) {
+	if prot == 0 {
+		prot = unix.PROT_READ | unix.PROT_WRITE
 	}
 
 	// Use file size if necessary.
@@ -30,12 +30,16 @@ func Open(file *os.File, size, flags int) (*Mmap, error) {
 		size = int(info.Size())
 	}
 
-	data, err := unix.Mmap(int(file.Fd()), 0, size, flags, unix.MAP_SHARED)
+	data, err := unix.Mmap(int(file.Fd()), 0, size, prot, unix.MAP_SHARED)
 	if err != nil {
 		return nil, err
 	}
 
-	mmap := &Mmap{file: file, data: data, WriteOffset: 0, ReadOffset: 0}
+	mmap := &Mmap{
+		file: file,
+		data: data,
+	}
+
 	return mmap, nil
 }
 
@@ -51,16 +55,15 @@ func (m *Mmap) Write(bytes []byte) int {
 	return n
 }
 
-// Read bytes to des.
+// Read bytes to dst.
 func (m *Mmap) ReadTo(dst []byte) error {
-	if m.ReadOffset + len(dst) > len(m.data) {
-		return EOF
+	if m.ReadOffset+len(dst) > len(m.data) {
+		return io.EOF
 	}
 
 	n := copy(dst, m.data[m.ReadOffset:])
 	if n != len(dst) {
-		err := fmt.Errorf("%w: Expected %d || Got %d", ErrMissingBytes, len(dst), n)
-		return err
+		return ErrRead
 	}
 
 	m.ReadOffset += n

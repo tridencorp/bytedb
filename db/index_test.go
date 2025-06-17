@@ -1,7 +1,6 @@
-package index
+package db
 
 import (
-	"bucketdb/db/file"
 	"bucketdb/tests"
 	"flag"
 	"fmt"
@@ -15,7 +14,7 @@ var num = flag.Int64("num", 100_000, "number of iterations")
 func TestIndexPrealloc(t *testing.T) {
 	flag.Parse()
 
-	i, _ := Open(".index.idx", *num)
+	i, _ := OpenIndex(".index.idx", *num)
 	defer os.Remove(".index.idx")
 
 	prealloc := int64(2080000) // keys + collisions
@@ -25,12 +24,12 @@ func TestIndexPrealloc(t *testing.T) {
 func TestIndexSetGet(t *testing.T) {
 	flag.Parse()
 
-	idx, _ := Open(".index.idx", *num)
+	idx, _ := OpenIndex(".index.idx", *num)
 	defer os.Remove(".index.idx")
 
 	for i := 0; i < int(*num); i++ {
 		key := fmt.Sprintf("key_%d", i)
-		off := &file.Offset{Start: 0, Size: 10}
+		off := &Offset{Start: 0, Size: 10}
 		err := idx.Set([]byte(key), off)
 		tests.Assert(t, nil, err)
 	}

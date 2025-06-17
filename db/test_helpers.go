@@ -19,7 +19,7 @@ func FillCollection(coll *Collection, numOfKeys, sizeOfKey uint32) (int64, map[s
 	kv := map[string][]byte{}
 	written := int64(0)
 
-	for i:=1; i <= int(numOfKeys); i++ {
+	for i := 1; i <= int(numOfKeys); i++ {
 		val := make([]byte, sizeOfKey)
 
 		// Fill value with random bytes.

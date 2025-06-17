@@ -11,7 +11,7 @@ var ErrMaxKeys = errors.New("Bucket key limit reached")
 
 type Bucket struct {
 	file *os.File
-	Dir string
+	Dir  string
 
 	// In combination with WriteAt, it should give
 	// us the ultimate concurrent writes.
@@ -19,12 +19,12 @@ type Bucket struct {
 
 	// If offset reach size limit, we resize the file.
 	// We double it's size.
-  // TODO: will be changed.
+	// TODO: will be changed.
 	sizeLimit uint64
 
 	// Bucket ID.
-	ID  uint32
-	
+	ID uint32
+
 	TestOffset atomic.Int64
 
 	// Keeping track how many times we resize bucket.
@@ -34,7 +34,7 @@ type Bucket struct {
 	bucketsPerDir int16
 
 	// Keep track of the number of keys in the bucket.
-	// 
+	//
 	// TODO: This should also go to File. It's tracking
 	// number of keys per file so it would make sense to do it.
 	keysCount atomic.Int64
@@ -52,26 +52,26 @@ func OpenBucket(root string, conf Config) (*Bucket, error) {
 
 	// TODO: Temporary values untill we have proper bucket management.[]
 	bucket := &Bucket{
-		ID:1, 
-		file: file,
-		Dir: root,
-		keysLimit: uint64(conf.MaxKeys),
-		sizeLimit: uint64(conf.MaxSize),
-		ResizeCount: 0,
+		ID:            1,
+		file:          file,
+		Dir:           root,
+		keysLimit:     uint64(conf.MaxKeys),
+		sizeLimit:     uint64(conf.MaxSize),
+		ResizeCount:   0,
 		bucketsPerDir: int16(conf.MaxPerDir),
 	}
 
 	bucket.offset.Store(getOffset(bucket))
 	bucket.TestOffset.Store(0)
 
-	return bucket, nil;
+	return bucket, nil
 }
 
 // Write data to bucket.
 //
 // TODO: Should buckets know about keys and other
 // types ? Should they operate only on raw bytes ?
-// 
+//
 // TODO: We could return Offset{} here.
 func (b *Bucket) Write(data []byte) (int64, int64, uint32, error) {
 	count := b.keysCount.Add(1)
@@ -83,16 +83,16 @@ func (b *Bucket) Write(data []byte) (int64, int64, uint32, error) {
 
 	// We are adding len to atomic value and then deducting it
 	// from the result, this should give us space for our data.
-	offset    := b.offset.Add(int64(len(data)))
+	offset := b.offset.Add(int64(len(data)))
 	keyOffset := offset - int64(len(data))
 
-	off  := int64(0)
+	off := int64(0)
 	size := int64(0)
 
 	// Resize the file when we reach size limit.
 	if offset >= int64(b.sizeLimit) {
 		b.mux.Lock()
-		// Check if our condition is still valid - some other goroutine 
+		// Check if our condition is still valid - some other goroutine
 		// could changed the size limit in the time we was waiting for lock.
 		if offset >= int64(b.sizeLimit) {
 			err := b.resize()
@@ -121,8 +121,8 @@ func (bucket *Bucket) resize() error {
 
 // Getting last offset from which we can start writing data.
 // For now we just do it dead simple, read file from beginning
-// record by record till end of data. 
-// It would basically be done only for last block - the one we are currently writing to. 
+// record by record till end of data.
+// It would basically be done only for last block - the one we are currently writing to.
 // Other blocks will be immutable (so no offset needed).
 func getOffset(bucket *Bucket) int64 {
 	it := Iterator{Bucket: bucket}
