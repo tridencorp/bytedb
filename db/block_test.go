@@ -20,7 +20,7 @@ func TestFooterWrite(t *testing.T) {
 	tests.AssertEqual(t, []byte{7, 0, 0, 0}, b.data)
 }
 
-func TestBlockWrite(t *testing.T) {
+func TestBlockWriteRead(t *testing.T) {
 	b := NewBlock(20)
 	a := uint32(1337)
 
@@ -30,4 +30,10 @@ func TestBlockWrite(t *testing.T) {
 
 	f := b.ReadFooter()
 	tests.Assert(t, 16, f.Size)
+
+	for i := 0; i < 4; i++ {
+		res := uint32(0)
+		b.Read(ToBytes(&res))
+		tests.Assert(t, a, res)
+	}
 }

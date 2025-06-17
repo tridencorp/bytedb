@@ -7,8 +7,9 @@ import (
 
 // Default file block.
 type Block struct {
-	data   []byte
-	offset int64
+	data       []byte
+	offset     int64
+	ReadOffset int
 }
 
 type BlockFooter struct {
@@ -16,26 +17,37 @@ type BlockFooter struct {
 }
 
 func NewBlock(size int64) *Block {
-	return &Block{data: make([]byte, size)}
+	return &Block{data: make([]byte, size), ReadOffset: 0}
 }
 
 // Write data to block.
-func (b *Block) Write(data []byte) (int, error) {
+func (b *Block) Write(src []byte) (int, error) {
 	f := b.ReadFooter()
 
 	// Check if we have enough space in block.
-	if int(f.Size)+len(data) > len(b.data)-int(unsafe.Sizeof(*f)) {
+	if int(f.Size)+len(src) > len(b.data)-int(unsafe.Sizeof(*f)) {
 		return 0, fmt.Errorf("not enough space in block")
 	}
 
 	// Copy data to block.
-	copy(b.data[f.Size:], data)
+	copy(b.data[f.Size:], src)
 
 	// Update block size.
-	f.Size += int32(len(data))
+	f.Size += int32(len(src))
 	b.WriteFooter(f)
 
 	return 0, nil
+}
+
+// Read data from block.
+func (b *Block) Read(dst []byte) (int, error) {
+	if b.ReadOffset+len(dst) > len(b.data)-int(unsafe.Sizeof(BlockFooter{})) {
+		return 0, fmt.Errorf("EOF")
+	}
+
+	n := copy(dst, b.data[b.ReadOffset:])
+	b.ReadOffset += len(dst)
+	return n, nil
 }
 
 // Read block footer.
