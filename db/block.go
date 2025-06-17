@@ -22,8 +22,16 @@ func (b *Block) ReadFooter() *BlockFooter {
 	s := int(unsafe.Sizeof(*f))
 
 	// Read footer from the end of block.
-	off := len(b.data) - s
-	Decode2(b.data[off:], ToBytes(f))
+	i := len(b.data) - s
+	Decode2(b.data[i:], ToBytes(f))
 
 	return f
+}
+
+// Write block footer.
+func (b *Block) WriteFooter(footer *BlockFooter) {
+	// Write footer in the end of block.
+	s := int(unsafe.Sizeof(*footer))
+	i := len(b.data) - s
+	Decode2(ToBytes(footer), b.data[i:])
 }
