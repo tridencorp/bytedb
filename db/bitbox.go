@@ -229,18 +229,29 @@ func write(buf *bytes.Buffer, elem any) error {
 func Decode2(buf []byte, items ...any) error {
 	for _, item := range items {
 		val := reflect.ValueOf(item)
+
+		if !isPointer(val) {
+			continue
+		}
+
 		val = reflect.Indirect(val)
 
 		if isStruct(val) {
-			p := unsafe.Pointer(val.Addr().Pointer())
-			s := val.Type().Size()
-
-			dst := unsafe.Slice((*byte)(p), s)
-			copy(dst, buf[:s])
+			copy(objectToBytes(val), buf)
 		}
 	}
 
 	return nil
+}
+
+// Get pointer to object and cast it to []byte.
+// After that we can copy bytes directly to it
+// using copy().
+func objectToBytes(obj reflect.Value) []byte {
+	p := unsafe.Pointer(obj.Addr().Pointer())
+	s := obj.Type().Size()
+
+	return unsafe.Slice((*byte)(p), s)
 }
 
 func Decode(buf *bytes.Buffer, items ...any) error {
