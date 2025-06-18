@@ -10,7 +10,7 @@ type Block struct {
 	// I dont like embedded structs but in this case
 	// it make sense. I don't want to map each field
 	// separately.
-	*blockFooter
+	*footer
 
 	data   []byte
 	offset int64
@@ -19,7 +19,7 @@ type Block struct {
 	ReadOffset int
 }
 
-type blockFooter struct {
+type footer struct {
 	Len int32
 }
 
@@ -31,27 +31,25 @@ func NewBlock(data []byte, cap int32) *Block {
 	}
 
 	// Points footer directly to underlying data bytes.
-	PointTo(&b.blockFooter, b.data[len(b.data)-int(unsafe.Sizeof(*b.blockFooter)):])
+	off := len(b.data) - int(unsafe.Sizeof(*b.footer))
+	PointTo(&b.footer, b.data[off:])
 
 	return b
 }
 
 // Write data to block.
 func (b *Block) Write(src []byte) (int, error) {
-	b.ReadFooter(ToBytes(&b.Len))
-
 	// Check if we have enough space in block.
-	if b.isFull(int(b.Len) + len(src)) {
+	if b.isFull(int(b.footer.Len) + len(src)) {
 		return 0, fmt.Errorf("EOF")
 	}
 
 	// Copy data to block.
-	copy(b.data[b.Len:], src)
+	copy(b.data[b.footer.Len:], src)
 
 	// Update block size.
-	b.Len += int32(len(src))
+	b.footer.Len += int32(len(src))
 
-	b.WriteFooter(ToBytes(&b.Len))
 	return 0, nil
 }
 
