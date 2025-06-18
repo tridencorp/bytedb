@@ -18,6 +18,10 @@ type CustomInt []int64
 type CustomArrByte [32]byte
 type CustomArrInt [32]int32
 
+type StructFoo struct {
+	Size uint32
+}
+
 // Helper for encoding/decoding slices.
 func EncodeDecodeSlice[T comparable](elem []T, result *[]T, t *testing.T) {
 	raw, _ := Encode(elem)
@@ -233,7 +237,7 @@ func TestEncodeStructFields(t *testing.T) {
 
 func TestDecode2Struct(t *testing.T) {
 	b := []byte{255, 0, 0, 0}
-	f := &BlockFooter{}
+	f := &StructFoo{}
 
 	Decode2(b, ToBytes(f))
 	tests.Assert(t, 255, f.Size)

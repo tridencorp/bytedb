@@ -2,7 +2,6 @@ package db
 
 import (
 	"fmt"
-	"unsafe"
 )
 
 // Default file block.
@@ -15,14 +14,10 @@ type Block struct {
 	ReadOffset int
 }
 
-type BlockFooter struct {
-	Size int32
-}
-
 func NewBlock(cap int32) *Block {
 	return &Block{
 		data:       make([]byte, cap),
-		Cap:        cap - int32(unsafe.Sizeof(BlockFooter{})),
+		Cap:        cap,
 		Len:        0,
 		ReadOffset: 0,
 	}
@@ -30,27 +25,26 @@ func NewBlock(cap int32) *Block {
 
 // Write data to block.
 func (b *Block) Write(src []byte) (int, error) {
-	f := b.ReadFooter()
+	b.ReadFooter(ToBytes(&b.Len))
 
 	// Check if we have enough space in block.
-	if int(f.Size)+len(src) > int(b.Cap) {
-		return 0, fmt.Errorf("not enough space in block")
+	if b.isFull(int(b.Len) + len(src)) {
+		return 0, fmt.Errorf("EOF")
 	}
 
 	// Copy data to block.
-	copy(b.data[f.Size:], src)
+	copy(b.data[b.Len:], src)
 
 	// Update block size.
-	f.Size += int32(len(src))
 	b.Len += int32(len(src))
-	b.WriteFooter(f)
 
+	b.WriteFooter(ToBytes(&b.Len))
 	return 0, nil
 }
 
 // Read data from block.
 func (b *Block) Read(dst []byte) (int, error) {
-	if b.ReadOffset+len(dst) > int(b.Cap) {
+	if b.isFull(b.ReadOffset + len(dst)) {
 		return 0, fmt.Errorf("EOF")
 	}
 
@@ -59,23 +53,18 @@ func (b *Block) Read(dst []byte) (int, error) {
 	return n, nil
 }
 
-// Read block footer.
-func (b *Block) ReadFooter() *BlockFooter {
-	f := &BlockFooter{}
-	ptr := ToBytes(f)
-
-	// Read footer from the end of block.
-	i := len(b.data) - len(ptr)
-	Decode2(b.data[i:], ptr)
-
-	return f
+// Read footer from the end of the block.
+func (b *Block) ReadFooter(footer []byte) {
+	i := len(b.data) - len(footer)
+	Decode2(b.data[i:], footer)
 }
 
-// Write block footer.
-func (b *Block) WriteFooter(footer *BlockFooter) {
-	// Write footer to the end of the block.
-	s := int(unsafe.Sizeof(*footer))
-	i := len(b.data) - s
+// Write footer to the end of the block.
+func (b *Block) WriteFooter(footer []byte) {
+	i := len(b.data) - len(footer)
+	Decode2(footer, b.data[i:])
+}
 
-	Decode2(ToBytes(footer), b.data[i:])
+func (b *Block) isFull(s int) bool {
+	return s > int(b.Cap)-4 // footer size
 }

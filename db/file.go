@@ -108,6 +108,8 @@ func (f *File) WriteBlock(num int64, data []byte) (int, error) {
 		return 0, err
 	}
 
+	block.Write(data)
+
 	// Write entire block back to the file.
 	n, err := f.file.WriteAt(block.data, block.offset)
 	return n, err
@@ -123,8 +125,6 @@ func (f *File) ReadBlock(num int64) (*Block, error) {
 
 	// Read block.
 	_, err := f.file.ReadAt(b.data, offset)
-	footer := b.ReadFooter()
-	b.Len = footer.Size
 
 	return b, err
 }

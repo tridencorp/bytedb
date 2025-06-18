@@ -7,16 +7,17 @@ import (
 
 func TestFooterRead(t *testing.T) {
 	b := Block{data: []byte{7, 0, 0, 0}}
-	f := b.ReadFooter()
+	s := uint32(0)
+	b.ReadFooter(ToBytes(&s))
 
-	tests.Assert(t, 7, f.Size)
+	tests.Assert(t, 7, s)
 }
 
 func TestFooterWrite(t *testing.T) {
 	b := Block{data: []byte{0, 0, 0, 0}}
-	f := BlockFooter{Size: 7}
+	s := uint32(7)
 
-	b.WriteFooter(&f)
+	b.WriteFooter(ToBytes(&s))
 	tests.AssertEqual(t, []byte{7, 0, 0, 0}, b.data)
 }
 
@@ -28,8 +29,9 @@ func TestBlockWriteRead(t *testing.T) {
 		b.Write(ToBytes(&a))
 	}
 
-	f := b.ReadFooter()
-	tests.Assert(t, 16, f.Size)
+	s := uint32(0)
+	b.ReadFooter(ToBytes(&s))
+	tests.Assert(t, 16, s)
 
 	for i := 0; i < 4; i++ {
 		res := uint32(0)
