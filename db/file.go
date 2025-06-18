@@ -11,9 +11,9 @@ var EOFMarker = []byte{0xFF, 0xFF, 0xFF, 0xFF}
 
 // File represents a data file with fixed-size blocks.
 type File struct {
-	file        *os.File
-	blockSize   int64
-	writeOffset int64
+	file      *os.File
+	blockSize int64
+	offset    int64
 }
 
 // Offset represents the position and size of a data within a file.
@@ -47,7 +47,7 @@ func OpenFile(path string, flag int) (*File, error) {
 		return nil, nil
 	}
 
-	return &File{file: file, blockSize: 4096, writeOffset: 0}, nil
+	return &File{file: file, blockSize: 4096, offset: 0}, nil
 }
 
 // Resize file to given size.
@@ -77,7 +77,7 @@ func (f *File) BlockCount() int64 {
 
 // Write data to file.
 func (f *File) Write(data []byte) (*Offset, error) {
-	n, err := f.file.WriteAt(data, f.writeOffset)
+	n, err := f.file.WriteAt(data, f.offset)
 	if err != nil {
 		return nil, err
 	}
@@ -86,9 +86,9 @@ func (f *File) Write(data []byte) (*Offset, error) {
 		return nil, fmt.Errorf("error when writing data to file")
 	}
 
-	off := &Offset{Start: uint32(f.writeOffset), Size: uint32(n)}
+	off := &Offset{Start: uint32(f.offset), Size: uint32(n)}
 
-	f.writeOffset += int64(n)
+	f.offset += int64(n)
 	return off, nil
 }
 

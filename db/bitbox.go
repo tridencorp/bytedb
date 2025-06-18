@@ -239,9 +239,9 @@ func Decode2(buf []byte, items ...any) error {
 
 // Get pointer to any fixed type and cast it to []byte.
 // After that we can copy bytes directly into it using copy().
-func ToBytes[T any](ptr *T) []byte {
-	size := unsafe.Sizeof(*ptr)
-	return unsafe.Slice((*byte)(unsafe.Pointer(ptr)), size)
+func ToBytes[T any](obj *T) []byte {
+	size := unsafe.Sizeof(*obj)
+	return unsafe.Slice((*byte)(unsafe.Pointer(obj)), size)
 }
 
 func Decode(buf *bytes.Buffer, items ...any) error {
