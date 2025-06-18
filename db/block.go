@@ -53,15 +53,19 @@ func (b *Block) Write(src []byte) (int, error) {
 	return 0, nil
 }
 
-// Read data from block.
-func (b *Block) Read(dst []byte) (int, error) {
+// Read data from block. Return false if there is not enough data.
+func (b *Block) Read(dst []byte) bool {
 	if b.isFull(b.ReadOffset + len(dst)) {
-		return 0, fmt.Errorf("EOF")
+		return false
 	}
 
 	n := copy(dst, b.data[b.ReadOffset:])
+	if n != len(dst) {
+		return false
+	}
+
 	b.ReadOffset += len(dst)
-	return n, nil
+	return true
 }
 
 // Read footer from the end of the block.

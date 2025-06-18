@@ -7,18 +7,20 @@ import (
 )
 
 func TestKVSetGet(t *testing.T) {
-	kv, _ := OpenKV(".data.kv")
+	index, _ := OpenIndex(".index.idx", 1000)
+	defer os.Remove(".index.idx")
+
+	kv, _ := OpenKV(".data.kv", index)
 	defer os.Remove(".data.kv")
 
 	for i := 0; i < 10; i++ {
 		key := fmt.Sprintf("key_%d", i)
-		off, _ := kv.Set([]byte(key), []byte("value"))
-		fmt.Println(off)
+		kv.Set([]byte(key), []byte("value"))
 	}
 
-	// for i := 0; i < 10; i++ {
-	// 	key := fmt.Sprintf("key_%d", i)
-	// 	val, _ := kv.Get([]byte(key))
-	// 	fmt.Println(val)
-	// }
+	for i := 0; i < 10; i++ {
+		key := fmt.Sprintf("key_%d", i)
+		val, _ := kv.Get([]byte(key))
+		fmt.Println(val)
+	}
 }

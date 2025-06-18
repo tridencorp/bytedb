@@ -51,16 +51,17 @@ func (i *Index) Prealloc(keys int64) (int64, error) {
 // Set index for the given kv and stores it in the index file.
 func (i *Index) Set(key []byte, off *Offset) error {
 	h := Hash(key)
+	off.Hash = [8]byte(ToBytes(&h))
 
 	// Get block number for key.
 	n := int64(h % uint64(i.file.BlockCount()))
 
-	i.file.WriteBlock(n, key)
+	i.file.WriteBlock(n, ToBytes(off))
 	return nil
 }
 
 // Get index.
-func (i *Index) Get(key []byte) ([]byte, error) {
+func (i *Index) Get(key []byte) (*Offset, error) {
 	h := Hash(key)
 
 	// Get block number for key.
@@ -72,14 +73,16 @@ func (i *Index) Get(key []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	// Find our key.
-	// TODO: We know the fixed  size, so we can make it quicker than Index - probably 🤞
-	index := bytes.Index(b.data, key)
-	if index == -1 {
-		return nil, nil
+	// Find index key.
+	off := &Offset{}
+
+	for b.Read(ToBytes(off)) {
+		if bytes.Equal(off.Hash[:], ToBytes(&h)) {
+			return off, nil
+		}
 	}
 
-	return b.data[index : index+len(key)], nil
+	return nil, nil
 }
 
 // Compute hash for given key.

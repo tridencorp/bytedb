@@ -1,6 +1,7 @@
 package db
 
 import (
+	"fmt"
 	"os"
 )
 
@@ -8,18 +9,16 @@ import (
 type KV struct {
 	file  *File
 	index *Index
-
-	// block size, preallocate,
 }
 
-func OpenKV(path string) (*KV, error) {
+func OpenKV(path string, index *Index) (*KV, error) {
 	// Open kv file.
 	f, err := OpenPath(path, os.O_RDWR|os.O_CREATE)
 	if err != nil {
 		return nil, err
 	}
 
-	return &KV{file: f}, nil
+	return &KV{file: f, index: index}, nil
 }
 
 // Store kv on disk.
@@ -39,4 +38,16 @@ func (kv *KV) Set(key, val []byte) (*Offset, error) {
 	}
 
 	return off, nil
+}
+
+// Get key from disk.
+func (kv *KV) Get(key []byte) ([]byte, error) {
+	// Get index for key.
+	i, err := kv.index.Get(key)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println(i)
+	return nil, nil
 }
