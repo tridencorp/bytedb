@@ -2,25 +2,38 @@ package db
 
 import (
 	"fmt"
+	"unsafe"
 )
 
 // Default file block.
 type Block struct {
+	// I dont like embedded structs but in this case
+	// it make sense. I don't want to map each field
+	// separately.
+	*blockFooter
+
 	data   []byte
 	offset int64
-	Len    int32
 	Cap    int32
 
 	ReadOffset int
 }
 
-func NewBlock(cap int32) *Block {
-	return &Block{
-		data:       make([]byte, cap),
+type blockFooter struct {
+	Len int32
+}
+
+func NewBlock(data []byte, cap int32) *Block {
+	b := &Block{
+		data:       data,
 		Cap:        cap,
-		Len:        0,
 		ReadOffset: 0,
 	}
+
+	// Points footer directly to underlying data bytes.
+	PointTo(&b.blockFooter, b.data[len(b.data)-int(unsafe.Sizeof(*b.blockFooter)):])
+
+	return b
 }
 
 // Write data to block.

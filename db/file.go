@@ -2,18 +2,15 @@ package db
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 )
-
-// Special 4-byte sequence used to mark end of data.
-var EOFMarker = []byte{0xFF, 0xFF, 0xFF, 0xFF}
 
 // File represents a data file with fixed-size blocks.
 type File struct {
 	file      *os.File
 	blockSize int64
-	offset    int64
 }
 
 // Offset represents the position and size of a data within a file.
@@ -47,7 +44,7 @@ func OpenFile(path string, flag int) (*File, error) {
 		return nil, nil
 	}
 
-	return &File{file: file, blockSize: 4096, offset: 0}, nil
+	return &File{file: file, blockSize: 4096}, nil
 }
 
 // Resize file to given size.
@@ -77,7 +74,10 @@ func (f *File) BlockCount() int64 {
 
 // Write data to file.
 func (f *File) Write(data []byte) (*Offset, error) {
-	n, err := f.file.WriteAt(data, f.offset)
+	// TODO: If this will be too expensive, we will track our own offset.
+	start, _ := f.file.Seek(0, io.SeekCurrent)
+
+	n, err := f.file.Write(data)
 	if err != nil {
 		return nil, err
 	}
@@ -86,9 +86,7 @@ func (f *File) Write(data []byte) (*Offset, error) {
 		return nil, fmt.Errorf("error when writing data to file")
 	}
 
-	off := &Offset{Start: uint32(f.offset), Size: uint32(n)}
-
-	f.offset += int64(n)
+	off := &Offset{Start: uint32(start), Size: uint32(n)}
 	return off, nil
 }
 
@@ -120,11 +118,12 @@ func (f *File) ReadBlock(num int64) (*Block, error) {
 	// Get block offset.
 	offset := num * f.blockSize
 
-	b := NewBlock(int32(f.blockSize))
-	b.offset = offset
-
 	// Read block.
-	_, err := f.file.ReadAt(b.data, offset)
+	data := make([]byte, f.blockSize)
+	_, err := f.file.ReadAt(data, offset)
+
+	b := NewBlock(data, int32(f.blockSize))
+	b.offset = offset
 
 	return b, err
 }

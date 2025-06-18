@@ -24,7 +24,6 @@ func OpenKV(path string) (*KV, error) {
 
 // Store kv on disk.
 func (kv *KV) Set(key, val []byte) (*Offset, error) {
-	// TODO: add data length prefix
 	data := append(key, val...)
 
 	// Write kv to file.

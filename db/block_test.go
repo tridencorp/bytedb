@@ -22,7 +22,7 @@ func TestFooterWrite(t *testing.T) {
 }
 
 func TestBlockWriteRead(t *testing.T) {
-	b := NewBlock(20)
+	b := NewBlock(make([]byte, 20), 20)
 	a := uint32(1337)
 
 	for i := 0; i < 10; i++ {
