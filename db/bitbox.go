@@ -244,6 +244,12 @@ func ToBytes[T any](obj *T) []byte {
 	return unsafe.Slice((*byte)(unsafe.Pointer(obj)), size)
 }
 
+// Points object to data.
+// TODO: Check length.
+func PointTo[T any](obj **T, data []byte) {
+	*obj = (*T)(unsafe.Pointer(&data[0]))
+}
+
 func Decode(buf *bytes.Buffer, items ...any) error {
 	for _, item := range items {
 		elem := reflect.TypeOf(item)
