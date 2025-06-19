@@ -1,7 +1,6 @@
 package db
 
 import (
-	"fmt"
 	"os"
 )
 
@@ -48,6 +47,5 @@ func (kv *KV) Get(key []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	fmt.Println(i)
 	return nil, nil
 }

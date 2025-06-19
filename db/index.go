@@ -89,7 +89,7 @@ func (i *Index) Get(key []byte) (*Offset, error) {
 			return nil, err
 		}
 
-		// Read all offsets from block and compare theirs hash to our.
+		// Read all offsets from block and compare theirs hash to ours.
 		for b.Read(ToBytes(off)) {
 			if bytes.Equal(off.Hash[:], ToBytes(&h)) {
 				return off, nil
