@@ -12,6 +12,7 @@ var ErrFull = errors.New("index is full")
 
 // File represents a data file with fixed-size blocks.
 type File struct {
+	ID        int32
 	file      *os.File
 	blockSize int64
 }

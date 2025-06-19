@@ -7,6 +7,7 @@ import (
 // Container for key-value data.
 type KV struct {
 	file  *File
+	dir   *Directory
 	index *Index
 }
 
@@ -42,10 +43,12 @@ func (kv *KV) Set(key, val []byte) (*Offset, error) {
 // Get key from disk.
 func (kv *KV) Get(key []byte) ([]byte, error) {
 	// Get index for key.
-	i, err := kv.index.Get(key)
-	if err != nil {
-		return nil, err
-	}
+	// i, err := kv.index.Get(key)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// Get file from which we will read kv.
 
 	return nil, nil
 }
