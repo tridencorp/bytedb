@@ -22,7 +22,7 @@ func Open(path string) (*DB, error) {
 	internal := path + "/internal"
 	err := os.MkdirAll(internal, 0755)
 	if err != nil {
-		return nil, err	
+		return nil, err
 	}
 
 	internals := &DB{root: internal}
