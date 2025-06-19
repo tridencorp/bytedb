@@ -1,22 +1,23 @@
 package db
 
 // Container for key-value data.
-type KV struct {
-	file    *File
-	dataDir *Directory
-	index   *Index
+type Keys struct {
+	files *Directory
+	index *Index
 }
 
-func OpenKV(path string, dataDir *Directory, index *Index) (*KV, error) {
-	return &KV{file: dataDir.Last, dataDir: dataDir, index: index}, nil
+func OpenKeys(files *Directory, index *Directory) (*Keys, error) {
+	i, _ := OpenIndex(index, 100_000)
+	return &Keys{files: files, index: i}, nil
 }
 
 // Store kv on disk.
-func (kv *KV) Set(key, val []byte) (*Offset, error) {
+func (kv *Keys) Set(key, val []byte) (*Offset, error) {
 	data := append(key, val...)
+	file := kv.files.Last
 
 	// Write kv to file.
-	off, err := kv.file.Write(data)
+	off, err := file.Write(data)
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +32,7 @@ func (kv *KV) Set(key, val []byte) (*Offset, error) {
 }
 
 // Get key from disk.
-func (kv *KV) Get(key []byte) ([]byte, error) {
+func (kv *Keys) Get(key []byte) ([]byte, error) {
 	// Get index for key.
 	i, err := kv.index.Get(key)
 	if err != nil {
@@ -39,7 +40,7 @@ func (kv *KV) Get(key []byte) ([]byte, error) {
 	}
 
 	// Get data file and read from it.
-	f, _ := kv.dataDir.Get(int(i.FileID))
+	f, _ := kv.files.Get(int(i.FileID))
 	buf := make([]byte, i.Size)
 
 	_, err = f.ReadAt(buf, int64(i.Start))

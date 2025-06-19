@@ -1,18 +1,30 @@
 package db
 
-// Available commands
-const (
-	CmdSet = 0x01
-	CmdGet = 0x02
-	CmdDel = 0x03
-	CmdPut = 0x04
+import (
+	"fmt"
+	"path/filepath"
 )
 
 type Collection struct {
-	// Collection root directory.
+	name string
 	root string
+
+	keys *Keys
 }
 
-func (db *DB) Collection(name string) (*Collection, error) {
-	return nil, nil
+func OpenCollection(name string, root string) *Collection {
+	c := &Collection{name: name, root: root}
+
+	c.keys, _ = OpenKeys(
+		Dir(filepath.Join(root, "keys", "data"), 10_000, "bin"),
+		Dir(filepath.Join(root, "keys", "index"), 10_000, "bin"),
+	)
+
+	return c
+}
+
+// Set key.
+func (c *Collection) Set(key, val []byte) {
+	off, _ := c.keys.Set(key, val)
+	fmt.Println(off)
 }

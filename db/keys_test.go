@@ -7,14 +7,14 @@ import (
 	"testing"
 )
 
-func TestKVSetGet(t *testing.T) {
-	index, _ := OpenIndex(".index.idx", 1000)
-	defer os.Remove(".index.idx")
+func TestKeysSetGet(t *testing.T) {
+	index := Dir("./test/index", 10, "bin")
+	defer os.RemoveAll("./test")
 
 	dataDir := Dir("./test", 10, "bin")
 	defer os.RemoveAll("./test")
 
-	kv, _ := OpenKV(".data.kv", dataDir, index)
+	kv, _ := OpenKeys(dataDir, index)
 	defer os.Remove(".data.kv")
 
 	for i := 0; i < 10; i++ {

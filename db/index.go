@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"hash/fnv"
-	"os"
 	"unsafe"
 )
 
@@ -16,14 +15,9 @@ type Index struct {
 
 // Open and load indexes. It creates a new index file
 // if it doesn't already exist.
-func OpenIndex(dir string, keysPerFile int64) (*Index, error) {
-	f, err := OpenFile(dir, os.O_RDWR|os.O_CREATE)
-	if err != nil {
-		return nil, nil
-	}
-
+func OpenIndex(dir *Directory, keysPerFile int64) (*Index, error) {
 	i := &Index{
-		file:        f,
+		file:        dir.Last,
 		keysPerFile: keysPerFile,
 		IndexSize:   int8(unsafe.Sizeof(Offset{})),
 	}
