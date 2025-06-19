@@ -17,7 +17,7 @@ func TestIndexPrealloc(t *testing.T) {
 	i, _ := OpenIndex(".index.idx", *num)
 	defer os.Remove(".index.idx")
 
-	prealloc := int64(2600000) // keys + collisions
+	prealloc := int64(2800000) // keys + collisions
 	tests.AssertEqual(t, prealloc, i.file.Size())
 }
 
@@ -30,8 +30,8 @@ func TestIndexSetGet(t *testing.T) {
 	for i := 0; i < int(*num); i++ {
 		key := fmt.Sprintf("key_%d", i)
 		off := &Offset{Start: uint32(i), Size: 10}
-		err := idx.Set([]byte(key), off)
 
+		err := idx.Set([]byte(key), off)
 		tests.Assert(t, nil, err)
 	}
 

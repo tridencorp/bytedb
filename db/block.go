@@ -80,6 +80,6 @@ func (b *Block) WriteFooter(footer []byte) {
 	Decode2(footer, b.data[i:])
 }
 
-func (b *Block) isFull(s int) bool {
-	return s > int(b.Cap)-4 // footer size
+func (b *Block) isFull(n int) bool {
+	return n > int(b.Cap)-4 // footer size
 }

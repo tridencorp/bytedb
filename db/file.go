@@ -1,11 +1,14 @@
 package db
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 )
+
+var ErrFull = errors.New("index is full")
 
 // File represents a data file with fixed-size blocks.
 type File struct {
@@ -104,6 +107,10 @@ func (f *File) WriteBlock(num int64, data []byte) (int, error) {
 	block, err := f.ReadBlock(num)
 	if err != nil {
 		return 0, err
+	}
+
+	if block.isFull(int(block.footer.Len) + len(data)) {
+		return -1, ErrFull
 	}
 
 	block.Write(data)

@@ -2,6 +2,7 @@ package db
 
 import (
 	"bytes"
+	"errors"
 	"hash/fnv"
 	"os"
 	"unsafe"
@@ -35,7 +36,7 @@ func OpenIndex(dir string, keysPerFile int64) (*Index, error) {
 func (i *Index) Prealloc(keys int64) (int64, error) {
 	// Calculate required space for all keys.
 	size := keys * int64(i.IndexSize)
-	size = (size * 130) / 100 // +30% for collisions
+	size = (size * 140) / 100 // +40% for collisions
 
 	// Resize if file is smaller than expected.
 	if i.file.Size() < size {
@@ -56,7 +57,18 @@ func (i *Index) Set(key []byte, off *Offset) error {
 	// Get block number for key.
 	n := int64(h % uint64(i.file.BlockCount()))
 
-	i.file.WriteBlock(n, ToBytes(off))
+	// If block is full, write to next one.
+	for j := 0; j < 2; j++ {
+		_, err := i.file.WriteBlock(n, ToBytes(off))
+
+		// Block is full, write to next one.
+		if errors.Is(err, ErrFull) {
+			n += 1
+			continue
+		}
+		return nil
+	}
+
 	return nil
 }
 
@@ -66,20 +78,26 @@ func (i *Index) Get(key []byte) (*Offset, error) {
 
 	// Get block number for key.
 	n := int64(h % uint64(i.file.BlockCount()))
-
-	// Read block.
-	b, err := i.file.ReadBlock(n)
-	if err != nil {
-		return nil, err
-	}
-
-	// Find index key.
 	off := &Offset{}
 
-	for b.Read(ToBytes(off)) {
-		if bytes.Equal(off.Hash[:], ToBytes(&h)) {
-			return off, nil
+	// Find index key in block. If not found we will search in next block.
+	// What if not found ? Undecided yet 🫣
+	for j := 0; j < 2; j++ {
+		// Read block.
+		b, err := i.file.ReadBlock(n)
+		if err != nil {
+			return nil, err
 		}
+
+		// Read all offsets from block and compare theirs hash to our.
+		for b.Read(ToBytes(off)) {
+			if bytes.Equal(off.Hash[:], ToBytes(&h)) {
+				return off, nil
+			}
+		}
+
+		// We didn't find anything, increment to next block.
+		n += 1
 	}
 
 	return nil, nil
