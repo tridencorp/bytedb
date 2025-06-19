@@ -90,8 +90,13 @@ func (f *File) Write(data []byte) (*Offset, error) {
 		return nil, fmt.Errorf("error when writing data to file")
 	}
 
-	off := &Offset{Start: uint32(start), Size: uint32(n)}
+	off := &Offset{Start: uint32(start), Size: uint32(n), FileID: uint32(f.ID)}
 	return off, nil
+}
+
+// Read data from file into dst, starting from given offset.
+func (f *File) ReadAt(dst []byte, off int64) (int, error) {
+	return f.file.ReadAt(dst, off)
 }
 
 // Write data to given block number. If there won't be any space

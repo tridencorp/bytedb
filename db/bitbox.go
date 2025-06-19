@@ -227,10 +227,13 @@ func write(buf *bytes.Buffer, elem any) error {
 // ********
 
 func Decode2(buf []byte, items ...any) error {
+	i := 0
+
 	for _, item := range items {
 		switch val := item.(type) {
 		case []byte:
-			copy(val, buf)
+			copy(val, buf[i:])
+			i += len(val)
 		}
 	}
 

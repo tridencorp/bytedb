@@ -1,24 +1,14 @@
 package db
 
-import (
-	"os"
-)
-
 // Container for key-value data.
 type KV struct {
-	file  *File
-	dir   *Directory
-	index *Index
+	file    *File
+	dataDir *Directory
+	index   *Index
 }
 
-func OpenKV(path string, index *Index) (*KV, error) {
-	// Open kv file.
-	f, err := OpenPath(path, os.O_RDWR|os.O_CREATE)
-	if err != nil {
-		return nil, err
-	}
-
-	return &KV{file: f, index: index}, nil
+func OpenKV(path string, dataDir *Directory, index *Index) (*KV, error) {
+	return &KV{file: dataDir.Last, dataDir: dataDir, index: index}, nil
 }
 
 // Store kv on disk.
@@ -43,12 +33,15 @@ func (kv *KV) Set(key, val []byte) (*Offset, error) {
 // Get key from disk.
 func (kv *KV) Get(key []byte) ([]byte, error) {
 	// Get index for key.
-	// i, err := kv.index.Get(key)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	i, err := kv.index.Get(key)
+	if err != nil {
+		return nil, err
+	}
 
-	// Get file from which we will read kv.
+	// Get data file and read from it.
+	f, _ := kv.dataDir.Get(int(i.FileID))
+	buf := make([]byte, i.Size)
 
-	return nil, nil
+	_, err = f.ReadAt(buf, int64(i.Start))
+	return buf, err
 }
