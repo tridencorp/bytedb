@@ -291,6 +291,8 @@ func Decode(buf *bytes.Buffer, items ...any) error {
 
 				fmt.Printf("unsupported type: %v\n", elem.Kind())
 			}
+
+			continue
 		}
 
 		if isStruct(reflect.Indirect(val)) {

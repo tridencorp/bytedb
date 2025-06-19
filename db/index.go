@@ -13,8 +13,7 @@ type Index struct {
 	IndexSize   int8
 }
 
-// Open and load indexes. It creates a new index file
-// if it doesn't already exist.
+// Open index for given directory.
 func OpenIndex(dir *Directory, keysPerFile int64) (*Index, error) {
 	i := &Index{
 		file:        dir.Last,

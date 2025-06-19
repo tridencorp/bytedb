@@ -1,7 +1,6 @@
 package db
 
 import (
-	"fmt"
 	"path/filepath"
 )
 
@@ -24,7 +23,11 @@ func OpenCollection(name string, root string) *Collection {
 }
 
 // Set key.
-func (c *Collection) Set(key, val []byte) {
-	off, _ := c.keys.Set(key, val)
-	fmt.Println(off)
+func (c *Collection) Set(key, val []byte) (*Offset, error) {
+	return c.keys.Set(key, val)
+}
+
+// Get key.
+func (c *Collection) Get(key []byte) ([]byte, error) {
+	return c.keys.Get(key)
 }

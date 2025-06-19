@@ -1,23 +1,28 @@
 package db
 
+import (
+	"bytes"
+)
+
 // Container for key-value data.
 type Keys struct {
 	files *Directory
 	index *Index
 }
 
-func OpenKeys(files *Directory, index *Directory) (*Keys, error) {
-	i, _ := OpenIndex(index, 100_000)
+func OpenKeys(files *Directory, indexDir *Directory) (*Keys, error) {
+	i, _ := OpenIndex(indexDir, 100_000)
 	return &Keys{files: files, index: i}, nil
 }
 
 // Store kv on disk.
 func (kv *Keys) Set(key, val []byte) (*Offset, error) {
-	data := append(key, val...)
 	file := kv.files.Last
+	data, _ := Encode(key, val)
 
 	// Write kv to file.
-	off, err := file.Write(data)
+	off, err := file.Write(data.Bytes())
+
 	if err != nil {
 		return nil, err
 	}
@@ -44,5 +49,10 @@ func (kv *Keys) Get(key []byte) ([]byte, error) {
 	buf := make([]byte, i.Size)
 
 	_, err = f.ReadAt(buf, int64(i.Start))
-	return buf, err
+
+	val := []byte{}
+	raw := bytes.NewBuffer(buf)
+
+	Decode(raw, &key, &val)
+	return val, err
 }
