@@ -1,5 +1,5 @@
-# bucketdb
-Small and fast kv store for blockchain.
+# bytedb
+Small and fast kv database for small data.
 
 # Running tests
 
