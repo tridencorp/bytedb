@@ -10,14 +10,13 @@ import (
 
 var ErrFull = errors.New("index is full")
 
-// File represents a data file with fixed-size blocks.
 type File struct {
 	ID        int
 	file      *os.File
 	blockSize int64
 }
 
-// Offset represents the position and size of a data within a file.
+// Offset keeps information about the location of the data.
 type Offset struct {
 	FileID uint32
 	Start  uint32

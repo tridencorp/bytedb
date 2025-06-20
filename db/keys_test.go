@@ -9,13 +9,10 @@ import (
 
 func TestKeysSetGet(t *testing.T) {
 	index := Dir("./test/index", 10, "bin")
-	defer os.RemoveAll("./test")
-
 	dataDir := Dir("./test", 10, "bin")
 	defer os.RemoveAll("./test")
 
 	kv, _ := OpenKeys(dataDir, index)
-	defer os.Remove(".data.kv")
 
 	for i := 0; i < 10; i++ {
 		key := fmt.Sprintf("key_%d", i)
@@ -29,13 +26,9 @@ func TestKeysSetGet(t *testing.T) {
 		v := fmt.Sprintf("val_%d", i)
 
 		b, _ := kv.Get([]byte(k))
-
-		key := [5]byte{}
 		val := [5]byte{}
 
-		Decode2(b, key[:], val[:])
-
-		tests.Assert(t, k, string(key[:]))
+		Decode2(b, val[:])
 		tests.Assert(t, v, string(val[:]))
 	}
 }

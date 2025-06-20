@@ -51,7 +51,7 @@ func (d *Directory) Get(id int) (*File, error) {
 		return nil, err
 	}
 
-	if d.Last == nil || (d.Last != nil && d.Last.ID < id) {
+	if d.Last == nil || d.Last.ID < id {
 		d.Last = f
 	}
 

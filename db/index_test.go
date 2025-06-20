@@ -18,7 +18,7 @@ func TestIndexPrealloc(t *testing.T) {
 	defer os.RemoveAll("./test")
 
 	prealloc := int64(2800000) // keys + collisions
-	tests.AssertEqual(t, prealloc, i.file.Size())
+	tests.AssertEqual(t, prealloc, i.files.Last.Size())
 }
 
 func TestIndexSetGet(t *testing.T) {

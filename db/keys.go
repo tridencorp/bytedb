@@ -10,17 +10,17 @@ type Keys struct {
 	index *Index
 }
 
-func OpenKeys(files *Directory, indexDir *Directory) (*Keys, error) {
-	i, _ := OpenIndex(indexDir, 100_000)
+func OpenKeys(files *Directory, indexes *Directory) (*Keys, error) {
+	i, _ := OpenIndex(indexes, 100_000)
 	return &Keys{files: files, index: i}, nil
 }
 
-// Store kv on disk.
-func (kv *Keys) Set(key, val []byte) (*Offset, error) {
-	file := kv.files.Last
+// Store key on disk.
+func (k *Keys) Set(key, val []byte) (*Offset, error) {
+	file := k.files.Last
 	data, _ := Encode(key, val)
 
-	// Write kv to file.
+	// Write key data to file.
 	off, err := file.Write(data.Bytes())
 
 	if err != nil {
@@ -28,7 +28,7 @@ func (kv *Keys) Set(key, val []byte) (*Offset, error) {
 	}
 
 	// Write key to index.
-	err = kv.index.Set(key, off)
+	err = k.index.Set(key, off)
 	if err != nil {
 		return nil, err
 	}
@@ -36,23 +36,24 @@ func (kv *Keys) Set(key, val []byte) (*Offset, error) {
 	return off, nil
 }
 
-// Get key from disk.
-func (kv *Keys) Get(key []byte) ([]byte, error) {
-	// Get index for key.
-	i, err := kv.index.Get(key)
+// Get key from disk
+func (k *Keys) Get(key []byte) ([]byte, error) {
+	// Look up index
+	i, err := k.index.Get(key)
 	if err != nil {
 		return nil, err
 	}
 
-	// Get data file and read from it.
-	f, _ := kv.files.Get(int(i.FileID))
-	buf := make([]byte, i.Size)
+	// Get data file
+	f, _ := k.files.Get(int(i.FileID))
 
+	// Read from file
+	buf := make([]byte, i.Size)
 	_, err = f.ReadAt(buf, int64(i.Start))
 
-	val := []byte{}
-	raw := bytes.NewBuffer(buf)
+	// Decode key/val
+	var val []byte
+	Decode(bytes.NewBuffer(buf), &key, &val)
 
-	Decode(raw, &key, &val)
 	return val, err
 }
