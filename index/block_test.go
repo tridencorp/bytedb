@@ -1,11 +1,17 @@
 package index
 
 import (
-	"fmt"
+	"bucketdb/tests"
 	"testing"
 )
 
-func TestFooterRead(t *testing.T) {
-	fmt.Println("x: ", HeaderSize)
-	fmt.Println("x: ", DataSize)
+func TestBlockWriteRead(t *testing.T) {
+	foo := []byte("foo")
+	bar := make([]byte, 3)
+
+	b := Block{}
+	b.Write(foo)
+	b.Read(0, bar)
+
+	tests.AssertEqual(t, foo, bar)
 }
