@@ -1,4 +1,4 @@
-module bucketdb
+module bytedb
 
 go 1.22.1
 

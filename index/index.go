@@ -1,26 +1,36 @@
 package index
 
 import (
+	"bytedb/db/mmap"
 	"hash/fnv"
 	"os"
 )
 
-// Cache keeps block lengths in memory, so we don't have to read
-// the entire block before writing.
-type Cache struct {
-}
-
 type IndexFile struct {
 	len       uint64
-	blocks    uint64
+	maxBlocks uint64
 	file      *os.File
-	resizeCap uint64
-	Cache     *Cache
+	blocks    *mmap.Mmap
+	growBy    uint64 // blocks added per each resize
 }
 
-// Open opens the index file, creating it if it does not exist.
-func Open(file *os.File, cap uint64) *IndexFile {
-	return &IndexFile{blocks: cap, resizeCap: cap}
+// Open mmaps the given file and returns an IndexFile.
+// blockCount specifies how many blocks will be mapped from the file into memory.
+func Open(file *os.File, blockCount uint64) (*IndexFile, error) {
+	blocks, err := mmap.Open(file, int(blockCount), 0)
+	if err != nil {
+		return nil, err
+	}
+
+	return &IndexFile{maxBlocks: blockCount, blocks: blocks, growBy: blockCount}, nil
+}
+
+// Write writes index key to file
+func (f *IndexFile) Write(key []byte) {
+	// Calculate block number starting from 1 (0 is reserved for file header)
+	// n := (hash(key) % f.maxBlocks) + 1
+
+	// Get block
 }
 
 // hash calculates FNV 64-bit hash of the given key
