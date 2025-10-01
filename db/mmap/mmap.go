@@ -24,10 +24,14 @@ func Open(file *os.File, size, prot int) (*Mmap, error) {
 		prot = unix.PROT_READ | unix.PROT_WRITE
 	}
 
-	// Use file size if necessary.
-	if size == 0 {
-		info, _ := file.Stat()
-		size = int(info.Size())
+	info, _ := file.Stat()
+
+	// Truncate file if it's to small
+	if int(info.Size()) < size {
+		err := file.Truncate(int64(size))
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	data, err := unix.Mmap(int(file.Fd()), 0, size, prot, unix.MAP_SHARED)
