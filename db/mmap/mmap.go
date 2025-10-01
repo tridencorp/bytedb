@@ -11,19 +11,20 @@ import (
 var ErrRead = errors.New("missing bytes when reading")
 
 type Mmap struct {
-	file *os.File
-	data []byte
-
+	file        *os.File
+	data        []byte
+	blockSize   int
 	WriteOffset int
 	ReadOffset  int
 }
 
-// Mmap file.
-func Open(file *os.File, size, prot int) (*Mmap, error) {
+// Mmap file
+func Open(file *os.File, blockSize, size, prot int) (*Mmap, error) {
 	if prot == 0 {
 		prot = unix.PROT_READ | unix.PROT_WRITE
 	}
 
+	size = blockSize * size
 	info, _ := file.Stat()
 
 	// Truncate file if it's to small
@@ -40,8 +41,9 @@ func Open(file *os.File, size, prot int) (*Mmap, error) {
 	}
 
 	mmap := &Mmap{
-		file: file,
-		data: data,
+		blockSize: blockSize,
+		file:      file,
+		data:      data,
 	}
 
 	return mmap, nil
@@ -74,9 +76,9 @@ func (m *Mmap) ReadTo(dst []byte) error {
 	return nil
 }
 
-// Read n bytes from mmaped file.
-func (m *Mmap) Read(n int) ([]byte, error) {
-	data := make([]byte, n)
+// Read reads n blocks starting from offset
+func (m *Mmap) Read(offset, n int) ([]byte, error) {
+	data := make([]byte, n*m.blockSize)
 	m.ReadTo(data)
 	return data, nil
 }
@@ -103,7 +105,7 @@ func (m *Mmap) Resize(size int64) error {
 	}
 
 	// Mmap file again.
-	mmap, err := Open(m.file, int(size), 0)
+	mmap, err := Open(m.file, int(size), m.blockSize, 0)
 	if err != nil {
 		return err
 	}

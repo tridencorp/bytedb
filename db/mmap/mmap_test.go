@@ -1,20 +1,20 @@
 package mmap
 
 import (
-	"bucketdb/tests"
+	"bytedb/tests"
 	"fmt"
 	"os"
 	"testing"
 )
 
 func TestOpen(t *testing.T) {
-	file, _ := os.OpenFile("./test.wal", os.O_RDWR | os.O_CREATE, 0644)
+	file, _ := os.OpenFile("./test.wal", os.O_RDWR|os.O_CREATE, 0644)
 	defer os.Remove("./test.wal")
 
 	size := int64(1024 * 1024 * 1)
 	file.Truncate(size)
 
-	mmap, err := Open(file, int(size), 0)
+	mmap, err := Open(file, int(size), 1, 0)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -24,13 +24,13 @@ func TestOpen(t *testing.T) {
 }
 
 func TestWriteRead(t *testing.T) {
-	file, _ := os.OpenFile("./test.wal", os.O_RDWR | os.O_CREATE, 0644)
+	file, _ := os.OpenFile("./test.wal", os.O_RDWR|os.O_CREATE, 0644)
 	defer os.Remove("./test.wal")
 
 	size := int64(1024 * 1024 * 1)
 	file.Truncate(size)
 
-	mmap, err := Open(file, int(size), 0)
+	mmap, err := Open(file, int(size), 1, 0)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -41,8 +41,8 @@ func TestWriteRead(t *testing.T) {
 	data2 := []byte("Hello Wal 😱")
 	mmap.Write(data2)
 
-	res1, _ := mmap.Read(len(data1))
-	res2, _ := mmap.Read(len(data2))
+	res1, _ := mmap.Read(0, 1)
+	res2, _ := mmap.Read(0, 1)
 
 	tests.AssertEqual(t, string(data1), string(res1))
 	tests.AssertEqual(t, string(data2), string(res2))
