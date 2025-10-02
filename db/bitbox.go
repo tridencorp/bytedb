@@ -215,7 +215,8 @@ func encodeSlice[T any](buf *bytes.Buffer, val reflect.Value) {
 	ptr := unsafe.Pointer(val.Index(0).Addr().UnsafePointer())
 	slice := unsafe.Slice((*T)(ptr), val.Len())
 
-	binary.Write(buf, binary.BigEndian, slice)
+	binary.Write(buf, binary.BigEndian,
+		slice)
 }
 
 func write(buf *bytes.Buffer, elem any) error {
@@ -240,15 +241,24 @@ func Decode2(buf []byte, items ...any) error {
 	return nil
 }
 
-// Get pointer to any fixed type and cast it to []byte.
+// Get pointer to any fixed type (and struct) and cast it to []byte.
 // After that we can copy bytes directly into it using copy().
 func ToBytes[T any](obj *T) []byte {
 	size := unsafe.Sizeof(*obj)
 	return unsafe.Slice((*byte)(unsafe.Pointer(obj)), size)
 }
 
-// Points object to data.
-// TODO: Check length.
+// AsBytes returns a byte slice representation of any fixed-size type (struct or basic type).
+// The slice points directly into the object’s memory, so it can be used with copy().
+func AsBytes[T any](obj *T) []byte {
+	size := unsafe.Sizeof(*obj)
+	return unsafe.Slice((*byte)(unsafe.Pointer(obj)), size)
+}
+
+// Points object to data bytes. Changing object will change underlying data
+//
+// TODO: Check length
+// TODO: Check alignment of data
 func PointTo[T any](obj **T, data []byte) {
 	*obj = (*T)(unsafe.Pointer(&data[0]))
 }
@@ -260,6 +270,7 @@ func Decode(buf *bytes.Buffer, items ...any) error {
 
 		if isSlicePtr(item) {
 			elem = elem.Elem().Elem()
+
 			switch elem.Kind() {
 			case reflect.Uint8:
 				decodeSlice[uint8](buf, item)
