@@ -23,12 +23,38 @@ func main() {
 			continue
 		}
 
+		// Create Conn
+		conn := server.NewConn(nfd)
+
 		// For this version each connection will be run in separate goroutine.
 		// Later we will use poll/epoll together with goroutine pool.
-		go handleConn(nfd, addr)
+		go handleConn(conn, addr)
 	}
 }
 
-func handleConn(nfd int, addr syscall.Sockaddr) {
+func handleConn(conn *server.Conn, addr syscall.Sockaddr) {
 	log.Println("handling connection...")
+
+	// We want to be sure that connection will be always closed
+	defer conn.Close()
+
+	// Buffer for reading data
+	buf := make([]byte, 4096)
+
+	for {
+		// Waiting for data to read
+		n, err := conn.Read(buf)
+		if err != nil {
+			log.Println("Read error or client closed:", err)
+			return
+		}
+
+		if n == 0 {
+			log.Println("Client closed connection")
+			return
+		}
+
+		msg := string(buf[:n])
+		log.Printf("Received from %v: %s", addr, msg)
+	}
 }
