@@ -1,6 +1,9 @@
 package server
 
 import (
+	"net"
+	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 )
@@ -9,6 +12,36 @@ import (
 type Conn struct {
 	fd  int
 	mux sync.Mutex
+}
+
+// Connect to tcp server,
+// Address should be in "ip:port" format
+func Connect(address string) (*Conn, error) {
+	parts := strings.Split(address, ":")
+
+	// Set addr and port
+	ip      := net.ParseIP(parts[0])
+	port, _ := strconv.Atoi(parts[1])
+
+	addr := &syscall.SockaddrInet4{
+		Port: port,
+		Addr: [4]byte(ip.To4()),
+	}
+
+	// Create socket
+	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_STREAM, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	// Connect to server
+	err = syscall.Connect(fd, addr)
+	if err != nil {
+		return nil, err
+	}
+
+	conn := &Conn{fd: fd}
+	return conn, nil
 }
 
 // Create new connection

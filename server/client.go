@@ -9,6 +9,12 @@ import (
 type Client struct {
 }
 
+// Create new client.
+func NewClient(addr string) (*Client, error) {
+	// conn, err := Connect(addr)
+	return nil, nil
+}
+
 // Send ADD command to server.
 // Proper key format is "coll::namespace::prefix::key".
 func (c *Client) Add(key string, val []byte) (*Cmd, []byte, error) {
@@ -42,7 +48,10 @@ func (c *Client) Add(key string, val []byte) (*Cmd, []byte, error) {
 		&args,
 	)
 
+	fmt.Println(pkg)
 	// Send cmd to server
+
+	Connect("127.0.0.1:4000")
 
 	return cmd, args, nil
 }
