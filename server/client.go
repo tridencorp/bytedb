@@ -3,6 +3,7 @@ package server
 import (
 	"bytedb/common"
 	"fmt"
+	"log"
 	"strings"
 )
 
@@ -40,7 +41,7 @@ func (c *Client) Add(key string, val []byte) ([]byte, error) {
 	args = append(args, keyBytes...)
 	args = append(args, val...)
 
-	// Prepare cmd pkg
+	// Prepare command pkg
 	pkg := common.Encode(
 		&cmd.Collection,
 		&cmd.Namespace,
@@ -49,15 +50,18 @@ func (c *Client) Add(key string, val []byte) ([]byte, error) {
 		&args,
 	)
 
+	// Add length prefix
+	pkg = common.Encode(pkg)
+
 	// Send cmd to server
 	n, err := c.conn.Write(pkg)
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Printf("bytes send: %d", n)
+	log.Printf("bytes send: %d", n)
 
-	// Wait for response
+	// Read response
 	res := make([]byte, 4096)
 	_, err = c.conn.Read(res)
 	if err != nil {

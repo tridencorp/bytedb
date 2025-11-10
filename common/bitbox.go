@@ -5,6 +5,7 @@ import (
 	"unsafe"
 )
 
+// Encode elements to []byte
 func Encode(elements ...any) []byte {
 	buf := []byte{}
 
@@ -22,13 +23,12 @@ func Encode(elements ...any) []byte {
 
 			buf = append(buf, BytesPtr(&l)...) // length prefix
 			buf = append(buf, val.Bytes()...)  // bytes
-			return buf
+			continue
 		}
 
 		// Encode simple basic types
-		// fmt.Println(val.CanAddr())
 		buf = append(buf, bytesPtr(val)...)
-		return buf
+		continue
 	}
 
 	return buf
@@ -53,7 +53,7 @@ func IsArray(val reflect.Value) bool {
 	return val.Kind() == reflect.Array
 }
 
-// Get pointer to any fixed type (and struct) and cast it to []byte
+// Get pointer from fixed type (including structs) and cast it to []byte
 func BytesPtr[T any](obj *T) []byte {
 	size := unsafe.Sizeof(*obj)
 	return unsafe.Slice((*byte)(unsafe.Pointer(obj)), size)
