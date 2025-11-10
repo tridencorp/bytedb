@@ -14,5 +14,5 @@ type Cmd struct {
 	Collection uint64
 	Namespace  uint64
 	Prefix     uint64
-	KeyHash    uint64
+	Key        uint64
 }

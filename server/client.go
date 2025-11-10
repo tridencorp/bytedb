@@ -21,7 +21,7 @@ func (c *Client) Add(key string, val []byte) (*Cmd, []byte, error) {
 	cmd.Collection = Hash([]byte(parts[0]))
 	cmd.Namespace  = Hash([]byte(parts[1]))
 	cmd.Prefix     = Hash([]byte(parts[2]))
-	cmd.KeyHash    = Hash([]byte(parts[3]))
+	cmd.Key        = Hash([]byte(parts[3]))
 
 	keyBytes := []byte(parts[3])
 

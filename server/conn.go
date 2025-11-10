@@ -18,7 +18,6 @@ func NewConn(fd int) *Conn {
 
 // Read from connection
 func (c *Conn) Read(buf []byte) (int, error) {
-
 	return syscall.Read(c.fd, buf)
 }
 
