@@ -15,7 +15,8 @@ func Run(address [4]byte, port int) int {
 	}
 
 	// Enable SO_REUSEADDR
-	if err := syscall.SetsockoptInt(fd, syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1); err != nil {
+	err = syscall.SetsockoptInt(fd, syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1)
+	if err != nil {
 		log.Fatal("setsockopt:", err)
 		return -1
 	}
@@ -27,13 +28,15 @@ func Run(address [4]byte, port int) int {
 	}
 
 	// Bind socket
-	if err := syscall.Bind(fd, s); err != nil {
+	err = syscall.Bind(fd, s)
+	if err != nil {
 		log.Fatalf("bind: %v", err)
 		return -1
 	}
 
 	// Listen on socket
-	if err := syscall.Listen(fd, syscall.SOMAXCONN); err != nil {
+	err = syscall.Listen(fd, syscall.SOMAXCONN)
+	if err != nil {
 		syscall.Close(fd)
 		return -1
 	}

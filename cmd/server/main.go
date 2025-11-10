@@ -12,11 +12,11 @@ func main() {
 	// Create database server
 	fd := server.Run([4]byte{127, 0, 0, 1}, 6666)
 
-	// Close listening socket
+	// Always close listening socket when main exits
 	defer syscall.Close(fd)
 
-	// Accept connections
 	for {
+		// Accept user connection
 		nfd, addr, err := syscall.Accept(fd)
 		if err != nil {
 			log.Println("accept error:", err)
@@ -35,14 +35,14 @@ func main() {
 func handleConn(conn *server.Conn, addr syscall.Sockaddr) {
 	log.Println("handling connection...")
 
-	// We want to be sure that connection will be always closed
+	// Close user connection on exit
 	defer conn.Close()
 
 	// Buffer for reading data
 	buf := make([]byte, 4096)
 
 	for {
-		// Waiting for data to read
+		// Waiting for clients cmd
 		n, err := conn.Read(buf)
 		if err != nil {
 			log.Println("Read error or client closed:", err)
