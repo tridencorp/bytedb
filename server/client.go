@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytedb/common"
 	"fmt"
 	"strings"
 )
@@ -9,7 +10,7 @@ type Client struct {
 }
 
 // Send ADD command to server.
-// Key format is "coll::namespace::prefix::key".
+// Proper key format is "coll::namespace::prefix::key".
 func (c *Client) Add(key string, val []byte) (*Cmd, []byte, error) {
 	parts := strings.Split(key, "::")
 
@@ -27,10 +28,17 @@ func (c *Client) Add(key string, val []byte) (*Cmd, []byte, error) {
 
 	// Original key and val are going to args
 	size := len(keyBytes) + len(val)
-	args := make(Args, size)
+	args := make(Args, 0, size)
 
 	args = append(args, keyBytes...)
 	args = append(args, val...)
+
+	// Prepare cmd to send
+	b := common.Encode(args)
+	fmt.Println(b)
+
+	// Send cmd to server
+
 
 	return cmd, args, nil
 }
