@@ -33,12 +33,16 @@ func (c *Client) Add(key string, val []byte) (*Cmd, []byte, error) {
 	args = append(args, keyBytes...)
 	args = append(args, val...)
 
-	// Prepare cmd to send
-	b := common.Encode(args)
-	fmt.Println(b)
+	// Prepare cmd pkg
+	pkg := common.Encode(
+		&cmd.Collection,
+		&cmd.Namespace,
+		&cmd.Prefix,
+		&cmd.Key,
+		&args,
+	)
 
 	// Send cmd to server
-
 
 	return cmd, args, nil
 }
