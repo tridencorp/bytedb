@@ -6,10 +6,13 @@ import (
 )
 
 func TestAdd(t *testing.T) {
-	cli := Client{}
+	cli, err := NewClient("127.0.0.1:6666")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	// With prefix
-	cmd, arg, err := cli.Add("test::cmd::add::key_1", []byte("Hello"))
-	
-	fmt.Println(cmd, arg, err)
+	res, err := cli.Add("test::cmd::add::key_1", []byte("Hello"))
+	fmt.Println(res, err)
 }

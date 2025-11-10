@@ -7,21 +7,22 @@ import (
 )
 
 type Client struct {
+	conn *Conn
 }
 
 // Create new client.
 func NewClient(addr string) (*Client, error) {
-	// conn, err := Connect(addr)
-	return nil, nil
+	conn, err := Connect(addr)
+	return &Client{conn: conn}, err
 }
 
 // Send ADD command to server.
 // Proper key format is "coll::namespace::prefix::key".
-func (c *Client) Add(key string, val []byte) (*Cmd, []byte, error) {
+func (c *Client) Add(key string, val []byte) ([]byte, error) {
 	parts := strings.Split(key, "::")
 
 	if len(parts) < 4 {
-		return nil, nil, fmt.Errorf("invalid key")
+		return nil, fmt.Errorf("invalid key")
 	}
 
 	cmd := &Cmd{}
@@ -48,10 +49,21 @@ func (c *Client) Add(key string, val []byte) (*Cmd, []byte, error) {
 		&args,
 	)
 
-	fmt.Println(pkg)
 	// Send cmd to server
+	n, err := c.conn.Write(pkg)
+	if err != nil {
+		return nil, err
+	}
 
-	Connect("127.0.0.1:4000")
+	fmt.Printf("bytes send: %d", n)
 
-	return cmd, args, nil
+	// Wait for response
+	res := make([]byte, 4096)
+	_, err = c.conn.Read(res)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println(res)
+	return args, nil
 }

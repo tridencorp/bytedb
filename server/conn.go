@@ -49,12 +49,12 @@ func NewConn(fd int) *Conn {
 	return &Conn{fd: fd}
 }
 
-// Read from connection
+// Read from connection. It will block untill all data is read.
 func (c *Conn) Read(buf []byte) (int, error) {
 	return syscall.Read(c.fd, buf)
 }
 
-// Write to connection. It will block if kernel buffer is full.
+// Write to connection. It will block untill all data is wrote.
 func (c *Conn) Write(buf []byte) (int, error) {
 	c.mux.Lock()
 	defer c.mux.Unlock()
