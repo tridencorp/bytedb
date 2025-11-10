@@ -20,9 +20,15 @@ func Encode(elements ...any) []byte {
 		if IsByteSlice(val) {
 			l := uint32(len(val.Bytes()))
 
-			buf = append(buf, BytesPtr(&l)...) // append length prefix
-			buf = append(buf, val.Bytes()...)  // append bytes
+			buf = append(buf, BytesPtr(&l)...) // length prefix
+			buf = append(buf, val.Bytes()...)  // bytes
+			return buf
 		}
+
+		// Encode simple basic types
+		// fmt.Println(val.CanAddr())
+		buf = append(buf, bytesPtr(val)...)
+		return buf
 	}
 
 	return buf
@@ -47,9 +53,20 @@ func IsArray(val reflect.Value) bool {
 	return val.Kind() == reflect.Array
 }
 
-// Get pointer to any fixed type (and struct) and cast it to []byte.
-// After that we can copy bytes directly into it using copy().
+// Get pointer to any fixed type (and struct) and cast it to []byte
 func BytesPtr[T any](obj *T) []byte {
 	size := unsafe.Sizeof(*obj)
 	return unsafe.Slice((*byte)(unsafe.Pointer(obj)), size)
+}
+
+// Get pointer from reflect.Value and cast it to []byte
+func bytesPtr(val reflect.Value) []byte {
+	if !val.CanAddr() {
+		panic("value is not addressable")
+	}
+
+	ptr  := unsafe.Pointer(val.UnsafeAddr())
+	size := val.Type().Size()
+
+	return unsafe.Slice((*byte)(ptr), size)
 }
