@@ -15,12 +15,14 @@ func NewBuffer[T any](bytes []T) *Buffer[T] {
 	return &Buffer[T]{Bytes: bytes, Offset: 0}
 }
 
-func (b *Buffer[T]) Copy(dst []T) {
+func (b *Buffer[T]) Copy(dst []T) int {
 	n := copy(dst, b.Bytes[b.Offset:])
 	b.Offset += n
+
+	return n
 }
 
-// Encode objects to []byte
+// Bytes encoder
 func Encode(objects ...any) []byte {
 	buf := []byte{}
 
