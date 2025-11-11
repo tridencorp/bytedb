@@ -5,6 +5,21 @@ import (
 	"unsafe"
 )
 
+// Simple bytes buffer that tracks it's offset
+type Buffer[T any] struct {
+	Bytes  []T
+	Offset int
+}
+
+func NewBuffer[T any](bytes []T) *Buffer[T] {
+	return &Buffer[T]{Bytes: bytes, Offset: 0}
+}
+
+func (b *Buffer[T]) Copy(dst []T) {
+	n := copy(dst, b.Bytes[b.Offset:])
+	b.Offset += n
+}
+
 // Encode objects to []byte
 func Encode(objects ...any) []byte {
 	buf := []byte{}
@@ -34,7 +49,10 @@ func Encode(objects ...any) []byte {
 	return buf
 }
 
+// Bytes decoder
 func Decode(buf []byte, objects ...any) {
+	b := NewBuffer(buf)
+
 	for _, obj := range objects {
 		// 1. Fast Path for basic types
 		switch v := obj.(type) {
@@ -42,31 +60,44 @@ func Decode(buf []byte, objects ...any) {
 			*v = append(*v, buf...)
 			continue
 		case *bool:
-			copy(BytesPtr(v), buf)
+			b.Copy(BytesPtr(v))
+			continue
 		case *int8:
-			copy(BytesPtr(v), buf)
+			b.Copy(BytesPtr(v))
+			continue
 		case *int16:
-			copy(BytesPtr(v), buf)
+			b.Copy(BytesPtr(v))
+			continue
 		case *int32:
-			copy(BytesPtr(v), buf)
+			b.Copy(BytesPtr(v))
+			continue
 		case *int64:
-			copy(BytesPtr(v), buf)
+			b.Copy(BytesPtr(v))
+			continue
 		case *uint8:
-			copy(BytesPtr(v), buf)
+			b.Copy(BytesPtr(v))
+			continue
 		case *uint16:
-			copy(BytesPtr(v), buf)
+			b.Copy(BytesPtr(v))
+			continue
 		case *uint32:
-			copy(BytesPtr(v), buf)
+			b.Copy(BytesPtr(v))
+			continue
 		case *uint64:
-			copy(BytesPtr(v), buf)
+			b.Copy(BytesPtr(v))
+			continue
 		case *float32:
-			copy(BytesPtr(v), buf)
+			b.Copy(BytesPtr(v))
+			continue
 		case *float64:
-			copy(BytesPtr(v), buf)
+			b.Copy(BytesPtr(v))
+			continue
 		case *complex64:
-			copy(BytesPtr(v), buf)
+			b.Copy(BytesPtr(v))
+			continue
 		case *complex128:
-			copy(BytesPtr(v), buf)
+			b.Copy(BytesPtr(v))
+			continue
 		}
 
 		// 2. Using reflections
@@ -74,7 +105,8 @@ func Decode(buf []byte, objects ...any) {
 		val = reflect.Indirect(val) // indirect pointers
 
 		// Decode basic types
-		copy(bytesPtr(val), buf)
+		b.Copy(bytesPtr(val))
+
 		continue
 	}
 }
