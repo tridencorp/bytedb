@@ -7,19 +7,27 @@ import (
 
 // Simple bytes buffer that tracks it's offset
 type Buffer[T any] struct {
-	Bytes  []T
+	bytes  []T
 	Offset int
 }
 
 func NewBuffer[T any](bytes []T) *Buffer[T] {
-	return &Buffer[T]{Bytes: bytes, Offset: 0}
+	return &Buffer[T]{bytes: bytes, Offset: 0}
 }
 
 func (b *Buffer[T]) Copy(dst []T) int {
-	n := copy(dst, b.Bytes[b.Offset:])
+	n := copy(dst, b.bytes[b.Offset:])
 	b.Offset += n
 
 	return n
+}
+
+// Get next N bytes from slice and update offset
+func (b *Buffer[T]) Next(num int) []T {
+	off := b.Offset
+	b.Offset += num
+
+	return b.bytes[off:b.Offset]
 }
 
 // Bytes encoder
@@ -59,7 +67,9 @@ func Decode(buf []byte, objects ...any) {
 		// 1. Fast Path for basic types
 		switch v := obj.(type) {
 		case *[]byte:
-			*v = append(*v, buf...)
+			l := uint32(0)
+			Decode(b.Next(4), &l)
+			*v = append(*v, b.Next(int(l))...)
 			continue
 		case *bool:
 			b.Copy(BytesPtr(v))
@@ -104,32 +114,13 @@ func Decode(buf []byte, objects ...any) {
 
 		// 2. Using reflections
 		val := reflect.ValueOf(obj)
-		val = reflect.Indirect(val) // indirect pointers
+		val = reflect.Indirect(val) // indirect pointers/
 
 		// Decode basic types
 		b.Copy(bytesPtr(val))
 
 		continue
 	}
-}
-
-// Check if we deal with byte slice/array
-func IsByteList(val reflect.Value) bool {
-	if IsSlice(val) || IsArray(val) {
-		return val.Type().Elem().Kind() == reflect.Uint8
-	}
-
-	return false
-}
-
-// Check if we have slice
-func IsSlice(val reflect.Value) bool {
-	return val.Kind() == reflect.Slice
-}
-
-// Check if we have array
-func IsArray(val reflect.Value) bool {
-	return val.Kind() == reflect.Array
 }
 
 // Get pointer from fixed type (including structs) and cast it to []byte.
@@ -150,4 +141,23 @@ func bytesPtr(val reflect.Value) []byte {
 	size := val.Type().Size()
 
 	return unsafe.Slice((*byte)(ptr), size)
+}
+
+// Check if we deal with byte slice/array
+func IsByteList(val reflect.Value) bool {
+	if IsSlice(val) || IsArray(val) {
+		return val.Type().Elem().Kind() == reflect.Uint8
+	}
+
+	return false
+}
+
+// Check if we have slice
+func IsSlice(val reflect.Value) bool {
+	return val.Kind() == reflect.Slice
+}
+
+// Check if we have array
+func IsArray(val reflect.Value) bool {
+	return val.Kind() == reflect.Array
 }

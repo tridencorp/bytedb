@@ -24,3 +24,13 @@ func TestDecodeFloat64(t *testing.T) {
 
 	tests.Assert(t, f1, f2)
 }
+
+func TestDecodeByteSlice(t *testing.T) {
+	b1 := []byte{1, 2, 3}
+	b2 := []byte{}
+
+	buf := Encode(&b1)
+	Decode(buf, &b2)
+
+	tests.AssertEqual(t, b1, b2)
+}
