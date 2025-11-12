@@ -19,12 +19,12 @@ type Cmd struct {
 	Key        uint64
 }
 
-func DecodeCmd(bytes []byte) (*Cmd, *Args) {
+func DecodeCmd(buff []byte) (*Cmd, *Args) {
 	cmd := &Cmd{}
 	args := &Args{}
 
 	common.Decode(
-		bytes,
+		buff,
 		&cmd.Type,
 		&cmd.Collection,
 		&cmd.Namespace,
