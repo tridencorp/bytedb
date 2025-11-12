@@ -27,6 +27,7 @@ func (c *Client) Add(key string, val []byte) ([]byte, error) {
 	}
 
 	cmd := &Cmd{}
+	cmd.Type = uint8(CmdAdd)
 	cmd.Collection = Hash([]byte(parts[0]))
 	cmd.Namespace = Hash([]byte(parts[1]))
 	cmd.Prefix = Hash([]byte(parts[2]))
@@ -51,8 +52,6 @@ func (c *Client) Add(key string, val []byte) ([]byte, error) {
 		&args,
 	)
 
-	fmt.Println(args, " args")
-
 	// Add length prefix
 	pkg = common.Encode(pkg)
 
@@ -62,6 +61,7 @@ func (c *Client) Add(key string, val []byte) ([]byte, error) {
 		return nil, err
 	}
 
+	log.Println("sending: ", cmd.Collection, cmd.Namespace, cmd.Prefix, cmd.Key)
 	log.Printf("bytes send: %d", n)
 
 	// Read response

@@ -15,6 +15,7 @@ func NewBuffer[T any](bytes []T) *Buffer[T] {
 	return &Buffer[T]{bytes: bytes, Offset: 0}
 }
 
+// Copy bytes from buffer to dst. Basically it's wrapper for copy().
 func (b *Buffer[T]) Copy(dst []T) int {
 	n := copy(dst, b.bytes[b.Offset:])
 	b.Offset += n
@@ -22,7 +23,7 @@ func (b *Buffer[T]) Copy(dst []T) int {
 	return n
 }
 
-// Get next N bytes from slice and update offset
+// Get next N bytes from buffer
 func (b *Buffer[T]) Next(num int) []T {
 	off := b.Offset
 	b.Offset += num
@@ -30,7 +31,7 @@ func (b *Buffer[T]) Next(num int) []T {
 	return b.bytes[off:b.Offset]
 }
 
-// Bytes encoder
+// Encode objects
 func Encode(objects ...any) []byte {
 	buf := []byte{}
 
@@ -59,7 +60,7 @@ func Encode(objects ...any) []byte {
 	return buf
 }
 
-// Bytes decoder
+// Decode objects
 func Decode(buf []byte, objects ...any) {
 	b := NewBuffer(buf)
 

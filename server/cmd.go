@@ -12,16 +12,16 @@ type Args []byte
 
 // Cmd represents server command send by clients
 type Cmd struct {
-	Type       int8
+	Type       uint8
 	Collection uint64
 	Namespace  uint64
 	Prefix     uint64
 	Key        uint64
 }
 
-func DecodeCmd(bytes []byte) (*Cmd, Args) {
+func DecodeCmd(bytes []byte) (*Cmd, *Args) {
 	cmd := &Cmd{}
-	args := Args{}
+	args := &Args{}
 
 	common.Decode(
 		bytes,
@@ -30,7 +30,7 @@ func DecodeCmd(bytes []byte) (*Cmd, Args) {
 		&cmd.Namespace,
 		&cmd.Prefix,
 		&cmd.Key,
-		(*[]byte)(&args), // cast to bytes so we can avoid reflections
+		(*[]byte)(args), // cast to bytes so we can avoid reflections
 	)
 
 	return cmd, args
