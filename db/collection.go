@@ -28,15 +28,26 @@ func OpenCollection(dir string) *Collection {
 }
 
 // Add key-value to collection
-func (c *Collection) Add(key *collection.Key, val []byte) {
-	_, ok := c.File(key.Prefix)
+func (c *Collection) Add(key *collection.Key, val []byte) error {
+	f, ok := c.File(key.Prefix)
 
-	// If file is not in cache, load it from disk
+	// Load file from disk if we cannot get it from memory
 	if !ok {
-		// ./collection/keys/prefix_hex.kv
+		// collection/keys/prefix_hex.kv
 		path := filepath.Join(c.Dir, PathKeys, fmt.Sprintf("%x.kv", key.Prefix))
-		c.LoadFile(path, key.Prefix)
+		err := c.LoadFile(path, key.Prefix)
+		if err != nil {
+			return err
+		}
+
+		f, ok = c.File(key.Prefix)
+		if !ok {
+			return fmt.Errorf("failed to load file for prefix %x", key.Prefix)
+		}
 	}
+
+	// f.Write(key, val)
+	return nil
 }
 
 // Get key from memory
