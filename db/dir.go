@@ -38,7 +38,7 @@ func Dir(root string, perDir int, extension string) *Directory {
 
 // Get file from directory. Create it if it doesn't already exist.
 func (d *Directory) Get(id int) (*File, error) {
-	// Get subdir based on id using ceil technique.
+	// Get subdir based on id using ceil.
 	subdir := (d.PerDir + id - 1) / d.PerDir
 
 	// Build path for given id:
@@ -59,11 +59,11 @@ func (d *Directory) Get(id int) (*File, error) {
 	return f, nil
 }
 
-// Search in subdirectories and find max file id.
+// Search in subdirectories and find max file id
 func (d *Directory) Max() int {
 	max := 0
 
-	// Find last subdir.
+	// Find last subdir
 	subdirs, _ := os.ReadDir(d.Root)
 
 	for _, subdir := range subdirs {
@@ -73,12 +73,12 @@ func (d *Directory) Max() int {
 		}
 	}
 
-	// Dir is empty, no subdirs.
+	// Dir is empty, no subdirs
 	if max == 0 {
 		return max
 	}
 
-	// Find last file id.
+	// Find last file
 	path := fmt.Sprintf("%s/%d/", d.Root, max)
 	files, _ := os.ReadDir(path)
 

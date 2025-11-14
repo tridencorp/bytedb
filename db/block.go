@@ -44,7 +44,7 @@ func (b *Block) Write(src []byte) (int, error) {
 		return 0, fmt.Errorf("EOF")
 	}
 
-	// Copy data to block.
+	// Copy data to block
 	copy(b.data[b.footer.Len:], src)
 
 	// Update block size.

@@ -1,33 +1,27 @@
 package db
 
-import (
-	"path/filepath"
-)
+import "bytedb/collection"
 
 type Collection struct {
-	name string
-	root string
-
-	keys *Keys
+	name  string
+	Files map[uint64]File
 }
 
-func OpenCollection(name string, root string) *Collection {
-	c := &Collection{name: name, root: root}
+// Add key-value to collection
+func (c *Collection) Add(key *collection.Key, val []byte) {
+	_, ok := c.File(key.Prefix)
 
-	c.keys, _ = OpenKeys(
-		Dir(filepath.Join(root, "keys", "data"), 10_000, "bin"),
-		Dir(filepath.Join(root, "keys", "index"), 10_000, "bin"),
-	)
-
-	return c
+	// if file is not in cache, load it from disk
+	if !ok {
+		c.LoadFile(key.Prefix)
+	}
 }
 
-// Set key.
-func (c *Collection) Set(key, val []byte) (*Offset, error) {
-	return c.keys.Set(key, val)
+// Get key from memory
+func (c *Collection) File(hash uint64) (*File, bool) {
+	f, ok := c.Files[hash]
+	return &f, ok
 }
 
-// Get key.
-func (c *Collection) Get(key []byte) ([]byte, error) {
-	return c.keys.Get(key)
+func (c *Collection) LoadFile(hash uint64) {
 }

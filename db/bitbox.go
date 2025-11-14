@@ -35,6 +35,7 @@ func Encode(elements ...any) (*bytes.Buffer, error) {
 			if isEncoder(val) {
 				structEncode(buf, val)
 			}
+
 			continue
 		}
 
@@ -208,15 +209,11 @@ func encodeSlice[T any](buf *bytes.Buffer, val reflect.Value) {
 		return
 	}
 
-	// [OLD] Slower but safer.
-	// binary.Write(buf, binary.BigEndian, ar.Slice(0, ar.Len()).Interface().([]int8))
-	//
-	// [NEW] Unsafe but faster.
+	// Unsafe but faster.
 	ptr := unsafe.Pointer(val.Index(0).Addr().UnsafePointer())
 	slice := unsafe.Slice((*T)(ptr), val.Len())
 
-	binary.Write(buf, binary.BigEndian,
-		slice)
+	binary.Write(buf, binary.BigEndian, slice)
 }
 
 func write(buf *bytes.Buffer, elem any) error {

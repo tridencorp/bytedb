@@ -28,24 +28,25 @@ func Open(path string, size int64) (*Wal, error) {
 	return w, nil
 }
 
-// Start main loop responsible for writing data to wal file.
+// Start main loop responsible for writing data to wal file
+// TODO: This shouldn't be here - it's caller responsibility
 func (w *Wal) Start(timeout int) {
 	ticker := time.NewTicker(time.Duration(timeout) * time.Millisecond)
 	defer ticker.Stop()
 
 	for {
 		select {
+		// Got new data, write it to the wal file
 		case data, open := <-w.Logs:
-			// Got new data, write it to the wal file.
-			// If channel was closed, sync data and return.
+			// If channel was closed, sync data and return
 			if !open {
 				w.file.Sync()
 				return
 			}
 			w.write(data)
 
+		// Periodically call msync and flush data to file
 		case _ = <-ticker.C:
-			// Periodically call msync and flush data to file.
 			err := w.file.Sync()
 			if err != nil {
 				fmt.Println(err)
@@ -72,7 +73,6 @@ func (w *Wal) write(data []byte) {
 	}
 }
 
-// Read all logs and pass them to the user defined map function.
 func (w *Wal) Map(fn func(log []byte)) error {
 	for {
 		len := uint32(0)
@@ -80,7 +80,7 @@ func (w *Wal) Map(fn func(log []byte)) error {
 
 		w.file.ReadTo(ptr[:])
 
-		// No more logs to read.
+		// No more logs to read
 		if len == 0 {
 			return nil
 		}

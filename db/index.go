@@ -30,8 +30,9 @@ func (i *Index) Prealloc(num int64) (int64, error) {
 	f := i.files.Last
 
 	// Calculate required space for all keys.
+	// TODO: Extract this.
 	size := num * int64(i.IndexSize)
-	size = (size * 140) / 100 // +40% for collisions
+	size = (size * 140) / 100 // +30% for collisions
 
 	// Resize if file is smaller than expected.
 	if f.Size() < size {
@@ -63,6 +64,7 @@ func (i *Index) Set(key []byte, off *Offset) error {
 			n += 1
 			continue
 		}
+
 		return nil
 	}
 
@@ -79,7 +81,6 @@ func (i *Index) Get(key []byte) (*Offset, error) {
 	off := &Offset{}
 
 	// Find index key in block. If not found we will search in next block.
-	// What if not found ? Undecided yet 🫣
 	for j := 0; j < 2; j++ {
 		// Read block.
 		b, err := f.ReadBlock(n)

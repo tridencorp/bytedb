@@ -11,11 +11,10 @@ import (
 var ErrRead = errors.New("missing bytes when reading")
 
 type Mmap struct {
-	file        *os.File
-	data        []byte
-	blockSize   int
-	WriteOffset int
-	ReadOffset  int
+	file       *os.File
+	data       []byte
+	blockSize  int
+	ReadOffset int
 }
 
 // Mmap file
@@ -27,7 +26,7 @@ func Open(file *os.File, blockSize, size, prot int) (*Mmap, error) {
 	size = blockSize * size
 	info, _ := file.Stat()
 
-	// Truncate file if it's to small
+	// Truncate file if it's smaller than size=
 	if int(info.Size()) < size {
 		err := file.Truncate(int64(size))
 		if err != nil {
@@ -54,14 +53,20 @@ func (m *Mmap) Sync() error {
 	return unix.Msync(m.data, unix.MS_SYNC)
 }
 
-// Write to mmaped file.
-func (m *Mmap) Write(bytes []byte) int {
-	n := copy(m.data[m.WriteOffset:], bytes)
-	m.WriteOffset += len(bytes)
-	return n
+// Write copies data from src into the block at the given number.
+// src should include block data.
+// Returns the number of bytes copied.
+func (m *Mmap) Write(number int, src []byte) int {
+	off := number * m.blockSize
+
+	if off >= len(m.data) {
+		return 0
+	}
+
+	return copy(m.data[off:], src)
 }
 
-// Read bytes to dst.
+// Read bytes to dst
 func (m *Mmap) ReadTo(dst []byte) error {
 	if m.ReadOffset+len(dst) > len(m.data) {
 		return io.EOF
@@ -76,15 +81,26 @@ func (m *Mmap) ReadTo(dst []byte) error {
 	return nil
 }
 
+// Read copies the block at a given number into dst.
+// Returns the number of bytes copied or an error otherwise.
+func (m *Mmap) Read(number int, dst []byte) int {
+	off := number * m.blockSize
+
+	if off >= len(m.data) {
+		return 0
+	}
+
+	return copy(dst, m.data[off:])
+}
+
 // Read reads n blocks starting from offset
-func (m *Mmap) Read(offset, n int) ([]byte, error) {
+func (m *Mmap) ReadN(offset, n int) ([]byte, error) {
 	data := make([]byte, n*m.blockSize)
 	m.ReadTo(data)
 	return data, nil
 }
 
 // Resize the underlying file.
-// TODO: Set offset properly.
 func (m *Mmap) Resize(size int64) error {
 	// Let's sync data before unmapping the file.
 	err := m.Sync()
