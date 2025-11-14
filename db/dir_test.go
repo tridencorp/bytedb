@@ -1,7 +1,7 @@
 package db
 
 import (
-	"bucketdb/tests"
+	"bytedb/tests"
 	"fmt"
 	"os"
 	"testing"

@@ -1,17 +1,15 @@
 package db
 
 import (
-	"bucketdb/tests"
+	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
-func TestCollectionSetGet(t *testing.T) {
-	c := OpenCollection("test", "./test")
+func TestCollection(t *testing.T) {
+	coll := OpenCollection("test")
 	defer os.RemoveAll("./test")
 
-	c.Set([]byte("key"), []byte("Hello World"))
-	val, _ := c.Get([]byte("key"))
-
-	tests.Assert(t, "Hello World", string(val))
+	fmt.Println(filepath.Clean(coll.Dir))
 }

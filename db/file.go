@@ -1,20 +1,11 @@
 package db
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 )
-
-var ErrFull = errors.New("index is full")
-
-type File struct {
-	ID        int
-	file      *os.File
-	blockSize int64
-}
 
 // Offset keeps information about the location of the data.
 type Offset struct {
@@ -24,8 +15,13 @@ type Offset struct {
 	Hash   [8]byte
 }
 
-// Open path. Create one if it doesn't exists.
-func OpenPath(path string, flag int) (*File, error) {
+type File struct {
+	ID        int
+	file      *os.File
+	blockSize int64
+}
+
+func OpenFile(path string) (*os.File, error) {
 	dir := filepath.Dir(path)
 
 	err := os.MkdirAll(dir, os.ModePerm)
@@ -33,21 +29,8 @@ func OpenPath(path string, flag int) (*File, error) {
 		return nil, err
 	}
 
-	file, err := OpenFile(path, flag)
-	if err != nil {
-		return nil, err
-	}
-
-	return file, nil
-}
-
-func OpenFile(path string, flag int) (*File, error) {
-	file, err := os.OpenFile(path, flag, 0644)
-	if err != nil {
-		return nil, nil
-	}
-
-	return &File{file: file, blockSize: 4096}, nil
+	flags := os.O_CREATE | os.O_RDWR
+	return os.OpenFile(filepath.Ext(path), flags, os.ModePerm)
 }
 
 // Resize file to given size.
@@ -115,7 +98,7 @@ func (f *File) WriteBlock(num int64, data []byte) (int, error) {
 	}
 
 	if block.isFull(int(block.footer.Len) + len(data)) {
-		return -1, ErrFull
+		return -1, nil
 	}
 
 	block.Write(data)
