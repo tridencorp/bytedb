@@ -42,13 +42,13 @@ func (c *Collection) Add(key *collection.Key, val []byte) {
 // Get key from memory
 func (c *Collection) File(hash uint64) (*os.File, bool) {
 	c.mu.RLock()
-	defer c.mu.RUnlock()
-
 	val, ok := c.Files[hash]
+	c.mu.RUnlock()
+
 	return val, ok
 }
 
-// Load file from disk. Create one if it doesn't exist.
+// Load file from disk. Create file if it doesn't exist.
 func (c *Collection) LoadFile(path string, hash uint64) error {
 	f, err := OpenFile(path)
 	if err != nil {
