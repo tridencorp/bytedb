@@ -2,6 +2,7 @@ package db
 
 import (
 	"bytedb/collection"
+	"bytedb/common"
 	"fmt"
 	"path/filepath"
 	"sync"
@@ -32,11 +33,18 @@ func (c *Collection) Add(key *collection.Key, val []byte) error {
 
 	// Load file from disk if we cannot get it from memory
 	if !ok {
+		var err error
+
 		// collection/keys/prefix_hex.kv
 		file := fmt.Sprintf("%x.kv", key.Prefix)
 		path := filepath.Join(c.Dir, DirKeys, file)
 
-		err := c.LoadFile(path, key.Prefix)
+		f, err = c.LoadFile(path, key.Prefix)
+		if err != nil {
+			return err
+		}
+
+		err = InitFile(f)
 		if err != nil {
 			return err
 		}
@@ -61,15 +69,30 @@ func (c *Collection) File(hash uint64) (*File, bool) {
 }
 
 // Load file from disk. Create file if it doesn't exist.
-func (c *Collection) LoadFile(path string, hash uint64) error {
+func (c *Collection) LoadFile(path string, hash uint64) (*File, error) {
 	f, err := OpenFile(path)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	c.mu.Lock()
 	c.Files[hash] = f
 	c.mu.Unlock()
+
+	return f, nil
+}
+
+// Set file header
+func InitFile(f *File) error {
+	ptr := common.BytesPtr(&f.Header)
+
+	// Read bytes directly to file header
+	n, _ := f.file.ReadAt(ptr, 0)
+
+	// Check if file was already initialized
+	if n == 0 || f.Header.NumOfIndexBlocks == 0 {
+		f.Header.NumOfIndexBlocks = 10 // default number of index blocks
+	}
 
 	return nil
 }

@@ -1,10 +1,15 @@
 package db
 
 import (
+	"bytedb/block"
 	"bytedb/collection"
 	"fmt"
 	"os"
 	"path/filepath"
+)
+
+const (
+	NumOfHeaderBlocks = 1
 )
 
 // Offset keeps information about the location of the data.
@@ -15,13 +20,21 @@ type Offset struct {
 	Hash   [8]byte
 }
 
+// DataClass
+type FileHeader struct {
+	NumOfIndexBlocks uint32
+	NumOfDataBlocks  uint32
+}
+
 type File struct {
 	ID        int
 	file      *os.File
 	blockSize int64
+	Header    FileHeader
 
-	DataBlocks  []Block
-	IndexBlocks []Block
+	// Blocks currently keeped in memory
+	IndexBlocks map[uint32]block.Block
+	DataBlocks  map[uint32]block.Block
 }
 
 func OpenFile(path string) (*File, error) {
@@ -37,8 +50,8 @@ func OpenFile(path string) (*File, error) {
 
 	file := &File{
 		file:        f,
-		DataBlocks:  make([]Block, 0, 1_000),
-		IndexBlocks: make([]Block, 0, 1_000),
+		DataBlocks:  make(map[uint32]block.Block, 1_000),
+		IndexBlocks: make(map[uint32]block.Block, 1_000),
 	}
 
 	return file, err
@@ -54,7 +67,7 @@ func (f *File) Resize(size int64) error {
 	return nil
 }
 
-// Size Returns file size in bytes.
+// Size Returns file size in bytes
 func (f *File) Size() int64 {
 	info, err := os.Stat(f.file.Name())
 	if err != nil {
@@ -69,11 +82,50 @@ func (f *File) BlockCount() int64 {
 	return f.Size() / f.blockSize
 }
 
-// Write key-val to block
+// Write key-val to blocks
 func (f *File) WriteKV(key *collection.Key, val []byte) error {
 	fmt.Println(key, " --- ", val)
 
+	// We are always writing new data to last block (blocks)
+	lastBlock := NumOfHeaderBlocks + f.Header.NumOfIndexBlocks + f.Header.NumOfDataBlocks
+
+	// Try to get last block from memory. Once read, last block should always
+	// be keeped in memory.
+	b, found := f.DataBlocks[lastBlock]
+
+	// If not found, we must read it from file
+	if !found {
+		b = block.Block{}
+
+		if f.Size() >= int64(lastBlock*block.BlockSize) {
+			n, err := f.file.ReadAt(b.Data[:], int64(lastBlock*block.BlockSize))
+			if err != nil {
+				fmt.Println(err)
+				return err
+			}
+
+			if n != block.BlockSize {
+				return fmt.Errorf("read wrong number of bytes. Expected %d, got %d", block.BlockSize, n)
+			}
+		}
+
+		f.DataBlocks[lastBlock] = b
+		fmt.Println("xx: ", b)
+	}
+
+	// index block
+	idx := f.GetAndReserveIndex(key.Hash)
+
+	// index
+	// data
+	// file header
+	// index stats
+	// tests (1, 10, 100 mln keys)
 	return nil
+}
+
+func (f *File) GetAndReserveIndex(hash uint64) *block.Block {
+
 }
 
 // Read data from file into dst, starting from given offset.
