@@ -16,14 +16,6 @@ const (
 	IndexSize         = 24
 )
 
-// Offset keeps information about the location of the data.
-type Offset struct {
-	FileID uint32
-	Start  uint32
-	Size   uint32
-	Hash   [8]byte
-}
-
 // DataClass
 type FileHeader struct {
 	NumOfIndexBlocks uint32
