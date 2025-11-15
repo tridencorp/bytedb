@@ -2,7 +2,6 @@ package db
 
 import (
 	"bytes"
-	"errors"
 	"hash/fnv"
 	"unsafe"
 )
@@ -46,30 +45,30 @@ func (i *Index) Prealloc(num int64) (int64, error) {
 }
 
 // Set index for the given kv and stores it in the index file.
-func (i *Index) Set(key []byte, off *Offset) error {
-	f := i.files.Last
-	h := Hash(key)
+// func (i *Index) Set(key []byte, off *Offset) error {
+// 	f := i.files.Last
+// 	h := Hash(key)
 
-	off.Hash = [8]byte(ToBytes(&h))
+// 	off.Hash = [8]byte(ToBytes(&h))
 
-	// Get block number for key.
-	n := int64(h % uint64(f.BlockCount()))
+// 	// Get block number for key.
+// 	n := int64(h % uint64(f.BlockCount()))
 
-	// If block is full, write to next one.
-	for j := 0; j < 2; j++ {
-		_, err := f.WriteBlock(n, ToBytes(off))
+// 	// If block is full, write to next one.
+// 	for j := 0; j < 2; j++ {
+// 		_, err := f.WriteBlock(n, ToBytes(off))
 
-		// Block is full, write to next one.
-		if errors.Is(err, ErrFull) {
-			n += 1
-			continue
-		}
+// 		// Block is full, write to next one.
+// 		if errors.Is(err, ErrFull) {
+// 			n += 1
+// 			continue
+// 		}
 
-		return nil
-	}
+// 		return nil
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 // Get index.
 func (i *Index) Get(key []byte) (*Offset, error) {

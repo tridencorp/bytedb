@@ -18,46 +18,46 @@ type Directory struct {
 	Last *File
 }
 
-func Dir(root string, perDir int, extension string) *Directory {
-	d := &Directory{Root: root, PerDir: perDir, Ext: extension}
-	id := d.Max()
+// func Dir(root string, perDir int, extension string) *Directory {
+// 	d := &Directory{Root: root, PerDir: perDir, Ext: extension}
+// 	id := d.Max()
 
-	// Dir is empty.
-	if id == 0 {
-		id = 1
-	}
+// 	// Dir is empty.
+// 	if id == 0 {
+// 		id = 1
+// 	}
 
-	f, err := d.Get(id)
-	if err != nil {
-		return nil
-	}
+// 	f, err := d.Get(id)
+// 	if err != nil {
+// 		return nil
+// 	}
 
-	d.Last = f
-	return d
-}
+// 	d.Last = f
+// 	return d
+// }
 
 // Get file from directory. Create it if it doesn't already exist.
-func (d *Directory) Get(id int) (*File, error) {
-	// Get subdir based on id using ceil.
-	subdir := (d.PerDir + id - 1) / d.PerDir
+// func (d *Directory) Get(id int) (*File, error) {
+// 	// Get subdir based on id using ceil.
+// 	subdir := (d.PerDir + id - 1) / d.PerDir
 
-	// Build path for given id:
-	// 	* root/subdir/id.ext
-	path := fmt.Sprintf("%s/%d/%d.%s", d.Root, subdir, id, d.Ext)
+// 	// Build path for given id:
+// 	// 	* root/subdir/id.ext
+// 	path := fmt.Sprintf("%s/%d/%d.%s", d.Root, subdir, id, d.Ext)
 
-	// Open file id.
-	f, err := OpenPath(path, os.O_RDWR|os.O_CREATE)
-	if err != nil {
-		return nil, err
-	}
+// 	// Open file id.
+// 	f, err := OpenPath(path, os.O_RDWR|os.O_CREATE)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	if d.Last == nil || d.Last.ID < id {
-		d.Last = f
-	}
+// 	if d.Last == nil || d.Last.ID < id {
+// 		d.Last = f
+// 	}
 
-	f.ID = id
-	return f, nil
-}
+// 	f.ID = id
+// 	return f, nil
+// }
 
 // Search in subdirectories and find max file id
 func (d *Directory) Max() int {

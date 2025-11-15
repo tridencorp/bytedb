@@ -1,8 +1,8 @@
 package db
 
 import (
+	"bytedb/collection"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 )
@@ -21,7 +21,7 @@ type File struct {
 	blockSize int64
 }
 
-func OpenFile(path string) (*os.File, error) {
+func OpenFile(path string) (*File, error) {
 	dir := filepath.Dir(path)
 
 	err := os.MkdirAll(dir, os.ModePerm)
@@ -30,7 +30,9 @@ func OpenFile(path string) (*os.File, error) {
 	}
 
 	flags := os.O_CREATE | os.O_RDWR
-	return os.OpenFile(filepath.Ext(path), flags, os.ModePerm)
+	f, err := os.OpenFile(filepath.Ext(path), flags, os.ModePerm)
+
+	return &File{file: f}, err
 }
 
 // Resize file to given size.
@@ -53,27 +55,15 @@ func (f *File) Size() int64 {
 	return info.Size()
 }
 
-// Get the number of blocks in file.
+// Get the number of blocks in file
 func (f *File) BlockCount() int64 {
 	return f.Size() / f.blockSize
 }
 
-// Write data to file.
-func (f *File) Write(data []byte) (*Offset, error) {
-	// TODO: If this will be too expensive, we will track our own offset.
-	start, _ := f.file.Seek(0, io.SeekCurrent)
-
-	n, err := f.file.Write(data)
-	if err != nil {
-		return nil, err
-	}
-
-	if n != len(data) {
-		return nil, fmt.Errorf("error when writing data to file")
-	}
-
-	off := &Offset{Start: uint32(start), Size: uint32(n), FileID: uint32(f.ID)}
-	return off, nil
+// Write key-val to block
+func (f *File) WriteKV(key *collection.Key, val []byte) error {
+	fmt.Println(key, " --- ", val)
+	return nil
 }
 
 // Read data from file into dst, starting from given offset.

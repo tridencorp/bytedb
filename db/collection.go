@@ -3,15 +3,14 @@ package db
 import (
 	"bytedb/collection"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sync"
 )
 
 const (
-	PathKeys    = "keys"
-	PathBuckets = "buckets"
-	PathHashes  = "hashes"
+	DirKeys    = "keys"
+	DirBuckets = "buckets"
+	DirHashes  = "hashes"
 )
 
 type Collection struct {
@@ -19,12 +18,12 @@ type Collection struct {
 	Dir  string
 
 	mu    sync.RWMutex
-	Files map[uint64]*os.File
+	Files map[uint64]*File
 }
 
 // Open collection from disk
 func OpenCollection(dir string) *Collection {
-	return &Collection{Dir: dir}
+	return &Collection{Dir: dir, Files: make(map[uint64]*File, 1000)}
 }
 
 // Add key-value to collection
@@ -34,7 +33,9 @@ func (c *Collection) Add(key *collection.Key, val []byte) error {
 	// Load file from disk if we cannot get it from memory
 	if !ok {
 		// collection/keys/prefix_hex.kv
-		path := filepath.Join(c.Dir, PathKeys, fmt.Sprintf("%x.kv", key.Prefix))
+		file := fmt.Sprintf("%x.kv", key.Prefix)
+		path := filepath.Join(c.Dir, DirKeys, file)
+
 		err := c.LoadFile(path, key.Prefix)
 		if err != nil {
 			return err
@@ -46,12 +47,12 @@ func (c *Collection) Add(key *collection.Key, val []byte) error {
 		}
 	}
 
-	// f.Write(key, val)
-	return nil
+	err := f.WriteKV(key, val)
+	return err
 }
 
 // Get key from memory
-func (c *Collection) File(hash uint64) (*os.File, bool) {
+func (c *Collection) File(hash uint64) (*File, bool) {
 	c.mu.RLock()
 	val, ok := c.Files[hash]
 	c.mu.RUnlock()
