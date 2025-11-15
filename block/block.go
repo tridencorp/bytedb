@@ -2,12 +2,12 @@ package block
 
 const BlockSize = 4096
 const HeaderSize = 8
-const DataSize = BlockSize - HeaderSize
+const DataSize = uint32(BlockSize - HeaderSize)
 
 // DataStruct
 type Header struct {
-	Len  uint32 // total number of keys
-	Size uint32 // current data size in bytes
+	Len uint32 // total number of keys
+	Off uint32 // current data offset
 }
 
 type Block struct {
@@ -19,12 +19,12 @@ type Block struct {
 // It returns the number of bytes copied.
 func (b *Block) Write(data []byte) int {
 	// Check if we have any space left - allow partial writes
-	if int(b.Header.Size) >= len(b.Data) {
+	if int(b.Header.Off) >= len(b.Data) {
 		return 0
 	}
 
-	n := copy(b.Data[b.Header.Size:], data)
-	b.Header.Size += uint32(n)
+	n := copy(b.Data[b.Header.Off:], data)
+	b.Header.Off += uint32(n)
 
 	return n
 }
@@ -38,4 +38,9 @@ func (b *Block) Read(offset int, dst []byte) int {
 	}
 
 	return copy(dst, b.Data[offset:])
+}
+
+// Check how much space left
+func (b *Block) SpaceLeft() uint32 {
+	return DataSize - b.Header.Off
 }
