@@ -5,6 +5,14 @@ import (
 	"syscall"
 )
 
+// Main server class
+type Server struct {
+}
+
+// Get collection from cache
+func (s *Server) Collection(hash uint64) {
+}
+
 // Run TCP server
 func Run(address [4]byte, port int) int {
 	// Create socket

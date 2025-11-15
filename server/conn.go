@@ -27,6 +27,7 @@ func Connect(address string) (*Conn, error) {
 	return conn, nil
 }
 
+// Create Conn from file descriptor
 func FromFD(fd int) *Conn {
 	file := os.NewFile(uintptr(fd), "")
 	conn, _ := net.FileConn(file)
@@ -34,7 +35,7 @@ func FromFD(fd int) *Conn {
 	return &Conn{conn: conn}
 }
 
-// Read from connection, blocking until whole command is read.
+// Read from connection, blocking until all data is read.
 func (c *Conn) Read() ([]byte, error) {
 	buf := make([]byte, 1024)
 	size := uint32(0)
@@ -46,18 +47,18 @@ func (c *Conn) Read() ([]byte, error) {
 	}
 
 	if n < PrefixLen {
-		return nil, fmt.Errorf("not enough bytes to read pkg size: got %d bytes", n)
+		return nil, fmt.Errorf("not enough bytes to read pkg size: got %d bytes need %d", n, PrefixLen)
 	}
 
 	// Decode msg size
 	common.Decode(buf[:PrefixLen], &size)
 
-	// Check if we get all data in one read
+	// Check if we read all data
 	if uint32(n-PrefixLen) == size {
 		return buf[PrefixLen:n], nil
 	}
 
-	// 2. Didn't get all data, we need to read remaining bytes
+	// 2. We didn't get all data, try to read remaining bytes
 	total := make([]byte, size)
 	offset := copy(total, buf[PrefixLen:n])
 

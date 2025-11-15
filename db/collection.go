@@ -3,10 +3,9 @@ package db
 import (
 	"bytedb/collection"
 	"fmt"
+	"log"
 	"path/filepath"
 	"sync"
-
-	"github.com/ethereum/go-ethereum/log"
 )
 
 const (
@@ -57,7 +56,7 @@ func (c *Collection) Add(key *collection.Key, val []byte) error {
 	}
 
 	err := f.WriteKV(key, val)
-	log.Error(err.Error())
+	log.Println(err)
 
 	return err
 }
