@@ -1,40 +1,36 @@
 package block
 
-import (
-	"unsafe"
-)
-
 const BlockSize = 4096
-const HeaderSize = int(unsafe.Sizeof(BlockHeader{}))
+const HeaderSize = 8
 const DataSize = BlockSize - HeaderSize
 
-// @Data Struct
-type BlockHeader struct {
-	Offset uint32
+// DataStruct
+type Header struct {
+	Len  uint32 // total number of keys
+	Size uint32 // current data size in bytes
 }
 
-// @Data Struct
 type Block struct {
-	Header BlockHeader
+	Header Header
 	Data   [DataSize]byte
 }
 
-// Write function writes bytes from data to block.
-// It returns the numbe of bytes written.
+// Write copied bytes from data into the block.
+// It returns the number of bytes copied.
 func (b *Block) Write(data []byte) int {
-	// Check offset overflow
-	if int(b.Header.Offset) > len(b.Data) {
+	// Check if we have any space left - allow partial writes
+	if int(b.Header.Size) >= len(b.Data) {
 		return 0
 	}
 
-	n := copy(b.Data[b.Header.Offset:], data)
-	b.Header.Offset += uint32(n)
+	n := copy(b.Data[b.Header.Size:], data)
+	b.Header.Size += uint32(n)
 
 	return n
 }
 
-// Read function reads bytes from block into a dst.
-// It returns the number of bytes read.
+// Read copies bytes from the block, starting at offset, into dst.
+// It returns the number of bytes copied.
 func (b *Block) Read(offset int, dst []byte) int {
 	// Check offset overflow
 	if offset >= len(b.Data) {
