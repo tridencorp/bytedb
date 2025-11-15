@@ -2,10 +2,11 @@ package db
 
 import (
 	"bytedb/collection"
-	"bytedb/common"
 	"fmt"
 	"path/filepath"
 	"sync"
+
+	"github.com/ethereum/go-ethereum/log"
 )
 
 const (
@@ -44,7 +45,7 @@ func (c *Collection) Add(key *collection.Key, val []byte) error {
 			return err
 		}
 
-		err = InitFile(f)
+		err = f.Init()
 		if err != nil {
 			return err
 		}
@@ -56,6 +57,8 @@ func (c *Collection) Add(key *collection.Key, val []byte) error {
 	}
 
 	err := f.WriteKV(key, val)
+	log.Error(err.Error())
+
 	return err
 }
 
@@ -80,19 +83,4 @@ func (c *Collection) LoadFile(path string, hash uint64) (*File, error) {
 	c.mu.Unlock()
 
 	return f, nil
-}
-
-// Set file header
-func InitFile(f *File) error {
-	ptr := common.BytesPtr(&f.Header)
-
-	// Read bytes directly to file header
-	n, _ := f.file.ReadAt(ptr, 0)
-
-	// Check if file was already initialized
-	if n == 0 || f.Header.NumOfIndexBlocks == 0 {
-		f.Header.NumOfIndexBlocks = 10 // default number of index blocks
-	}
-
-	return nil
 }

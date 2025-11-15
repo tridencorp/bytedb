@@ -1,7 +1,6 @@
 package db
 
 import (
-	"bytes"
 	"hash/fnv"
 	"unsafe"
 )
@@ -71,35 +70,35 @@ func (i *Index) Prealloc(num int64) (int64, error) {
 // }
 
 // Get index.
-func (i *Index) Get(key []byte) (*Offset, error) {
-	f := i.files.Last
-	h := Hash(key)
+// func (i *Index) Get(key []byte) (*Offset, error) {
+// 	f := i.files.Last
+// 	h := Hash(key)
 
-	// Get block number for key.
-	n := int64(h % uint64(f.BlockCount()))
-	off := &Offset{}
+// 	// Get block number for key.
+// 	n := int64(h % uint64(f.BlockCount()))
+// 	off := &Offset{}
 
-	// Find index key in block. If not found we will search in next block.
-	for j := 0; j < 2; j++ {
-		// Read block.
-		b, err := f.ReadBlock(n)
-		if err != nil {
-			return new(Offset), err
-		}
+// 	// Find index key in block. If not found we will search in next block.
+// 	for j := 0; j < 2; j++ {
+// 		// Read block.
+// 		b, err := f.ReadBlock(n)
+// 		if err != nil {
+// 			return new(Offset), err
+// 		}
 
-		// Read all offsets from block and compare them to the hash we are looking for.
-		for b.Read(ToBytes(off)) {
-			if bytes.Equal(off.Hash[:], ToBytes(&h)) {
-				return off, nil
-			}
-		}
+// 		// Read all offsets from block and compare them to the hash we are looking for.
+// 		for b.Read(ToBytes(off)) {
+// 			if bytes.Equal(off.Hash[:], ToBytes(&h)) {
+// 				return off, nil
+// 			}
+// 		}
 
-		// We didn't find anything, increment to next block.
-		n += 1
-	}
+// 		// We didn't find anything, increment to next block.
+// 		n += 1
+// 	}
 
-	return new(Offset), nil
-}
+// 	return new(Offset), nil
+// }
 
 // Compute hash for given key.
 func Hash(key []byte) uint64 {
