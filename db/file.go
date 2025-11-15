@@ -19,6 +19,9 @@ type File struct {
 	ID        int
 	file      *os.File
 	blockSize int64
+
+	DataBlocks  []Block
+	IndexBlocks []Block
 }
 
 func OpenFile(path string) (*File, error) {
@@ -32,7 +35,13 @@ func OpenFile(path string) (*File, error) {
 	flags := os.O_CREATE | os.O_RDWR
 	f, err := os.OpenFile(filepath.Ext(path), flags, os.ModePerm)
 
-	return &File{file: f}, err
+	file := &File{
+		file:        f,
+		DataBlocks:  make([]Block, 0, 1_000),
+		IndexBlocks: make([]Block, 0, 1_000),
+	}
+
+	return file, err
 }
 
 // Resize file to given size.
@@ -63,6 +72,7 @@ func (f *File) BlockCount() int64 {
 // Write key-val to block
 func (f *File) WriteKV(key *collection.Key, val []byte) error {
 	fmt.Println(key, " --- ", val)
+
 	return nil
 }
 
