@@ -11,7 +11,7 @@ func TestBlockSpaceLeft(t *testing.T) {
 	b := Block{}
 	b.Write(buf)
 
-	want := DataSize - len(buf)
+	want := DataSize - uint32(len(buf))
 	tests.AssertEqual(t, want, b.SpaceLeft())
 }
 
