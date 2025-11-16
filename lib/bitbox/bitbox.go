@@ -43,8 +43,8 @@ func Decode(buf []byte, objects ...any) {
 		switch v := obj.(type) {
 		case *[]byte:
 			l := uint32(0)
-			Decode(b.Next(4), &l)
-			*v = append(*v, b.Next(int(l))...)
+			Decode(b.Take(4), &l)
+			*v = append(*v, b.Take(int(l))...)
 			continue
 		case *bool:
 			b.Copy(BytesPtr(v))
