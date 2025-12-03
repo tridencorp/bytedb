@@ -20,8 +20,7 @@ type Cmd struct {
 func DecodeCmd(buff *bit.Buffer) *Cmd {
 	cmd := &Cmd{}
 
-	bit.Decode(
-		buff,
+	buff.Decode(
 		&cmd.Type,
 		&cmd.Collection,
 		&cmd.Namespace,

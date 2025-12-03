@@ -87,7 +87,7 @@ func Decode(buf *Buffer, objects ...any) {
 
 		// 2. Using reflections
 		val := reflect.ValueOf(obj)
-		val = reflect.Indirect(val) // indirect pointers/
+		val = reflect.Indirect(val) // indirect pointers
 
 		// Decode basic types
 		buf.Copy(bytesPtr(val))

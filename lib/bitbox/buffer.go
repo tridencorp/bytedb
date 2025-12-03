@@ -13,7 +13,7 @@ func NewBuffer(data []byte) *Buffer {
 
 // Decode data from buffer into objects
 func (b *Buffer) Decode(objects ...any) {
-	Decode(b)
+	Decode(b, objects...)
 }
 
 // Return buffer length
