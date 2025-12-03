@@ -35,55 +35,53 @@ func Encode(objects ...any) []byte {
 }
 
 // Decode objects
-func Decode(buf []byte, objects ...any) {
-	b := NewBuffer(buf)
-
+func Decode(buf *Buffer, objects ...any) {
 	for _, obj := range objects {
 		// 1. Fast Path for basic types
 		switch v := obj.(type) {
 		case *[]byte:
 			l := uint32(0)
-			Decode(b.Take(4), &l)
-			*v = append(*v, b.Take(int(l))...)
+			buf.Decode(&l)
+			*v = append(*v, buf.Take(int(l))...)
 			continue
 		case *bool:
-			b.Copy(BytesPtr(v))
+			buf.Copy(BytesPtr(v))
 			continue
 		case *int8:
-			b.Copy(BytesPtr(v))
+			buf.Copy(BytesPtr(v))
 			continue
 		case *int16:
-			b.Copy(BytesPtr(v))
+			buf.Copy(BytesPtr(v))
 			continue
 		case *int32:
-			b.Copy(BytesPtr(v))
+			buf.Copy(BytesPtr(v))
 			continue
 		case *int64:
-			b.Copy(BytesPtr(v))
+			buf.Copy(BytesPtr(v))
 			continue
 		case *uint8:
-			b.Copy(BytesPtr(v))
+			buf.Copy(BytesPtr(v))
 			continue
 		case *uint16:
-			b.Copy(BytesPtr(v))
+			buf.Copy(BytesPtr(v))
 			continue
 		case *uint32:
-			b.Copy(BytesPtr(v))
+			buf.Copy(BytesPtr(v))
 			continue
 		case *uint64:
-			b.Copy(BytesPtr(v))
+			buf.Copy(BytesPtr(v))
 			continue
 		case *float32:
-			b.Copy(BytesPtr(v))
+			buf.Copy(BytesPtr(v))
 			continue
 		case *float64:
-			b.Copy(BytesPtr(v))
+			buf.Copy(BytesPtr(v))
 			continue
 		case *complex64:
-			b.Copy(BytesPtr(v))
+			buf.Copy(BytesPtr(v))
 			continue
 		case *complex128:
-			b.Copy(BytesPtr(v))
+			buf.Copy(BytesPtr(v))
 			continue
 		}
 
@@ -92,14 +90,14 @@ func Decode(buf []byte, objects ...any) {
 		val = reflect.Indirect(val) // indirect pointers/
 
 		// Decode basic types
-		b.Copy(bytesPtr(val))
+		buf.Copy(bytesPtr(val))
 
 		continue
 	}
 }
 
-// Get pointer from fixed type (including structs) and cast it to []byte.
-// When you pass struct, make sure it's memory aligned.
+// Get pointer to fixed type (including structs) and cast it to []byte.
+// When passing structs, make sure it's memory aligned.
 func BytesPtr[T any](obj *T) []byte {
 	size := unsafe.Sizeof(*obj)
 	return unsafe.Slice((*byte)(unsafe.Pointer(obj)), size)

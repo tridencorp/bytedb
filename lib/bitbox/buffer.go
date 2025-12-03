@@ -1,33 +1,49 @@
 package bitbox
 
 // Simple bytes buffer that tracks it's offset
-type Buffer[T any] struct {
-	bytes []T
-	Off   int
+type Buffer struct {
+	data []byte
+	off  int
 }
 
-func NewBuffer[T any](bytes []T) *Buffer[T] {
-	return &Buffer[T]{bytes: bytes, Off: 0}
+// Create new Buffer
+func NewBuffer(data []byte) *Buffer {
+	return &Buffer{data: data, off: 0}
 }
 
-// Copy bytes from buffer to dst. Basically it's wrapper for copy().
-func (b *Buffer[T]) Copy(dst []T) int {
-	n := copy(dst, b.bytes[b.Off:])
-	b.Off += n
+// Decode data from buffer into objects
+func (b *Buffer) Decode(objects ...any) {
+	Decode(b)
+}
+
+// Return buffer length
+func (b *Buffer) Len() int {
+	return len(b.data[b.off:])
+}
+
+// Wrapper for copy()
+func (b *Buffer) Copy(dst []byte) int {
+	n := copy(dst, b.data[b.off:])
+	b.off += n
 
 	return n
 }
 
-// Get next N bytes from buffer.
+// Take next N bytes from buffer.
 // This will advance offset.
-func (b *Buffer[T]) Take(num int) []T {
-	off := b.Off
-	b.Off += num
+func (b *Buffer) Take(num int) []byte {
+	off := b.off
+	b.off += num
 
-	return b.bytes[off:b.Off]
+	return b.data[off:b.off]
 }
 
-// Return []byte with remaining bytes
-func (b *Buffer[T]) Data(num int) []T {
-	return b.bytes[b.Off:]
+// Return remaining bytes from buffer
+func (b *Buffer) Data() []byte {
+	return b.data[b.off:]
+}
+
+// Advance data offset
+func (b *Buffer) Consume(n int) {
+	b.off += n
 }
