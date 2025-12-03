@@ -1,6 +1,6 @@
 package server
 
-import "bytedb/common"
+import bit "bytedb/lib/bitbox"
 
 // All possible command types supported by server
 const (
@@ -17,10 +17,10 @@ type Cmd struct {
 	Data       []byte
 }
 
-func DecodeCmd(buff []byte) *Cmd {
+func DecodeCmd(buff *bit.Buffer) *Cmd {
 	cmd := &Cmd{}
 
-	common.Decode(
+	bit.Decode(
 		buff,
 		&cmd.Type,
 		&cmd.Collection,
