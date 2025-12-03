@@ -12,7 +12,6 @@ func TestAdd(t *testing.T) {
 		return
 	}
 
-	// With prefix
-	res, err := cli.Add("test::cmd::add::key_1", []byte("Hello"))
+	res, err := cli.Add("test::cmd::prefix::key_1", []byte("Hello"))
 	fmt.Println(res, err)
 }

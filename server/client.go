@@ -18,7 +18,7 @@ func NewClient(addr string) (*Client, error) {
 }
 
 // Send ADD command to server.
-// Proper key format is "coll::namespace::prefix::key".
+// Key format is "coll::namespace::prefix::key".
 func (c *Client) Add(key string, val []byte) ([]byte, error) {
 	parts := strings.Split(key, "::")
 
@@ -31,16 +31,8 @@ func (c *Client) Add(key string, val []byte) ([]byte, error) {
 	cmd.Collection = Hash([]byte(parts[0]))
 	cmd.Namespace = Hash([]byte(parts[1]))
 	cmd.Prefix = Hash([]byte(parts[2]))
-	cmd.Key = Hash([]byte(parts[3]))
-
-	keyBytes := []byte(parts[3])
-
-	// Original key and val are going to args
-	size := len(keyBytes) + len(val)
-	args := make(Args, 0, size)
-
-	args = append(args, keyBytes...)
-	args = append(args, val...)
+	cmd.Key = []byte(parts[3])
+	cmd.Data = val
 
 	// Prepare command pkg
 	pkg := common.Encode(
@@ -49,7 +41,7 @@ func (c *Client) Add(key string, val []byte) ([]byte, error) {
 		&cmd.Namespace,
 		&cmd.Prefix,
 		&cmd.Key,
-		&args,
+		&cmd.Data,
 	)
 
 	// Add length prefix
@@ -71,5 +63,5 @@ func (c *Client) Add(key string, val []byte) ([]byte, error) {
 	}
 
 	fmt.Println(res)
-	return args, nil
+	return res, nil
 }

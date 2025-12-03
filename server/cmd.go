@@ -7,21 +7,18 @@ const (
 	CmdAdd uint8 = 1
 )
 
-// Command arguments
-type Args []byte
-
 // Cmd represents server command send by clients
 type Cmd struct {
 	Type       uint8
 	Collection uint64
 	Namespace  uint64
 	Prefix     uint64
-	Key        uint64
+	Key        []byte
+	Data       []byte
 }
 
-func DecodeCmd(buff []byte) (*Cmd, *Args) {
+func DecodeCmd(buff []byte) *Cmd {
 	cmd := &Cmd{}
-	args := &Args{}
 
 	common.Decode(
 		buff,
@@ -30,8 +27,8 @@ func DecodeCmd(buff []byte) (*Cmd, *Args) {
 		&cmd.Namespace,
 		&cmd.Prefix,
 		&cmd.Key,
-		(*[]byte)(args), // cast to bytes so we can avoid reflections
+		&cmd.Data,
 	)
 
-	return cmd, args
+	return cmd
 }

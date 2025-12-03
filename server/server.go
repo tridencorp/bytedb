@@ -1,48 +1,27 @@
 package server
 
 import (
-	"log"
+	"context"
+	"net"
 	"syscall"
 )
 
-// Main server class
 type Server struct {
 }
 
-// Get collection from cache
-func (s *Server) Collection(hash uint64) {
-}
-
-// Run TCP server
-func Run(address [4]byte, port int) int {
-	// Create socket
-	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_STREAM, syscall.IPPROTO_TCP)
-	if err != nil {
-		log.Panic(err)
-	}
-
+// Run TCP server.
+// Address can be in "0.0.0.0:8080" form.
+func Run(address string) (net.Listener, error) {
 	// Enable SO_REUSEADDR
-	syscall.SetsockoptInt(fd, syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1)
-	syscall.SetsockoptInt(fd, syscall.SOL_SOCKET, syscall.SO_REUSEPORT, 1)
+	lc := net.ListenConfig{
+		Control: func(network, address string, c syscall.RawConn) error {
+			c.Control(func(fd uintptr) {
+				syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1)
+			})
 
-	// Set port and address
-	s := &syscall.SockaddrInet4{
-		Port: port,
-		Addr: address,
+			return nil
+		},
 	}
 
-	// Bind socket
-	err = syscall.Bind(fd, s)
-	if err != nil {
-		log.Panic(err)
-	}
-
-	// Listen on socket
-	err = syscall.Listen(fd, syscall.SOMAXCONN)
-	if err != nil {
-		syscall.Close(fd)
-		log.Panic(err)
-	}
-
-	return fd
+	return lc.Listen(context.Background(), "tcp", address)
 }
