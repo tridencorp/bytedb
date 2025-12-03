@@ -1,17 +1,23 @@
 package server
 
 import (
+	"bytedb/db"
 	"context"
 	"net"
 	"syscall"
 )
 
 type Server struct {
-	Workers []Worker
+	Workers     []Worker                  // file workers
+	Collections map[uint64]*db.Collection // opened collections
 }
 
 func NewServer() *Server {
-	s := &Server{Workers: make([]Worker, 1000)}
+	s := &Server{
+		Workers:     make([]Worker, 1_000),
+		Collections: make(map[uint64]*db.Collection),
+	}
+
 	return s
 }
 
@@ -23,6 +29,16 @@ func (s *Server) RunWorkers(n int) {
 
 		go w.Run()
 	}
+}
+
+// Returns collection for the given hash
+func (s *Server) Collection(hash uint64) *db.Collection {
+	col, ok := s.Collections[hash]
+	if !ok {
+		return col
+	}
+
+	return nil
 }
 
 // Run TCP server.

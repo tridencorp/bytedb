@@ -8,7 +8,7 @@ const (
 	CollectionsPath = "/collections/"
 )
 
-// Main database class.
+// Main database class
 type DB struct {
 	// Database root directory.
 	root string
@@ -18,7 +18,7 @@ type DB struct {
 
 // Open database.
 func Open(path string) (*DB, error) {
-	// Create main database and internal one.
+	// Create main database and internal one
 	internal := path + "/internal"
 	err := os.MkdirAll(internal, 0755)
 	if err != nil {
@@ -29,7 +29,7 @@ func Open(path string) (*DB, error) {
 	return &DB{root: path, internals: internals}, nil
 }
 
-// Delete the entire database.
+// Delete the entire database
 func (db *DB) Delete() error {
 	return os.RemoveAll(db.root)
 }

@@ -2,8 +2,6 @@ package db
 
 import (
 	"bytedb/block"
-	"bytedb/collection"
-	"bytedb/common"
 	bit "bytedb/lib/bitbox"
 	"fmt"
 	"os"
@@ -12,30 +10,25 @@ import (
 )
 
 const (
-	HeaderBlocks = 1
-	IndexSize    = 24
+	DefaultHeaderBlocks = 1
+	DefaultIndexBlocks  = 10
 )
 
-// DataClass
-type FileHeader struct {
-	IndexLen    uint64
-	IndexBlocks uint32
-	DataBlocks  uint32
-}
-
 type File struct {
-	ID        int
-	file      *os.File
-	blockSize int64
-	Header    FileHeader
-	LastBlock *block.Block
+	// header
+	IndexOffset uint32
+	IndexBlocks uint32
 
-	// Blocks currently keeped in memory
-	mu          sync.Mutex
-	IndexBlocks map[uint32]*block.Block
-	DataBlocks  map[uint32]*block.Block
+	file *os.File
+	Hash uint64
+
+	mu        sync.Mutex
+	lastBlock *block.Block
+	blocks    map[uint32]*block.Block
 }
 
+// Open database file.
+// If file is empty, initialize it.
 func OpenFile(path string) (*File, error) {
 	dir := filepath.Dir(path)
 
@@ -48,9 +41,8 @@ func OpenFile(path string) (*File, error) {
 	f, err := os.OpenFile(filepath.Ext(path), flags, os.ModePerm)
 
 	file := &File{
-		file:        f,
-		IndexBlocks: make(map[uint32]*block.Block, 100),
-		DataBlocks:  make(map[uint32]*block.Block, 1000),
+		file:   f,
+		blocks: make(map[uint32]*block.Block, 10),
 	}
 
 	return file, err
@@ -76,151 +68,74 @@ func (f *File) Size() int64 {
 	return info.Size()
 }
 
-// Get the number of blocks in file
+// Count total number of blocks in file
 func (f *File) BlockCount() int64 {
-	return f.Size() / f.blockSize
+	return f.Size() / block.BlockSize
 }
 
-// Write key-val to blocks
-func (f *File) WriteKV(key *collection.Key, val []byte) error {
-	fmt.Println(key, " xoxoxo ", val)
-
-	// data block
-	blocks, err := f.WriteBlocks(val)
-	if err != nil {
-		return err
-	}
-
-	// index block
-	idx, err := f.GetAndReserveIndex(key.Hash)
-	if err != nil {
-		return err
-	}
+// Write key-val to blockso
+func (f *File) WriteKV(key *Key, val []byte) error {
+	// Write data
+	_, idx := f.Write(f.lastBlock, val)
 
 	fmt.Println("index block: ", idx)
 	return nil
 }
 
-// Write data to blocks, starting from LastBlock.
-// Return number of bytes written and block numbers
-// to which data was written.
-func (f *File) WriteBlocks(data []byte) (int, []uint32) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-
+// Write data to blocks, starting at offset.
+// Return index and number of bytes written.
+func (f *File) Write(offset *block.Block, data []byte) (int, *IndexKey) {
+	idx := &IndexKey{Offset: offset.ID, Span: 1}
 	buf := bit.NewBuffer(data)
-	blocks := []uint32{f.LastBlock.Num}
+	n := int(0)
 
 	for {
-		n := f.LastBlock.Write(buf.Data())
+		n = offset.Write(buf.Data())
 		buf.Consume(n)
 
 		if buf.Len() == 0 {
 			break
 		}
 
-		// We didn't write everything.
-		// Let's create new block and continue.
-		b := block.NewBlock()
-		b.Num = f.LastBlock.Num + 1
+		// We need another block
+		b := block.NewBlock(offset.ID + 1)
+		f.Append(b)
 
-		f.LastBlock = b
-		f.DataBlocks[b.Num] = b
-		f.Header.DataBlocks++
-
-		blocks = append(blocks, b.Num)
+		// Increment number of blocks used
+		idx.Span++
 	}
 
-	return buf.Off, blocks
+	return n, idx
 }
 
-func (f *File) GetAndReserveIndex(hash uint64) (*block.Block, error) {
-	// get block number for hash
-	num := hash % uint64(f.Header.IndexBlocks)
-	num += HeaderBlocks // add space for file header
-
-	// TODO: iterate till end of index blocks
-	for {
-		// Get block for hash
-		b, found := f.IndexBlocks[uint32(num)]
-
-		// Read block from disk
-		if !found {
-			var err error
-
-			b, err = f.ReadBlock(uint32(num))
-			if err != nil {
-				return nil, err
-			}
-
-			f.IndexBlocks[uint32(num)] = b
-		}
-
-		// Check if ther is space left, iterate
-		// till we find block with free space
-		if b.SpaceLeft() >= IndexSize {
-			// Each block has fixed number of indexes,
-			// we must reserve space for one.
-			b.Header.Len += 1
-
-			return b, nil
-		}
-
-		// Current block doesn't have enough space.
-		// Increment and load another block.
-		num += 1
-	}
+// Append block to file
+func (f *File) Append(b *block.Block) {
+	f.lastBlock = b
+	f.blocks[b.ID] = b
 }
 
-// Allocate space for header and indexes.
-// Set default headers.
-func (f *File) Init() error {
-	// Read bytes directly to file header
-	ptr := common.BytesPtr(&f.Header)
-	n, _ := f.file.ReadAt(ptr, 0)
-
-	// Check if file was already initialized
-	if n == 0 || f.Header.IndexBlocks == 0 {
-		f.Header.IndexBlocks = 10 // default number of index blocks
-		return f.Resize((HeaderBlocks + 10) * block.BlockSize)
-	}
-
-	return nil
-}
-
-// Read data from file into dst, starting from given offset.
+// Read data from file into dst, starting from given offset
 func (f *File) ReadAt(dst []byte, off int64) (int, error) {
 	return f.file.ReadAt(dst, off)
 }
 
+// Return block from cache, read it from disk otherwise
+func (f *File) Block(id uint32) *Block {
+	// lock - read from cache
+	// unlock
+
+	// Read from disk
+
+	// lock - put to cache
+	// unlock
+	return nil
+}
+
 // Read block from file
-func (f *File) ReadBlock(num uint32) (*block.Block, error) {
+func (f *File) Read(block *block.Block) (int, error) {
 	// Get offset
-	fmt.Println("num: ", num)
-	off := int64((num - 1) * block.BlockSize)
+	off := int64((block.ID - 1) * BlockSize)
 
-	// If block offset is > f.Size()
-	// we have new block, not fsynced to file yet
-
-	// Read data from file
-	buf := make([]byte, block.BlockSize)
-
-	n, err := f.file.ReadAt(buf, off)
-	if n != block.BlockSize {
-		return nil, fmt.Errorf("[ReadBlock] read wrong number of bytes. Expected %d, got %d", block.BlockSize, n)
-	}
-
-	// Create and decode block
-	b := &block.Block{Num: num}
-
-	err = b.Decode(buf)
-	if err != nil {
-		return nil, err
-	}
-
-	if f.LastBlock.Num < b.Num {
-		f.LastBlock = b
-	}
-
-	return b, err
+	// Read block
+	return f.file.ReadAt(block.Data[:], off)
 }
