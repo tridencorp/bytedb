@@ -1,7 +1,7 @@
 package server
 
 import (
-	"bytedb/common"
+	bit "bytedb/lib/bitbox"
 	"fmt"
 	"io"
 	"net"
@@ -51,7 +51,8 @@ func (c *Conn) Read() ([]byte, error) {
 	}
 
 	// Decode msg size
-	common.Decode(buf[:PrefixLen], &size)
+	buff := bit.NewBuffer(buf[:PrefixLen])
+	bit.Decode(buff, &size)
 
 	// Check if we read all data
 	if uint32(n-PrefixLen) == size {

@@ -1,7 +1,6 @@
 package db
 
 import (
-	"bytedb/block"
 	bit "bytedb/lib/bitbox"
 	"sync"
 )
@@ -31,7 +30,7 @@ type IndexKey struct {
 }
 
 // Add index
-func (i *Index) Add(idx *IndexKey) (*block.Block, error) {
+func (i *Index) Add(idx *IndexKey) (*Block, error) {
 	// Calculate block ID
 	id := i.FirstID
 	id += uint32(idx.Hash % uint64(i.LastID))
@@ -61,7 +60,7 @@ func (i *Index) Add(idx *IndexKey) (*block.Block, error) {
 
 // Write index to block. It will write whole index or nothing at all.
 // Return false if nothing was wrote.
-func (i *Index) write(idx *IndexKey, block *block.Block) bool {
+func (i *Index) write(idx *IndexKey, block *Block) bool {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 
@@ -74,7 +73,7 @@ func (i *Index) write(idx *IndexKey, block *block.Block) bool {
 }
 
 // Get block from file
-func (i *Index) Block(offset uint32) (*block.Block, error) {
+func (i *Index) Block(offset uint32) (*Block, error) {
 	// 1. Try to read block from memory
 	b := i.file.blocks[offset]
 
@@ -101,7 +100,7 @@ func (i *Index) Header(id uint32) *IndexHeader {
 }
 
 // Check if block has space for index
-func (i *Index) SpaceLeft(block *block.Block) bool {
+func (i *Index) SpaceLeft(block *Block) bool {
 	h := i.Header(block.ID)
 
 	if h.Tombstones > 0 || block.SpaceLeft() >= IndexSize {

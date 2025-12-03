@@ -2,34 +2,44 @@ package db
 
 const BlockSize = 4096
 
-// Block represents a physical 4 KB section of a file
 type Block struct {
-	ID    uint32
-	bytes [BlockSize]byte
-	off   uint32
+	ID   uint32 // position in file
+	Off  uint16 // current offset
+	Data []byte // raw 4 KB data
 }
 
-// Copy bytes from data to block.
-// Returns the number of bytes copied.
-func (b *Block) Write(data []byte) int {
+// Create new block
+func NewBlock(id uint32) *Block {
+	b := &Block{Data: make([]byte, BlockSize, BlockSize), ID: id}
+	return b
+}
+
+// Copy bytes from buf to block.
+// It returns the number of bytes copied.
+func (b *Block) Write(buf []byte) int {
 	// Check if we have any space left. Partial writes are acceptable.
-	if int(b.off) >= len(b.bytes) {
+	if b.Off >= BlockSize {
 		return 0
 	}
 
-	n := copy(b.bytes[b.off:], data)
-	b.off += uint32(n)
+	n := copy(b.Data[b.Off:], buf)
+	b.Off += uint16(n)
 
 	return n
 }
 
-// Copy bytes from block into dst.
+// Copy bytes from block, starting at offset, into dst.
 // It returns the number of bytes copied.
-func (b *Block) Read(dst []byte) int {
-	return copy(dst, b.bytes[b.off:])
+func (b *Block) Read(offset int, dst []byte) int {
+	// Check offset overflow
+	if offset >= len(b.Data) {
+		return 0
+	}
+
+	return copy(dst, b.Data[offset:])
 }
 
 // Check how much space we have
 func (b *Block) SpaceLeft() int {
-	return len(b.bytes) - int(b.off)
+	return BlockSize - int(b.Off)
 }

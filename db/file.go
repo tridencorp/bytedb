@@ -1,7 +1,6 @@
 package db
 
 import (
-	"bytedb/block"
 	bit "bytedb/lib/bitbox"
 	"fmt"
 	"os"
@@ -23,8 +22,8 @@ type File struct {
 	Hash uint64
 
 	mu        sync.Mutex
-	lastBlock *block.Block
-	blocks    map[uint32]*block.Block
+	lastBlock *Block
+	blocks    map[uint32]*Block
 }
 
 // Open database file.
@@ -42,7 +41,7 @@ func OpenFile(path string) (*File, error) {
 
 	file := &File{
 		file:   f,
-		blocks: make(map[uint32]*block.Block, 10),
+		blocks: make(map[uint32]*Block, 10),
 	}
 
 	return file, err
@@ -70,7 +69,7 @@ func (f *File) Size() int64 {
 
 // Count total number of blocks in file
 func (f *File) BlockCount() int64 {
-	return f.Size() / block.BlockSize
+	return f.Size() / BlockSize
 }
 
 // Write key-val to blockso
@@ -84,7 +83,7 @@ func (f *File) WriteKV(key *Key, val []byte) error {
 
 // Write data to blocks, starting at offset.
 // Return index and number of bytes written.
-func (f *File) Write(offset *block.Block, data []byte) (int, *IndexKey) {
+func (f *File) Write(offset *Block, data []byte) (int, *IndexKey) {
 	idx := &IndexKey{Offset: offset.ID, Span: 1}
 	buf := bit.NewBuffer(data)
 	n := int(0)
@@ -98,7 +97,7 @@ func (f *File) Write(offset *block.Block, data []byte) (int, *IndexKey) {
 		}
 
 		// We need another block
-		b := block.NewBlock(offset.ID + 1)
+		b := NewBlock(offset.ID + 1)
 		f.Append(b)
 
 		// Increment number of blocks used
@@ -109,7 +108,7 @@ func (f *File) Write(offset *block.Block, data []byte) (int, *IndexKey) {
 }
 
 // Append block to file
-func (f *File) Append(b *block.Block) {
+func (f *File) Append(b *Block) {
 	f.lastBlock = b
 	f.blocks[b.ID] = b
 }
@@ -132,7 +131,7 @@ func (f *File) Block(id uint32) *Block {
 }
 
 // Read block from file
-func (f *File) Read(block *block.Block) (int, error) {
+func (f *File) Read(block *Block) (int, error) {
 	// Get offset
 	off := int64((block.ID - 1) * BlockSize)
 

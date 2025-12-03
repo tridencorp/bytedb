@@ -1,7 +1,7 @@
 package server
 
 import (
-	"bytedb/common"
+	bit "bytedb/lib/bitbox"
 	"fmt"
 	"log"
 	"strings"
@@ -35,7 +35,7 @@ func (c *Client) Add(key string, val []byte) ([]byte, error) {
 	cmd.Data = val
 
 	// Prepare command pkg
-	pkg := common.Encode(
+	pkg := bit.Encode(
 		&cmd.Type,
 		&cmd.Collection,
 		&cmd.Namespace,
@@ -45,7 +45,7 @@ func (c *Client) Add(key string, val []byte) ([]byte, error) {
 	)
 
 	// Add length prefix
-	pkg = common.Encode(pkg)
+	pkg = bit.Encode(pkg)
 
 	// Send cmd to server
 	n, err := c.conn.Write(pkg)

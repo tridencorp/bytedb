@@ -1,60 +1,81 @@
 package main
 
 import (
+	bit "bytedb/lib/bitbox"
 	"bytedb/server"
 	"log"
-	"syscall"
+	"net"
 )
 
 func main() {
-	log.Println("Starting database server...")
+	log.Println("Starting ByteDB server")
 
-	// Create database server
-	fd := server.Run([4]byte{127, 0, 0, 1}, 6666)
+	// Create main server
+	sock, _ := server.Run("127.0.0.1:6666")
 
-	// Always close listening socket when main exits
-	defer syscall.Close(fd)
+	// Run workers
+	srv := server.NewServer()
+	srv.RunWorkers(1_000)
 
+	// Main server loop
 	for {
-		// Accept user connection
-		nfd, addr, err := syscall.Accept(fd)
+		conn, err := sock.Accept()
 		if err != nil {
-			log.Println("accept error:", err)
+			log.Println("connection error:", err)
 			continue
 		}
 
-		// Create Conn
-		conn := server.NewConn(nfd)
-
-		// For this version each connection will be run in separate goroutine.
+		// Each connection is run in separate goroutine.
 		// Later we will use poll/epoll together with goroutine pool.
-		go handleConn(conn, addr)
+		// I assume that we wont have more than 10k connections at a time.
+		go handleConn(srv, conn)
 	}
 }
 
-func handleConn(conn *server.Conn, addr syscall.Sockaddr) {
+func handleConn(srv *server.Server, conn net.Conn) {
 	log.Println("handling connection...")
 
-	// Close user connection on exit
+	// Close connection on exit
 	defer conn.Close()
 
-	// Buffer for reading data
-	buf := make([]byte, 4096)
+	buf := make([]byte, 2048)
 
 	for {
-		// Waiting for clients cmd
+		// Read command from user
 		n, err := conn.Read(buf)
 		if err != nil {
 			log.Println("Read error or client closed:", err)
 			return
 		}
 
-		if n == 0 {
-			log.Println("Client closed connection")
-			return
-		}
+		log.Printf("read %d bytes from user", n)
+		buf := bit.NewBuffer(buf)
 
-		msg := string(buf[:n])
-		log.Printf("Received from %v: %s", addr, msg)
+		// Decode command length
+		l := uint32(0)
+		buf.Decode(&l)
+
+		// Parse command
+		cmd := server.DecodeCmd(buf)
+
+		// Run command
+		RunCmd(srv, cmd)
 	}
+}
+
+// Run command
+func RunCmd(srv *server.Server, cmd *server.Cmd) []byte {
+	switch cmd.Type {
+	case server.CmdAdd:
+		log.Println("Add new key")
+
+		col := srv.Collection(cmd.Collection)
+
+		log.Println(col)
+		return nil
+	default:
+		log.Printf("unknown command: %d", cmd.Type)
+	}
+
+	return nil
 }
