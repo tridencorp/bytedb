@@ -7,6 +7,22 @@ import (
 )
 
 type Server struct {
+	Workers []Worker
+}
+
+func NewServer() *Server {
+	s := &Server{Workers: make([]Worker, 1000)}
+	return s
+}
+
+// Run workers, each one in separate goroutine
+func (s *Server) RunWorkers(n int) {
+	for i := 0; i < n; i++ {
+		w := Worker{}
+		s.Workers = append(s.Workers, w)
+
+		go w.Run()
+	}
 }
 
 // Run TCP server.
