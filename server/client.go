@@ -34,8 +34,8 @@ func (c *Client) Add(key string, val []byte) ([]byte, error) {
 	cmd.Key = []byte(parts[3])
 	cmd.Data = val
 
-	// Prepare command pkg
-	pkg := bit.Encode(
+	// prepare cmd req
+	req := bit.Encode(
 		&cmd.Type,
 		&cmd.Collection,
 		&cmd.Namespace,
@@ -44,11 +44,11 @@ func (c *Client) Add(key string, val []byte) ([]byte, error) {
 		&cmd.Data,
 	)
 
-	// Add length prefix
-	pkg = bit.Encode(pkg)
+	// add length prefix
+	req = bit.Encode(req)
 
-	// Send cmd to server
-	n, err := c.conn.Write(pkg)
+	// send cmd to server
+	n, err := c.conn.Write(req)
 	if err != nil {
 		return nil, err
 	}
@@ -56,8 +56,9 @@ func (c *Client) Add(key string, val []byte) ([]byte, error) {
 	log.Println("sending: ", cmd.Collection, cmd.Namespace, cmd.Prefix, cmd.Key)
 	log.Printf("bytes send: %d", n)
 
-	// Read response
-	res, err := c.conn.Read()
+	// read response
+	res := make([]byte, 1024)
+	_, err = c.conn.Read(res)
 	if err != nil {
 		return nil, err
 	}

@@ -10,9 +10,15 @@ import (
 
 const PrefixLen = 4
 
-// Wrapper for user connection
+// User connection. Wrapper for net.Conn.
 type Conn struct {
 	conn net.Conn
+	Resp chan *[]byte
+}
+
+func NewConn(conn net.Conn) *Conn {
+	c := &Conn{conn: conn, Resp: make(chan *[]byte)}
+	return c
 }
 
 // Connect to tcp server,
@@ -36,39 +42,38 @@ func FromFD(fd int) *Conn {
 }
 
 // Read from connection, blocking until all data is read.
-func (c *Conn) Read() ([]byte, error) {
-	buf := make([]byte, 1024)
+func (c *Conn) Read(buf []byte) (int, error) {
 	size := uint32(0)
 
-	// 1. Fast path - try to read all at once
+	// fast path - try to read all at once
 	n, err := c.conn.Read(buf)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	if n < PrefixLen {
-		return nil, fmt.Errorf("not enough bytes to read pkg size: got %d bytes need %d", n, PrefixLen)
+		return 0, fmt.Errorf("not enough bytes to read pkg size: got %d bytes need %d", n, PrefixLen)
 	}
 
-	// Decode msg size
+	// decode msg size
 	buff := bit.NewBuffer(buf[:PrefixLen])
 	bit.Decode(buff, &size)
 
-	// Check if we read all data
+	// check if we read all data
 	if uint32(n-PrefixLen) == size {
-		return buf[PrefixLen:n], nil
+		return n, nil // success
 	}
 
-	// 2. We didn't get all data, try to read remaining bytes
+	// we didn't get all data, try to read remaining bytes
 	total := make([]byte, size)
 	offset := copy(total, buf[PrefixLen:n])
 
 	n, err = io.ReadFull(c.conn, total[offset:])
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
-	return total, nil
+	return n, nil // success
 }
 
 // Write data to connection, blocking until done.

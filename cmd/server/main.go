@@ -4,44 +4,45 @@ import (
 	bit "bytedb/lib/bitbox"
 	"bytedb/server"
 	"log"
-	"net"
 )
 
 func main() {
 	log.Println("Starting ByteDB server")
 
-	// Create main server
+	// create main server
 	sock, _ := server.Run("127.0.0.1:6666")
 
-	// Run workers
+	// run workers
 	srv := server.NewServer()
 	srv.RunWorkers(1_000)
 
-	// Main server loop
+	// main server loop
 	for {
-		conn, err := sock.Accept()
+		c, err := sock.Accept()
 		if err != nil {
 			log.Println("connection error:", err)
 			continue
 		}
 
+		conn := server.NewConn(c)
+
 		// Each connection is run in separate goroutine.
 		// Later we will use poll/epoll together with goroutine pool.
-		// I assume that we wont have more than 10k connections at a time.
+		// I assume that we won't have more than 10k connections at a time.
 		go handleConn(srv, conn)
 	}
 }
 
-func handleConn(srv *server.Server, conn net.Conn) {
+func handleConn(srv *server.Server, conn *server.Conn) {
 	log.Println("handling connection...")
 
-	// Close connection on exit
+	// close connection on exit
 	defer conn.Close()
 
 	buf := make([]byte, 2048)
 
 	for {
-		// Read command from user
+		// read command from user
 		n, err := conn.Read(buf)
 		if err != nil {
 			log.Println("Read error or client closed:", err)
@@ -51,31 +52,40 @@ func handleConn(srv *server.Server, conn net.Conn) {
 		log.Printf("read %d bytes from user", n)
 		buf := bit.NewBuffer(buf)
 
-		// Decode command length
-		l := uint32(0)
-		buf.Decode(&l)
+		// decode command length
+		cmdLen := uint32(0)
+		buf.Decode(&cmdLen)
 
-		// Parse command
+		// parse command
 		cmd := server.DecodeCmd(buf)
 
-		// Run command
-		RunCmd(srv, cmd)
+		// run command
+		_, err = RunCmd(srv, cmd, conn)
+		if err != nil {
+			log.Println(err)
+			// send err resp to user
+			continue
+		}
+
+		// wait for response
+		res := <-conn.Resp
+		log.Println(res)
 	}
 }
 
 // Run command
-func RunCmd(srv *server.Server, cmd *server.Cmd) []byte {
+func RunCmd(srv *server.Server, cmd *server.Cmd, conn *server.Conn) ([]byte, error) {
 	switch cmd.Type {
 	case server.CmdAdd:
 		log.Println("Add new key")
 
-		col := srv.Collection(cmd.Collection)
+		// send the write request to the file worker
+		srv.SendToWorker(cmd)
 
-		log.Println(col)
-		return nil
+		return nil, nil
 	default:
 		log.Printf("unknown command: %d", cmd.Type)
 	}
 
-	return nil
+	return nil, nil
 }

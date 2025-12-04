@@ -7,6 +7,14 @@ import (
 
 const IndexSize = 16 // size in bytes
 
+// DataClass
+type IndexKey struct {
+	Hash   uint64
+	Offset uint32
+	Span   uint16
+	Flag   uint16
+}
+
 // Index block header
 type IndexHeader struct {
 	Tombstones uint8 // number of deleted keys
@@ -22,12 +30,6 @@ type Index struct {
 
 	// index block headers
 	Headers map[uint32]*IndexHeader
-}
-
-type IndexKey struct {
-	Hash   uint64
-	Offset uint32
-	Span   uint16
 }
 
 // Add index

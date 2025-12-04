@@ -3,6 +3,7 @@ package server
 import (
 	"bytedb/db"
 	"context"
+	"log"
 	"net"
 	"syscall"
 )
@@ -31,20 +32,33 @@ func (s *Server) RunWorkers(n int) {
 	}
 }
 
-// Returns collection for the given hash
-func (s *Server) Collection(hash uint64) *db.Collection {
-	col, ok := s.Collections[hash]
-	if !ok {
-		return col
+// Send job to worker
+func (s *Server) SendToWorker(cmd *Cmd) error {
+	coll, err := s.Collection(cmd.Collection)
+	if err != nil {
+		return err
 	}
 
+	log.Println(coll)
 	return nil
+}
+
+// Return collection for the given hash
+func (s *Server) Collection(hash uint64) (*db.Collection, error) {
+	// get collection from memory
+	col, ok := s.Collections[hash]
+	if !ok {
+		return col, nil
+	}
+
+	// if that failed, read it from disk
+	return nil, nil
 }
 
 // Run TCP server.
 // Address can be in "0.0.0.0:8080" form.
 func Run(address string) (net.Listener, error) {
-	// Enable SO_REUSEADDR
+	// config for enabling SO_REUSEADDR
 	lc := net.ListenConfig{
 		Control: func(network, address string, c syscall.RawConn) error {
 			c.Control(func(fd uintptr) {
