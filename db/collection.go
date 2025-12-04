@@ -5,22 +5,22 @@ import (
 )
 
 const (
-	DirKeys    = "keys"
-	DirBuckets = "buckets"
-	DirHashes  = "hashes"
+	ExtBucket = ".bck"
+	ExtHash   = ".hsh"
+	ExtArray  = ".arr"
 )
 
 type Collection struct {
-	name string
-	Dir  string
+	Hash uint64
+	Path string
 
 	mu      sync.RWMutex
 	Buckets map[uint64]Bucket
 }
 
-// Open collection from disk
-func OpenCollection(dir string) *Collection {
-	return &Collection{Dir: dir}
+// Open collection from disk. Create it if necessary.
+func OpenCollection(hash uint64, path string) *Collection {
+	return &Collection{Hash: hash, Path: path}
 }
 
 // Load file from disk. Create file if it doesn't exist.
